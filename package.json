@@ -1,0 +1,43 @@
+{
+  "name": "sauron",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:lan": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "predev": "npm run db:setup",
+    "prebuild": "npm run db:setup",
+    "db:push": "node -e \"require('fs').mkdirSync('data',{recursive:true})\" && drizzle-kit push --force",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:news": "tsx src/db/fetch-news.ts",
+    "db:cameras": "tsx scripts/import-cameras.ts",
+    "db:setup": "npm run db:push && npm run db:seed"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "drizzle-orm": "^0.45.4",
+    "fast-xml-parser": "^5.11.2",
+    "lucide-react": "^1.66.0",
+    "maplibre-gl": "^6.16.0",
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,4 @@
+external_id,name,latitude,longitude,page_url,provider_name,neighborhood_slug
+cor-0001,Cinelândia — Praça Floriano,-22.9111,-43.1755,https://appcor.cor-rio.work/mapa/cameras/,COR-Rio,centro
+cor-0002,Copacabana — Av. Atlântica,-22.9711,-43.1857,,COR-Rio,
+cor-0003,Tijuca — Saens Peña,-22.9248,-43.2344,https://appcor.cor-rio.work/mapa/cameras/,COR-Rio,tijuca
