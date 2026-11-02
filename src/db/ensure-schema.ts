@@ -7,6 +7,8 @@ import { db } from "@/db";
  * - Cria `cameras.is_online` se o banco de produção estiver em uma versão anterior.
  * - Corrige a região da Freguesia (Jacarepaguá) para Zona Sudoeste, que é a
  *   região usada pelo GeoJSON e pelas câmeras importadas.
+ * - Câmeras ainda sem status começam como online; o ajuste manual para offline
+ *   é preservado.
  *
  * Roda uma vez por processo.
  */
@@ -29,6 +31,11 @@ export function ensureCameraSchema(): Promise<void> {
         set "region_slug" = 'zona-sudoeste'
         where "neighborhood_slug" = 'freguesia-jacarepagua'
           and "region_slug" <> 'zona-sudoeste'
+      `);
+      await db.execute(sql`
+        update "cameras"
+        set "is_online" = true
+        where "is_online" is null
       `);
     } catch (error) {
       // Sem permissão de DDL ou banco indisponível: as consultas vão falhar e
