@@ -45,6 +45,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: PageProps<"/fontes/[slug]">): Promise<Metadata> {
+  await connection();
   const { slug } = await params;
   const source = await getSourceBySlug(slug);
 
