@@ -12,6 +12,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { db } from "@/db";
+import { ensureCameraSchema } from "@/db/ensure-schema";
 import {
   cameras,
   neighborhoods,
@@ -453,6 +454,7 @@ export async function listCameras(options?: {
   region?: string;
   neighborhood?: string;
 }): Promise<Camera[]> {
+  await ensureCameraSchema();
   const filters: SQL[] = [];
   if (options?.region) {
     filters.push(eq(cameras.regionSlug, options.region));

@@ -1,5 +1,6 @@
 import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { ensureCameraSchema } from "@/db/ensure-schema";
 import { cameras } from "@/db/schema";
 
 /**
@@ -276,6 +277,7 @@ export type CameraStatusSummary = {
 };
 
 export async function getCameraStatusSummary(): Promise<CameraStatusSummary> {
+  await ensureCameraSchema();
   const rows = await db
     .select({
       total: count(),
