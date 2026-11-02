@@ -389,7 +389,7 @@ export function MapExplorer({
               </button>
             </div>
 
-            <div className="px-4 pb-2 pt-4">
+            <div className="px-4 pb-3 pt-4">
               <div className="relative">
                 <Search
                   aria-hidden
@@ -426,12 +426,12 @@ export function MapExplorer({
               </div>
             </div>
 
-            <div className="px-3 pb-3 pt-0 border-b border-line/70">
+            <div className="px-3 pt-2 pb-4 border-b border-line/70">
 
               <h4 className="mt-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
                 Situação
               </h4>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <Chip
                   active={statusFilter === "all"}
                   onClick={() => setStatusFilter("all")}
@@ -463,10 +463,10 @@ export function MapExplorer({
                 </Chip>
               </div>
 
-              <h4 className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
+              <h4 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
                 Região
               </h4>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-2 flex flex-wrap gap-2">
                 <Chip
                   active={region === ""}
                   onClick={() => handleRegionChange("")}
@@ -493,8 +493,8 @@ export function MapExplorer({
                   </Chip>
                 ))}
               </div>
-              <section className="mt-3 border-t border-line/70 pt-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
+              <section className="mt-4 border-t border-line/70 pt-3">
+                <div className="mb-3 flex items-center justify-between gap-2">
                   <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Bairros
                   </h4>
@@ -502,7 +502,7 @@ export function MapExplorer({
                     {visibleNeighborhoods.length}
                   </span>
                 </div>
-                <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+                <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
                   <button
                     type="button"
                     onClick={() => handleNeighborhoodChange("")}
