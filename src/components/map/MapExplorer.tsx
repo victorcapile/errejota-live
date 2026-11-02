@@ -389,7 +389,7 @@ export function MapExplorer({
               </button>
             </div>
 
-            <div className="p-4">
+            <div className="px-4 pb-2 pt-4">
               <div className="relative">
                 <Search
                   aria-hidden
@@ -426,9 +426,9 @@ export function MapExplorer({
               </div>
             </div>
 
-            <div className="p-3 border-b border-line/70 mb-3">
+            <div className="px-3 pb-3 pt-0 border-b border-line/70">
 
-              <h4 className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
+              <h4 className="mt-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
                 Situação
               </h4>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -462,17 +462,8 @@ export function MapExplorer({
                   Offline
                 </Chip>
               </div>
-              {statusCounts.unknown > 0 ? (
-                <p className="mt-2 text-[10px] leading-snug text-muted/80">
-                  {statusCounts.unknown}{" "}
-                  {statusCounts.unknown === 1
-                    ? "câmera ainda sem classificação"
-                    : "câmeras ainda sem classificação"}
-                  .
-                </p>
-              ) : null}
 
-              <h4 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
+              <h4 className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
                 Região
               </h4>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -502,7 +493,7 @@ export function MapExplorer({
                   </Chip>
                 ))}
               </div>
-              <section className="mt-5 border-t border-line/70 pt-3">
+              <section className="mt-3 border-t border-line/70 pt-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Bairros
