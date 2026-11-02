@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Compass } from "lucide-react";
+import { Eye } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { SiteNav } from "./SiteNav";
 
@@ -13,7 +13,7 @@ export function SiteHeader() {
           aria-label="Sauron — página inicial"
         >
           <span className="grid size-9 place-items-center rounded-xl bg-brand text-white shadow-sm transition-colors group-hover:bg-brand-strong">
-            <Compass aria-hidden className="size-5" />
+            <Eye aria-hidden className="size-5" />
           </span>
           <span className="leading-tight">
             <span className="block text-base font-semibold tracking-tight text-foreground">
