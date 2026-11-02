@@ -178,7 +178,8 @@ quando quiser reclassificar tudo. A rota usada é
   para o dossiê e é guardado na URL como `?status=online` ou `?status=offline`.
 - O cartão do mapa mostra quantas câmeras estão visíveis e quantas estão online
   e offline.
-- Quando a geolocalização não é usada, o mapa abre centrado na **Tijuca**.
+- Quando a geolocalização não é usada, o mapa abre centrado na **Freguesia
+  (Jacarepaguá)**.
 - A API pública é `GET /api/cameras`, com filtros opcionais
   `?region=centro` e `?neighborhood=copacabana`.
 

@@ -15,8 +15,8 @@ if (typeof window !== "undefined") {
 import { REGION_COLORS } from "@/lib/constants";
 import type { Camera } from "@/lib/types";
 
-// Centro inicial do mapa: Tijuca (fallback quando o usuário não usa o GPS).
-const DEFAULT_CENTER: [number, number] = [-43.236379, -22.938758];
+// Centro inicial do mapa: Freguesia (Jacarepaguá), fallback sem GPS.
+const DEFAULT_CENTER: [number, number] = [-43.342118, -22.934761];
 
 const MAP_STYLES = {
   light: "https://tiles.openfreemap.org/styles/positron",
