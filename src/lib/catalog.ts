@@ -32,13 +32,17 @@ import {
   CATALOG_PAGE_SIZE,
   CATEGORY_VALUES,
   PERMISSION_STATUS_VALUES,
+  REGION_META,
+  REGION_VALUES,
   SCOPE_VALUES,
   type AvailabilityStatus,
   type Category,
   type PermissionStatus,
+  type RegionSlug,
   type Scope,
   type SortOption,
 } from "./constants";
+import { NEIGHBORHOOD_SEED } from "@/db/seed-data/neighborhoods";
 import { normalizeText, tokenizeSearch } from "./text";
 import type {
   Camera,
@@ -656,14 +660,42 @@ export async function getCatalogMeta(): Promise<CatalogMeta> {
   };
 }
 
+/**
+ * Metadados do mapa (regiões e bairros) montados a partir dos dados estáticos
+ * do seed. A lista de bairros é a mesma do banco, mas assim a página do mapa
+ * abre mesmo se a consulta de bairros estiver lenta ou indisponível.
+ */
 export async function getMapMeta(): Promise<MapMeta> {
-  const [regionRows, neighborhoodRows] = await Promise.all([
-    db
-      .select({ slug: regions.slug, name: regions.name })
-      .from(regions)
-      .orderBy(asc(regions.sortOrder)),
-    listNeighborhoods(),
-  ]);
+  const regionRows = REGION_VALUES.map((slug) => ({
+    slug,
+    name: REGION_META[slug].name,
+  }));
+
+  const neighborhoodRows: NeighborhoodWithCount[] = NEIGHBORHOOD_SEED.map(
+    (neighborhood) => {
+      const region = REGION_META[neighborhood.regionSlug as RegionSlug];
+
+      return {
+        id: `neighborhood_${neighborhood.slug}`,
+        slug: neighborhood.slug,
+        name: neighborhood.name,
+        regionId: `region_${neighborhood.regionSlug}`,
+        regionSlug: neighborhood.regionSlug,
+        regionName: region?.name ?? neighborhood.regionSlug,
+        latitude: neighborhood.latitude,
+        longitude: neighborhood.longitude,
+        locationPrecision: "approximate" as const,
+        summary: neighborhood.summary,
+        sourceCount: 0,
+      };
+    },
+  ).sort((a, b) => {
+    const orderA = REGION_META[a.regionSlug as RegionSlug]?.sortOrder ?? 999;
+    const orderB = REGION_META[b.regionSlug as RegionSlug]?.sortOrder ?? 999;
+    return orderA !== orderB
+      ? orderA - orderB
+      : a.name.localeCompare(b.name, "pt-BR");
+  });
 
   return {
     regions: regionRows,
