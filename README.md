@@ -1,10 +1,10 @@
-# Sauron
+# Rio em Foco
 
-**Mapa colaborativo de câmeras e catálogo de fontes públicas do Rio de Janeiro.** O Sauron organiza informações por região e bairro, mostra onde há câmeras cadastradas e direciona cada pessoa à página oficial da fonte. O projeto também reúne referências de serviços e informações públicas úteis para acompanhar a cidade.
+**Mapa colaborativo de câmeras e catálogo de fontes públicas do Rio de Janeiro.** O Rio em Foco organiza informações por região e bairro, mostra onde há câmeras cadastradas e direciona cada pessoa à página oficial da fonte. O projeto também reúne referências de serviços e informações públicas úteis para acompanhar a cidade.
 
-O Sauron não transmite nem grava vídeo. O mapa armazena pontos e metadados; ao selecionar uma câmera, a pessoa abre o endereço oficial do provedor.
+O Rio em Foco não transmite nem grava vídeo. O mapa armazena pontos e metadados; ao selecionar uma câmera, a pessoa abre o endereço oficial do provedor.
 
-**Site:** [sauron-lovat.vercel.app](https://sauron-lovat.vercel.app)
+**Site:** [rioemfoco.vercel.app](https://rioemfoco.vercel.app)
 
 **Contribuições:** veja [CONTRIBUTING.md](CONTRIBUTING.md) antes de abrir uma proposta.
 
