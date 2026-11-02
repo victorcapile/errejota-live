@@ -369,7 +369,7 @@ export function MapExplorer({
           >
             <div className="flex items-center justify-between gap-2 border-b border-line/70 px-4 py-3 lg:hidden">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                Tema
+                Filtros
               </span>
               <button
                 type="button"
@@ -427,9 +427,6 @@ export function MapExplorer({
             </div>
 
             <div className="p-3 border-b border-line/70 mb-3">
-              <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                Filtros
-              </h3>
 
               <h4 className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
                 Situação
