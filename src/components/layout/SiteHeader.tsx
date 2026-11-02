@@ -17,7 +17,7 @@ export function SiteHeader() {
           </span>
           <span className="leading-tight">
             <span className="block text-base font-semibold tracking-tight text-foreground">
-              Sauron
+              Rio em Foco
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted sm:block">
               Mapa do Rio · v0.9 beta
