@@ -23,6 +23,10 @@ function createPostgresDatabase(connectionString: string): Database {
   const client = postgres(connectionString, {
     prepare: false,
     max: 1,
+    // Em serverless, conexões ociosas ficam presas e esgotam o pool do Supabase.
+    idle_timeout: 20,
+    max_lifetime: 60 * 5,
+    connect_timeout: 10,
   });
 
   return drizzlePostgres(client, { schema });
