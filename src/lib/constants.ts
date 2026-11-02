@@ -328,6 +328,16 @@ export const REGION_VALUES = [
   "nacional",
 ] as const;
 
+/**
+ * Regiões de escopo (municipal, estadual, nacional) sem mapa próprio.
+ * São mantidas no catálogo para fontes, mas não entram nos filtros do mapa.
+ */
+export const REGION_SCOPE_VALUES = [
+  "cidade",
+  "estado",
+  "nacional",
+] as const;
+
 export type RegionSlug = (typeof REGION_VALUES)[number];
 
 export const REGION_COLORS: Record<RegionSlug, string> = {

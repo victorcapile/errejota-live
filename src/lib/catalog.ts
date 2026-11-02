@@ -465,14 +465,18 @@ export async function listCameras(options?: {
       camera: cameras,
       neighborhood: neighborhoods,
       region: regions,
+      source: sources,
     })
     .from(cameras)
     .leftJoin(neighborhoods, eq(cameras.neighborhoodId, neighborhoods.id))
     .leftJoin(regions, eq(neighborhoods.regionId, regions.id))
+    .leftJoin(sources, eq(cameras.sourceId, sources.id))
     .where(filters.length > 0 ? and(...filters) : undefined)
     .orderBy(asc(cameras.name));
 
-  return rows.map((row) => mapCamera(row.camera, row.neighborhood, row.region));
+  return rows.map((row) =>
+    mapCamera(row.camera, row.neighborhood, row.region, row.source),
+  );
 }
 
 export async function countCameras(): Promise<number> {
@@ -484,6 +488,7 @@ function mapCamera(
   camera: CameraRow,
   neighborhood: NeighborhoodRow | null,
   region: RegionRow | null,
+  source: SourceRow | null = null,
 ): Camera {
   return {
     id: camera.id,
@@ -497,6 +502,11 @@ function mapCamera(
     neighborhoodName: neighborhood?.name ?? null,
     regionSlug: region?.slug ?? camera.regionSlug,
     regionName: region?.name ?? null,
+    sourceId: source?.id ?? camera.sourceId ?? null,
+    sourceName: source?.name ?? null,
+    sourcePageUrl: source?.sourcePageUrl ?? null,
+    sourceAddressHint: source?.addressHint ?? null,
+    lastCheckedAt: source?.lastCheckedAt ?? null,
   };
 }
 

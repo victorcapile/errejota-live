@@ -9,8 +9,8 @@
  * Aceita CSV (colunas external_id,name,latitude,longitude,page_url...) ou JSON
  * (array de objetos, ou objeto com a chave "cameras"). O importador não acessa
  * nenhum serviço externo. Ele apenas lê o arquivo que você forneceu e grava os
- * pontos no banco local. Cada ponto guarda um link para a página oficial do
- * provedor; nenhum vídeo é baixado ou embutido.
+ * pontos no PostgreSQL configurado em DATABASE_URL. Cada ponto guarda um link
+ * para a página oficial do provedor; nenhum vídeo é baixado ou embutido.
  */
 import { createHash } from "node:crypto";
 import fs from "node:fs";

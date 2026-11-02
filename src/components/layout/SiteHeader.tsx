@@ -20,7 +20,7 @@ export function SiteHeader() {
               Sauron
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted sm:block">
-              Mapa do Rio · v0.6 beta
+              Mapa do Rio · v0.9 beta
             </span>
           </span>
         </Link>

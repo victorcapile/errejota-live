@@ -3,40 +3,24 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronRight,
   ChevronLeft,
-  ChevronDown,
-  ExternalLink,
-  Info,
   LocateFixed,
-  MapPin,
+  Menu,
   Search,
   X,
-  Menu,
 } from "lucide-react";
-import { CategoryIcon } from "@/components/catalog/CategoryIcon";
-import { SourceBadges } from "@/components/catalog/SourceBadges";
+import { CameraDossierPanel } from "@/components/map/CameraDossierPanel";
 import {
-  CATEGORY_VALUES,
-  CATEGORY_META,
   REGION_VALUES,
   REGION_COLORS,
-  type Category,
   type RegionSlug,
 } from "@/lib/constants";
-import {
-  coordinatesLabel,
-  formatDate,
-  locationLabel,
-  precisionLabel,
-} from "@/lib/format";
 import { normalizeText } from "@/lib/text";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import type { Camera, CatalogMeta, Source } from "@/lib/types";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import type { Camera, CatalogMeta } from "@/lib/types";
 
 const MapCanvas = dynamic(
   () => import("./MapCanvas").then((module) => module.MapCanvas),
@@ -60,17 +44,18 @@ function MapPlaceholder() {
     </div>
   );
 }
-
 function isRegionSlug(value: string | null): value is RegionSlug {
   return value !== null && (REGION_VALUES as readonly string[]).includes(value);
 }
 
-function isCategory(value: string | null): value is Category {
-  return value !== null && (CATEGORY_VALUES as readonly string[]).includes(value);
+function subscribeToDesktopBreakpoint(onChange: () => void) {
+  const mediaQuery = window.matchMedia("(min-width: 1024px)");
+  mediaQuery.addEventListener("change", onChange);
+  return () => mediaQuery.removeEventListener("change", onChange);
 }
 
-function hasCoordinates(source: Source): boolean {
-  return source.latitude !== null && source.longitude !== null;
+function getDesktopBreakpointSnapshot() {
+  return window.matchMedia("(min-width: 1024px)").matches;
 }
 
 function Chip({
@@ -105,156 +90,6 @@ function Chip({
   );
 }
 
-function SourceRow({
-  source,
-  active,
-  onSelect,
-}: {
-  source: Source;
-  active: boolean;
-  onSelect: (slug: string) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(source.slug)}
-      className={`group flex w-full items-start gap-3 border-b border-line/70 px-4 py-3 text-left transition-colors ${
-        active ? "bg-brand/5" : "hover:bg-background/70"
-      }`}
-    >
-      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-background text-brand">
-        <CategoryIcon category={source.category} className="size-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-start justify-between gap-2">
-          <span className="text-sm font-medium leading-snug text-foreground">
-            {source.name}
-          </span>
-          <ChevronRight
-            aria-hidden
-            className="mt-0.5 size-3.5 shrink-0 text-muted/60 transition-transform group-hover:translate-x-0.5"
-          />
-        </span>
-        <span className="mt-0.5 block truncate text-[11px] text-muted">
-          {source.providerName} · {locationLabel(source)}
-        </span>
-        <span className="mt-1.5 block">
-          <SourceBadges source={source} />
-        </span>
-      </span>
-    </button>
-  );
-}
-
-function SourceDetailPanel({
-  source,
-  onBack,
-  backLabel,
-}: {
-  source: Source;
-  onBack: () => void;
-  backLabel: string;
-}) {
-  const coordinates = coordinatesLabel(source);
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-line px-3 py-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted transition-colors hover:bg-brand/5 hover:text-brand"
-        >
-          <ArrowLeft aria-hidden className="size-3.5" />
-          {backLabel}
-        </button>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.13em] text-brand">
-          <CategoryIcon category={source.category} className="size-4" />
-          {CATEGORY_META[source.category].label}
-        </p>
-
-        <h2 className="mt-2 text-xl font-semibold leading-tight tracking-tight">
-          {source.name}
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          {source.shortDescription}
-        </p>
-
-        <div className="mt-3">
-          <SourceBadges source={source} detailed />
-        </div>
-
-        <dl className="mt-5 space-y-2.5 rounded-xl border border-line bg-background/60 p-3">
-          <div className="flex items-start justify-between gap-3">
-            <dt className="text-[11px] text-muted">Provedor</dt>
-            <dd className="text-right text-xs font-medium">
-              {source.providerName}
-            </dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="text-[11px] text-muted">Região</dt>
-            <dd className="text-right text-xs font-medium">
-              {source.region?.name ?? "Não informada"}
-            </dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="text-[11px] text-muted">Localização</dt>
-            <dd className="text-right text-xs font-medium">
-              {locationLabel(source)}
-            </dd>
-          </div>
-          <div className="flex items-start justify-between gap-3">
-            <dt className="text-[11px] text-muted">Precisão</dt>
-            <dd className="text-right text-xs font-medium">
-              {precisionLabel(source)}
-            </dd>
-          </div>
-          {coordinatesLabel(source) ? (
-            <div className="flex items-start justify-between gap-3">
-              <dt className="text-[11px] text-muted">Coordenadas</dt>
-              <dd className="text-right font-mono text-[11px]">
-                {coordinatesLabel(source)}
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-
-        {source.statusNote ? (
-          <p className="mt-3 rounded-xl border border-brand/15 bg-brand/5 p-3 text-[11px] leading-relaxed text-foreground/80">
-            {source.statusNote}
-          </p>
-        ) : null}
-
-        <div className="mt-4 grid gap-2">
-          <a
-            href={source.sourcePageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-strong">
-            Abrir página oficial
-            <ExternalLink aria-hidden className="size-4" />
-          </a>
-          <Link
-            href={`/fontes/${source.slug}`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-line bg-card px-4 text-sm font-medium transition-colors hover:border-brand/30 hover:text-brand"
-          >
-            Ver ficha completa
-            <ArrowRight aria-hidden className="size-4" />
-          </Link>
-        </div>
-
-        <p className="mt-3 text-[11px] leading-relaxed text-muted">
-          O link abre a página do provedor em outra aba. O Sauron não carrega
-          player, não grava imagens e não confirma transmissão ao vivo.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export function MapExplorer({
   meta,
 }: Props) {
@@ -263,7 +98,6 @@ export function MapExplorer({
 
   const initialRegion = searchParams.get("region");
   const initialNeighborhood = searchParams.get("neighborhood");
-  const initialCategory = searchParams.get("category");
 
   const [region, setRegion] = useState<RegionSlug | "">(
     isRegionSlug(initialRegion) ? initialRegion : "",
@@ -273,56 +107,47 @@ export function MapExplorer({
       ? initialNeighborhood
       : "",
   );
-  const [category, setCategory] = useState<Category | "">(
-    isCategory(initialCategory) ? initialCategory : "",
-  );
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [showNeighborhoods, setShowNeighborhoods] = useState(true);
   const [showCameras, setShowCameras] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isDesktop = useSyncExternalStore(
+    subscribeToDesktopBreakpoint,
+    getDesktopBreakpointSnapshot,
+    () => false,
+  );
+  const [sidebarOpenPreference, setSidebarOpenPreference] = useState<boolean | null>(null);
+  const sidebarOpen = sidebarOpenPreference ?? isDesktop;
+  const [locateRequest, setLocateRequest] = useState(0);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [camerasLoading, setCamerasLoading] = useState(true);
-  const [camerasError, setCamerasError] = useState(false);
+  const [dismissedDossierNeighborhood, setDismissedDossierNeighborhood] =
+    useState<string | null>(null);
   const [searchBounds, setSearchBounds] = useState<{
     points: [number, number][];
     key: number;
   } | null>(null);
-  const [expandedRegions, setExpandedRegions] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
-    if (isRegionSlug(initialRegion)) {
-      initial.add(initialRegion);
-    }
-    const neighborhoodRegion = meta.neighborhoods.find(
-      (n) => n.slug === initialNeighborhood,
-    )?.regionSlug;
-    if (neighborhoodRegion) {
-      initial.add(neighborhoodRegion);
-    }
-    return initial;
-  });
-
-  const allRegionsCollapsed = meta.regions.every(
-    (item) => !expandedRegions.has(item.slug),
-  );
-
-  const selectedRegion = meta.regions.find(
-    (candidate) => candidate.slug === region,
-  );
   const selectedNeighborhood = meta.neighborhoods.find(
     (candidate) => candidate.slug === neighborhood,
+  );
+  const dossierNeighborhood =
+    selectedNeighborhood ??
+    meta.neighborhoods.find(
+      (item) => item.slug === dismissedDossierNeighborhood,
+    ) ??
+    null;
+  const dossierOpen = Boolean(
+    selectedNeighborhood && dismissedDossierNeighborhood !== neighborhood,
   );
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (region) params.set("region", region);
     if (neighborhood) params.set("neighborhood", neighborhood);
-    if (category) params.set("category", category);
     if (query.trim()) params.set("q", query.trim());
 
     const search = params.toString();
     window.history.replaceState(null, "", search ? `/?${search}` : "/");
-  }, [region, neighborhood, category, query]);
+  }, [region, neighborhood, query]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -342,7 +167,6 @@ export function MapExplorer({
           return;
         }
         console.error("Falha ao carregar câmeras:", error);
-        setCamerasError(true);
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -413,7 +237,14 @@ export function MapExplorer({
     return map;
   }, [cameras]);
 
-  const regionKey = region || "all";
+  const regionsWithCameras = meta.regions.filter(
+    (item) => (camerasByRegion.get(item.slug) ?? 0) > 0,
+  );
+
+  const visibleNeighborhoods = meta.neighborhoods.filter(
+    (item) => !region || item.regionSlug === region,
+  );
+
   const focusPoint = selectedNeighborhood
     ? {
         latitude: selectedNeighborhood.latitude as number,
@@ -422,89 +253,66 @@ export function MapExplorer({
     : null;
   const focusKey = neighborhood || region || "all";
 
-  const backLabel = selectedNeighborhood
-    ? `Voltar para ${selectedNeighborhood.name}`
-    : selectedRegion
-    ? `Voltar para ${selectedRegion.name}`
-    : "Voltar para todas as fontes";
-
-  function clearFilters() {
-    setQuery("");
-    setCategory("");
-    setRegion("");
-    setNeighborhood("");
-  }
-
   function handleRegionChange(next: RegionSlug | "") {
     setRegion(next);
     setNeighborhood("");
-    if (next) {
-      setExpandedRegions((previous) => new Set(previous).add(next));
-    }
-  }
-
-  function toggleRegion(slug: string) {
-    setExpandedRegions((previous) => {
-      const next = new Set(previous);
-      if (next.has(slug)) {
-        next.delete(slug);
-      } else {
-        next.add(slug);
-      }
-      return next;
-    });
-  }
-
-  function toggleAllRegions() {
-    setExpandedRegions((previous) => {
-      const anyExpanded = meta.regions.some((item) => previous.has(item.slug));
-      return anyExpanded
-        ? new Set<string>()
-        : new Set(meta.regions.map((item) => item.slug));
-    });
+    setDismissedDossierNeighborhood(neighborhood || null);
   }
 
   function handleNeighborhoodChange(next: string) {
     setNeighborhood(next);
+    setDismissedDossierNeighborhood(next ? null : neighborhood || null);
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      setSidebarOpenPreference(false);
+    }
     if (next) {
       const found = meta.neighborhoods.find((n) => n.slug === next);
       if (found) {
         setRegion(found.regionSlug as RegionSlug);
-        setExpandedRegions((previous) =>
-          new Set(previous).add(found.regionSlug),
-        );
       }
     }
   }
 
-  return (
-    <div className="relative h-screen overflow-hidden bg-background">
-      <div className="flex min-h-screen flex-col">
-        <header className="border-b border-line bg-background/50 py-3">
-          <div className="max-w-7xl mx-auto flex items-start justify-between gap-2">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-                Explorar o mapa
-              </p>
-              <p className="mt-0.5 text-xs text-muted">
-                Selecione um bairro para ver as câmeras.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Abrir menu"
-              className="rounded-lg border border-line bg-card p-2 text-muted transition-colors hover:bg-brand/5 hover:text-brand lg:hidden"
-            >
-              <Menu aria-hidden className="size-5" />
-            </button>
-          </div>
-        </header>
+  const dossierCameras = useMemo(() => {
+    if (!dossierNeighborhood) return [];
+    return cameras
+      .filter((camera) => camera.neighborhoodSlug === dossierNeighborhood.slug)
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [cameras, dossierNeighborhood]);
 
-        <div className="flex-1 flex flex-col lg:flex-row">
+  return (
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-background">
+      <div className="relative h-full w-full overflow-hidden">
+        {sidebarOpen ? (
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setSidebarOpenPreference(false)}
+            className="absolute inset-0 z-30 bg-black/35 backdrop-blur-[1px] lg:hidden"
+          />
+        ) : null}
           <aside
-            className="w-full lg:w-64 border-r border-line bg-card overflow-y-auto"
+            aria-label="Filtros e bairros"
+            aria-hidden={!sidebarOpen}
+            inert={!sidebarOpen}
+            className={`absolute inset-y-0 left-0 z-40 flex w-[min(88vw,22rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-72 lg:rounded-2xl lg:border ${
+              sidebarOpen
+                ? "translate-x-0"
+                : "-translate-x-[calc(100%+1rem)]"
+            }`}
           >
+            <div className="flex min-h-14 items-center justify-between border-b border-line px-4">
+              <span className="text-sm font-semibold text-foreground">Sauron</span>
+              <button
+                type="button"
+                onClick={() => setSidebarOpenPreference(false)}
+                aria-label="Recolher menu"
+                title="Recolher menu"
+                className="grid size-9 place-items-center rounded-lg text-muted transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <ChevronLeft aria-hidden className="size-5" />
+              </button>
+            </div>
             <div className="p-4">
               <div className="relative">
                 <Search
@@ -525,9 +333,9 @@ export function MapExplorer({
                       }
                     }
                   }}
-                  placeholder="Buscar câmera ou bairro…"
+                  placeholder="Buscar…"
                   aria-label="Buscar câmeras no mapa"
-                  className="w-full rounded-xl border border-line bg-background pl-9 pr-9 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-brand/40"
+                  className="w-full rounded-xl border border-line bg-background pl-9 pr-9 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-brand/80"
                 />
                 {query ? (
                   <button
@@ -554,7 +362,7 @@ export function MapExplorer({
                 >
                   Todas
                 </Chip>
-                {meta.regions.map((item) => (
+                {regionsWithCameras.map((item) => (
                   <Chip
                     key={item.slug}
                     active={region === item.slug}
@@ -573,6 +381,48 @@ export function MapExplorer({
                   </Chip>
                 ))}
               </div>
+              <section className="mt-5 border-t border-line/70 pt-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                    Bairros
+                  </h4>
+                  <span className="text-[10px] tabular-nums text-muted">
+                    {visibleNeighborhoods.length}
+                  </span>
+                </div>
+                <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+                  <button
+                    type="button"
+                    onClick={() => handleNeighborhoodChange("")}
+                    aria-pressed={!neighborhood}
+                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                      !neighborhood
+                        ? "bg-brand/10 font-semibold text-brand"
+                        : "text-foreground hover:bg-background"
+                    }`}
+                  >
+                    <span>Todos os bairros</span>
+                  </button>
+                  {visibleNeighborhoods.map((item) => (
+                    <button
+                      key={item.slug}
+                      type="button"
+                      onClick={() => handleNeighborhoodChange(item.slug)}
+                      aria-pressed={neighborhood === item.slug}
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                        neighborhood === item.slug
+                          ? "bg-brand/10 font-semibold text-brand"
+                          : "text-foreground hover:bg-background"
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">{item.name}</span>
+                      <span className="shrink-0 text-[10px] tabular-nums text-muted">
+                        {camerasByNeighborhood.get(item.slug) ?? 0}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
             </div>
 
             <div className="p-3">
@@ -585,24 +435,43 @@ export function MapExplorer({
                 onToggle={() => setShowCameras((v) => !v)}
               />
             </div>
+            <div className="mt-auto flex items-center justify-between border-t border-line/70 p-3">
+              <Link
+                href="/sobre"
+                onClick={() => setSidebarOpenPreference(false)}
+                className="rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-background hover:text-brand"
+              >
+                Sobre o projeto
+              </Link>
+              <ThemeToggle />
+            </div>
           </aside>
 
-          <main className="flex-1 lg:flex-1 relative overflow-hidden bg-background">
+          <main className="absolute inset-0 overflow-hidden bg-background">
             <MapCanvas
               cameras={filteredCameras}
               onSelectNeighborhood={handleNeighborhoodChange}
-              neighborhoods={meta.neighborhoods}
               showNeighborhoods={showNeighborhoods}
               showCameras={showCameras}
-              regionKey={regionKey}
               focusPoint={focusPoint}
               focusKey={focusKey}
               fitBoundsRequest={searchBounds}
+              locateRequest={locateRequest}
               theme={theme}
             />
 
-            <div className="pointer-events-none pt-2">
-              <div className="pointer-events-auto rounded-t-md border border-line bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
+            <button
+              type="button"
+              onClick={() => setLocateRequest((request) => request + 1)}
+              aria-label="Centralizar minha localização"
+              title="Centralizar minha localização"
+              className="absolute right-[10px] top-[calc(env(safe-area-inset-top)+8rem)] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            >
+              <LocateFixed aria-hidden className="size-5" />
+            </button>
+
+            <div className="pointer-events-none absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-20">
+              <div className="pointer-events-auto rounded-xl border border-line bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
                   <LocateFixed aria-hidden className="size-3.5 text-brand" />
                   {camerasLoading
@@ -614,61 +483,25 @@ export function MapExplorer({
               </div>
             </div>
 
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0">
-              <div className="pointer-events-auto max-w-full mx-auto rounded-b-md border border-line bg-card/95 px-3 py-1.5 shadow-sm backdrop-blur">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  <button
-                    type="button"
-                    onClick={() => handleRegionChange("")}
-                    className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-                      region === ""
-                        ? "bg-brand text-white"
-                        : "text-muted hover:bg-brand/5 hover:text-brand"`
-                    }`}
-                  >
-                    Todas
-                  </button>
-                  {meta.regions.map((item) => (
-                    <button
-                      key={item.slug}
-                      type="button"
-                      onClick={() => handleRegionChange(item.slug as RegionSlug)}
-                      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-                        region === item.slug
-                          ? "bg-brand text-white"
-                          : "text-muted hover:bg-brand/5 hover:text-brand"`
-                      }`}
-                    >
-                      <span
-                        className="size-2 shrink-0 rounded-full"
-                        style={{
-                          background:
-                            REGION_COLORS[item.slug as keyof typeof REGION_COLORS] ?? "#57534e",
-                        }}
-                        aria-hidden
-                      />
-                      {item.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {dossierNeighborhood ? (
+              <CameraDossierPanel
+                neighborhood={dossierNeighborhood}
+                neighborhoodCameras={dossierCameras}
+                open={dossierOpen}
+                onClose={() => setDismissedDossierNeighborhood(neighborhood || null)}
+              />
+            ) : null}
 
-            <button
+            {!sidebarOpen ? <button
               type="button"
-              onClick={() => setSidebarOpen((v) => !v)}
-              aria-label={sidebarOpen ? "Recolher painel" : "Abrir painel"}
-              className="absolute top-3 right-3 rounded-full border border-line bg-card p-1.5 text-muted shadow-md transition-all duration-300 hover:scale-110 hover:bg-brand/5 hover:text-brand lg:-flex"
-              style={{ right: sidebarOpen ? "32px" : "12px" }}
+              onClick={() => setSidebarOpenPreference(true)}
+              aria-label="Abrir menu de filtros e bairros"
+              title="Abrir menu de filtros e bairros"
+              className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] z-40 grid size-11 place-items-center rounded-xl border border-line bg-card text-foreground shadow-lg transition-colors hover:bg-brand/10 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
-              {sidebarOpen ? (
-                <ChevronLeft aria-hidden className="size-4" />
-              ) : (
-                <ChevronRight aria-hidden className="size-4" />
-              )}
-            </button>
+              <Menu aria-hidden className="size-5" />
+            </button> : null}
           </main>
-        </div>
       </div>
     </div>
   );
@@ -709,14 +542,5 @@ function ShowCamerasToggle({
     >
       {show ? "Ocultar câmeras" : "Mostrar câmeras"}
     </button>
-  );
-}
-
-function InfoIcon() {
-  return (
-    <Info
-      aria-hidden
-      className="mx-auto size-5 text-muted/70"
-    />
   );
 }

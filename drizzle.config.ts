@@ -1,11 +1,14 @@
+import { loadEnvConfig } from "@next/env";
 import { defineConfig } from "drizzle-kit";
 
+loadEnvConfig(process.cwd());
+
 export default defineConfig({
-  dialect: "turso",
+  dialect: "postgresql",
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: "file:./data/catalog.db",
+    url: process.env.DATABASE_URL ?? "",
   },
   strict: true,
   verbose: true,

@@ -1,6 +1,6 @@
 {
   "name": "sauron",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,21 +9,20 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "predev": "npm run db:setup",
-    "prebuild": "npm run db:setup",
-    "db:push": "node -e \"require('fs').mkdirSync('data',{recursive:true})\" && drizzle-kit push --force",
+    "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "db:news": "tsx src/db/fetch-news.ts",
     "db:cameras": "tsx scripts/import-cameras.ts",
-    "db:setup": "npm run db:push && npm run db:seed"
+    "db:setup": "npm run db:push && npm run db:seed && npm run db:cameras -- --replace"
   },
   "dependencies": {
-    "@libsql/client": "^0.18.0",
+    "@next/env": "^16.4.3",
     "drizzle-orm": "^0.45.4",
     "fast-xml-parser": "^5.11.2",
     "lucide-react": "^1.66.0",
     "maplibre-gl": "^6.16.0",
     "next": "16.4.3",
+    "postgres": "^4.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "^4.6.7"

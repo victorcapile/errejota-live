@@ -1,34 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sauron
 
-## Getting Started
+Mapa e catálogo de fontes públicas do Rio de Janeiro. O projeto usa Next.js, Drizzle ORM e PostgreSQL do Supabase. O banco SQLite local não é usado em produção.
 
-First, run the development server:
+## Desenvolvimento local
+
+1. Crie um projeto Supabase e copie a URI do pooler de transação.
+2. Copie `.env.example` para `.env.local` e preencha `DATABASE_URL` com a URI do projeto.
+3. Instale dependências e prepare o banco e os dados iniciais:
 
 ```bash
+npm install
+npm run db:setup
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+O comando `db:setup` cria as tabelas, grava o catálogo inicial e importa os pontos de câmera de `data/cameras.json`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Publicação na Vercel
 
-## Learn More
+1. Configure `DATABASE_URL` na Vercel usando a URI do pooler de transação do Supabase (porta `6543`), com `workaround=supabase-pooler.vercel` e `sslmode=require`.
+2. Rode `npm run db:setup` uma vez, apontando para esse mesmo banco Supabase.
+3. Publique o repositório como um projeto Next.js na Vercel e configure `NEXT_PUBLIC_SITE_URL` com o domínio publicado.
+4. Faça o deploy. O build não altera nem recria o banco.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Não use a senha do banco em variáveis `NEXT_PUBLIC_*`. Ela deve permanecer somente em `DATABASE_URL`, nos ambientes Development, Preview e Production que precisarem consultar o catálogo.

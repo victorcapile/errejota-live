@@ -2,7 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
-import type { Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
+import type {
+  Map as MapLibreMap,
+  Marker as MapLibreMarker,
+} from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 if (typeof window !== "undefined") {
@@ -10,7 +13,7 @@ if (typeof window !== "undefined") {
 }
 
 import { REGION_COLORS } from "@/lib/constants";
-import type { Camera, NeighborhoodSummary } from "@/lib/types";
+import type { Camera } from "@/lib/types";
 
 const RIO_CENTER: [number, number] = [-43.1729, -22.9068];
 
@@ -20,7 +23,6 @@ const MAP_STYLES = {
 } as const;
 
 const CAMERA_SOURCE_PREFIX = "cameras-";
-
 type CameraFeatureCollection = {
   type: "FeatureCollection";
   features: Array<{
@@ -58,16 +60,6 @@ function buildCameraGeoJson(cameras: Camera[]): CameraFeatureCollection {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function regionColorExpression(): any {
-  const entries: any[] = ["match", ["get", "region"]];
-  for (const [slug, color] of Object.entries(REGION_COLORS)) {
-    entries.push(slug, color);
-  }
-  entries.push("#57534e");
-  return entries;
-}
-
 function createCameraPopupContent(
   name: string,
   provider: string,
@@ -103,7 +95,7 @@ function syncCameraLayers(
   cameras: Camera[],
   visible: boolean,
 ): void {
-  // Group cameras by region so each cluster is homogeneous in color.
+  // Keep cameras in region-specific sources so each marker uses its region color.
   const byRegion = new Map<string, Camera[]>();
   for (const camera of cameras) {
     const key = camera.regionSlug || "sem-regiao";
@@ -111,11 +103,9 @@ function syncCameraLayers(
     byRegion.get(key)!.push(camera);
   }
 
-  // Ensure a source + layers exist for each region.
+  // Ensure a source + individual circular marker layer exist for each region.
   for (const [region, list] of byRegion) {
     const sourceId = `cameras-${region}`;
-    const clusterId = `cameras-${region}-clusters`;
-    const countId = `cameras-${region}-count`;
     const pointsId = `cameras-${region}-pontos`;
     const color = regionColor(region === "sem-regiao" ? null : region);
 
@@ -130,54 +120,13 @@ function syncCameraLayers(
       map.addSource(sourceId, {
         type: "geojson",
         data,
-        cluster: true,
-        clusterMaxZoom: 12,
-        clusterRadius: 40,
-      });
-
-      map.addLayer({
-        id: clusterId,
-        type: "circle",
-        source: sourceId,
-        filter: ["has", "point_count"],
-        paint: {
-          "circle-color": color,
-          "circle-radius": [
-            "step",
-            ["get", "point_count"],
-            9,
-            10,
-            13,
-            50,
-            18,
-          ],
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1.5,
-          "circle-opacity": 0.75,
-        },
-      });
-
-      map.addLayer({
-        id: countId,
-        type: "symbol",
-        source: sourceId,
-        filter: ["has", "point_count"],
-        layout: {
-          "text-field": "{point_count_abbreviated}",
-          "text-size": 10,
-          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-          "text-allow-overlap": true,
-        },
-        paint: {
-          "text-color": "#ffffff",
-        },
+        cluster: false,
       });
 
       map.addLayer({
         id: pointsId,
         type: "circle",
         source: sourceId,
-        filter: ["!", ["has", "point_count"]],
         paint: {
           "circle-radius": [
             "interpolate",
@@ -188,7 +137,7 @@ function syncCameraLayers(
             14,
             5,
             17,
-            8,
+            7,
           ],
           "circle-color": color,
           "circle-stroke-color": "#ffffff",
@@ -198,108 +147,94 @@ function syncCameraLayers(
     }
   }
 
-  // Toggle visibility on all camera layers.
-  const allLayers = map.getStyle().layers ?? [];
+  // Toggle visibility on the camera layers that belong to the
+  // currently filtered set of cameras (region/neighborhood/search).
+  const visibleSourceIds = new Set<string>();
+  for (const camera of cameras) {
+    const key = camera.regionSlug || "sem-regiao";
+    visibleSourceIds.add(`cameras-${key}`);
+  }
+
+  const allLayers = map.getStyle()?.layers ?? [];
   for (const layer of allLayers) {
-    if (layer.id.startsWith(CAMERA_SOURCE_PREFIX)) {
-      map.setLayoutProperty(
-        layer.id,
-        "visibility",
-        visible ? "visible" : "none",
-      );
+    if (!layer.id.startsWith(CAMERA_SOURCE_PREFIX)) {
+      continue;
     }
+    let sourceId: string | null = null;
+    for (const suffix of ["-pontos"]) {
+      if (layer.id.endsWith(suffix)) {
+        sourceId = layer.id.slice(0, -suffix.length);
+        break;
+      }
+    }
+    if (sourceId === null) {
+      continue;
+    }
+    const shouldShow = visibleSourceIds.has(sourceId) && visible;
+    map.setLayoutProperty(
+      layer.id,
+      "visibility",
+      shouldShow ? "visible" : "none",
+    );
   }
 }
 
-class LocateControl implements maplibregl.IControl {
-  private map: MapLibreMap | null = null;
-  private container: HTMLDivElement | null = null;
-  private marker: MapLibreMarker | null = null;
-
-  onAdd(map: MapLibreMap) {
-    this.map = map;
-    const container = document.createElement("div");
-    container.className = "maplibregl-ctrl maplibregl-ctrl-group";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "maplibregl-ctrl-icon sauron-locate-btn";
-    button.title = "Mostrar minha localização";
-    button.setAttribute("aria-label", "Mostrar minha localização");
-    button.textContent = "◎";
-    button.addEventListener("click", () => this.locate());
-    container.append(button);
-    this.container = container;
-    return container;
+function locateUser(
+  map: MapLibreMap | null,
+  markerRef: { current: MapLibreMarker | null },
+): void {
+  if (!map || !("geolocation" in navigator)) {
+    return;
   }
 
-  onRemove() {
-    this.container?.remove();
-    this.container = null;
-    this.marker?.remove();
-    this.marker = null;
-    this.map = null;
-  }
-
-  private locate() {
-    if (!this.map || !("geolocation" in navigator)) {
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const map = this.map;
-        if (!map) {
-          return;
-        }
-        const { latitude, longitude } = position.coords;
-        this.marker?.remove();
-        const element = document.createElement("div");
-        element.className = "sauron-user-location";
-        element.textContent = "●";
-        this.marker = new maplibregl.Marker({ element, anchor: "center" })
-          .setLngLat([longitude, latitude])
-          .addTo(map);
-        map.flyTo({
-          center: [longitude, latitude],
-          zoom: 14,
-          duration: 900,
-        });
-      },
-      () => {
-        window.alert(
-          "Não foi possível obter sua localização. Verifique a permissão do navegador.",
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      const element = document.createElement("div");
+      element.className = "sauron-user-location";
+      markerRef.current?.remove();
+      markerRef.current = new maplibregl.Marker({ element, anchor: "center" })
+        .setLngLat([longitude, latitude])
+        .addTo(map);
+      map.flyTo({
+        center: [longitude, latitude],
+        zoom: 14,
+        duration: 900,
+      });
+    },
+    () => {
+      window.alert(
+        "Não foi possível obter sua localização. Verifique a permissão do navegador.",
+      );
+    },
+    { enableHighAccuracy: true, timeout: 10000 },
+  );
 }
 
 export function MapCanvas({
   cameras,
   onSelectNeighborhood,
-  neighborhoods,
   showNeighborhoods,
   showCameras,
-  regionKey,
   focusPoint,
   focusKey,
   fitBoundsRequest,
+  locateRequest,
   theme,
 }: {
   cameras: Camera[];
   onSelectNeighborhood: (slug: string) => void;
-  neighborhoods: NeighborhoodSummary[];
   showNeighborhoods: boolean;
   showCameras: boolean;
-  regionKey: string;
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
   fitBoundsRequest: { points: [number, number][]; key: number } | null;
+  locateRequest: number;
   theme: "light" | "dark";
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const userLocationMarkerRef = useRef<MapLibreMarker | null>(null);
   const cameraPopupRef = useRef<maplibregl.Popup | null>(null);
   const camerasRef = useRef<Camera[]>(cameras);
   const cameraSyncRef = useRef<{
@@ -307,18 +242,15 @@ export function MapCanvas({
     sync: () => void;
   } | null>(null);
   const showCamerasRef = useRef(showCameras);
-  const userLocatedRef = useRef(false);
-  const neighborhoodsRef = useRef<NeighborhoodSummary[]>(neighborhoods ?? []);
-  const showNeighborhoodsRef = useRef(showNeighborhoods);
   const onSelectNeighborhoodRef = useRef(onSelectNeighborhood);
   const themeRef = useRef(theme);
 
-  camerasRef.current = cameras;
-  showCamerasRef.current = showCameras;
-  neighborhoodsRef.current = neighborhoods ?? [];
-  showNeighborhoodsRef.current = showNeighborhoods;
-  onSelectNeighborhoodRef.current = onSelectNeighborhood;
-  themeRef.current = theme;
+  useEffect(() => {
+    camerasRef.current = cameras;
+    showCamerasRef.current = showCameras;
+    onSelectNeighborhoodRef.current = onSelectNeighborhood;
+    themeRef.current = theme;
+  }, [cameras, onSelectNeighborhood, showCameras, theme]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) {
@@ -339,7 +271,6 @@ export function MapCanvas({
       new maplibregl.NavigationControl({ showCompass: false }),
       "top-right",
     );
-    map.addControl(new LocateControl(), "top-right");
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
@@ -348,6 +279,13 @@ export function MapCanvas({
       }),
       "bottom-right",
     );
+    const topRightControls = map
+      .getContainer()
+      .querySelector<HTMLElement>(".maplibregl-ctrl-top-right");
+    if (topRightControls) {
+      topRightControls.style.top =
+        "calc(env(safe-area-inset-top) + 3.5rem)";
+    }
 
     const loadBairros = () => {
       fetch("/bairros.geojson")
@@ -362,6 +300,10 @@ export function MapCanvas({
           }
 
           // Sem preenchimento: apenas contornos coloridos.
+          const firstCameraLayer = map
+            .getStyle()
+            ?.layers?.find((layer) => layer.id.startsWith(CAMERA_SOURCE_PREFIX))
+            ?.id;
 
           if (!map.getLayer("bairros-fill")) {
             map.addLayer({
@@ -399,7 +341,7 @@ export function MapCanvas({
                   0.06,
                 ],
               },
-            });
+            }, firstCameraLayer);
           }
 
           if (!map.getLayer("bairros-outline")) {
@@ -439,7 +381,7 @@ export function MapCanvas({
                 ],
                 "line-opacity": 0.85,
               },
-            });
+            }, firstCameraLayer);
           }
         })
         .catch(() => {
@@ -487,21 +429,15 @@ export function MapCanvas({
     });
 
     const cameraPointLayers = () =>
-      (map.getStyle().layers ?? [])
+      (map.getStyle()?.layers ?? [])
         .map((l) => l.id)
         .filter((id) => id.endsWith("-pontos"));
-    const cameraClusterLayers = () =>
-      (map.getStyle().layers ?? [])
-        .map((l) => l.id)
-        .filter((id) => id.endsWith("-clusters"));
 
     map.on("click", "bairros-fill", (e) => {
       const pointLayers = cameraPointLayers();
-      const clusterLayers = cameraClusterLayers();
-      const layers = [...pointLayers, ...clusterLayers];
       const cameraHit =
-        layers.length > 0 &&
-        map.queryRenderedFeatures(e.point, { layers }).length > 0;
+        pointLayers.length > 0 &&
+        map.queryRenderedFeatures(e.point, { layers: pointLayers }).length > 0;
       if (cameraHit) {
         return;
       }
@@ -559,42 +495,17 @@ export function MapCanvas({
       const features = map.queryRenderedFeatures(event.point, {
         layers: pointLayers,
       });
-      const url = features[0]?.properties?.url;
+      const feature = features[0];
+      const url = feature?.properties?.url;
       if (typeof url === "string" && url.length > 0) {
         window.open(url, "_blank", "noopener,noreferrer");
       }
     });
 
-
-    // Centraliza no usuário, se a permissão for concedida.
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          userLocatedRef.current = true;
-          map.flyTo({
-            center: [longitude, latitude],
-            zoom: 13,
-            duration: 0,
-          });
-          const element = document.createElement("div");
-          element.className = "sauron-user-location";
-          element.textContent = "●";
-          new maplibregl.Marker({ element, anchor: "center" })
-            .setLngLat([longitude, latitude])
-            .addTo(map);
-        },
-        () => {
-          // Permissão negada ou indisponível: mantém a visão padrão do Rio.
-        },
-        { timeout: 8000, maximumAge: 60000 },
-      );
-    }
-
     mapRef.current = map;
 
     return () => {
-      cameraSyncRef.current = null;
+    cameraSyncRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -637,10 +548,14 @@ export function MapCanvas({
     }
 
     if (focusPoint) {
+      const mobileOffset = window.matchMedia("(max-width: 1023px)").matches
+        ? -Math.round(map.getContainer().clientHeight * 0.17)
+        : 0;
       map.flyTo({
         center: [focusPoint.longitude, focusPoint.latitude],
         zoom: 14,
-        duration: 900,
+        offset: [0, mobileOffset],
+        duration: 700,
       });
       return;
     }
@@ -675,6 +590,12 @@ export function MapCanvas({
     }
     map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 800 });
   }, [fitBoundsRequest]);
+
+  useEffect(() => {
+    if (locateRequest > 0) {
+      locateUser(mapRef.current, userLocationMarkerRef);
+    }
+  }, [locateRequest]);
 
   return <div ref={containerRef} className="size-full" />;
 }

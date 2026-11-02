@@ -153,6 +153,11 @@ export type Camera = {
   neighborhoodName: string | null;
   regionSlug: string | null;
   regionName: string | null;
+  sourceId?: string | null;
+  sourceName?: string | null;
+  sourcePageUrl?: string | null;
+  sourceAddressHint?: string | null;
+  lastCheckedAt?: string | null;
 };
 
 export type CameraImportReport = {

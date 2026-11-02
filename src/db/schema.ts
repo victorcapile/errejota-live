@@ -1,11 +1,12 @@
 import {
+  boolean,
   index,
   integer,
   primaryKey,
+  pgTable,
   real,
-  sqliteTable,
   text,
-} from "drizzle-orm/sqlite-core";
+} from "drizzle-orm/pg-core";
 import {
   AVAILABILITY_STATUS_VALUES,
   CATEGORY_VALUES,
@@ -17,7 +18,7 @@ import {
   SCOPE_VALUES,
 } from "@/lib/constants";
 
-export const regions = sqliteTable("regions", {
+export const regions = pgTable("regions", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
@@ -25,7 +26,7 @@ export const regions = sqliteTable("regions", {
   sortOrder: integer("sort_order").notNull().default(0),
 });
 
-export const neighborhoods = sqliteTable(
+export const neighborhoods = pgTable(
   "neighborhoods",
   {
     id: text("id").primaryKey(),
@@ -52,7 +53,7 @@ export const neighborhoods = sqliteTable(
   ],
 );
 
-export const newsItems = sqliteTable(
+export const newsItems = pgTable(
   "news_items",
   {
     id: text("id").primaryKey(),
@@ -71,9 +72,7 @@ export const newsItems = sqliteTable(
     feedId: text("feed_id"),
     publishedAt: text("published_at"),
     fetchedAt: text("fetched_at").notNull(),
-    isActive: integer("is_active", { mode: "boolean" })
-      .notNull()
-      .default(true),
+    isActive: boolean("is_active").notNull().default(true),
     createdAt: text("created_at").notNull(),
   },
   (table) => [
@@ -83,7 +82,7 @@ export const newsItems = sqliteTable(
   ],
 );
 
-export const sources = sqliteTable(
+export const sources = pgTable(
   "sources",
   {
     id: text("id").primaryKey(),
@@ -130,10 +129,8 @@ export const sources = sqliteTable(
     attribution: text("attribution").notNull(),
     lastCheckedAt: text("last_checked_at"),
     lastStatusChangeAt: text("last_status_change_at"),
-    isFeatured: integer("is_featured", { mode: "boolean" })
-      .notNull()
-      .default(false),
-    isDemo: integer("is_demo", { mode: "boolean" }).notNull().default(false),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    isDemo: boolean("is_demo").notNull().default(false),
     provenanceDataset: text("provenance_dataset"),
     provenanceRecordId: text("provenance_record_id"),
     importedAt: text("imported_at"),
@@ -151,13 +148,13 @@ export const sources = sqliteTable(
   ],
 );
 
-export const tags = sqliteTable("tags", {
+export const tags = pgTable("tags", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   label: text("label").notNull(),
 });
 
-export const sourceTags = sqliteTable(
+export const sourceTags = pgTable(
   "source_tags",
   {
     sourceId: text("source_id")
@@ -173,7 +170,7 @@ export const sourceTags = sqliteTable(
   ],
 );
 
-export const sourceStatusChecks = sqliteTable(
+export const sourceStatusChecks = pgTable(
   "source_status_checks",
   {
     id: text("id").primaryKey(),
@@ -193,7 +190,7 @@ export const sourceStatusChecks = sqliteTable(
   ],
 );
 
-export const cameras = sqliteTable(
+export const cameras = pgTable(
   "cameras",
   {
     id: text("id").primaryKey(),
