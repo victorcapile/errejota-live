@@ -18,7 +18,7 @@ import {
 } from "@/lib/constants";
 import { normalizeText } from "@/lib/text";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import type { Camera, CatalogMeta } from "@/lib/types";
+import type { Camera, MapMeta } from "@/lib/types";
 
 const MapCanvas = dynamic(
   () => import("./MapCanvas").then((module) => module.MapCanvas),
@@ -29,7 +29,7 @@ const MapCanvas = dynamic(
 );
 
 type Props = {
-  meta: CatalogMeta;
+  meta: MapMeta;
 };
 
 function MapPlaceholder() {

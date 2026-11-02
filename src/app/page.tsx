@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MapExplorer } from "@/components/map/MapExplorer";
 import { MapSkeleton } from "@/components/map/MapSkeleton";
-import { getCatalogMeta } from "@/lib/catalog";
-import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { getMapMeta } from "@/lib/catalog";
 
 export const metadata: Metadata = {
   title: "Mapa das fontes públicas do Rio",
@@ -23,7 +22,7 @@ export default function Home() {
 }
 
 async function MapHome() {
-  const meta = await getCatalogMeta();
+  const meta = await getMapMeta();
 
   return <MapExplorer meta={meta} />;
 }

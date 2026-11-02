@@ -44,6 +44,7 @@ import type {
   CatalogMeta,
   CatalogQuery,
   CatalogStats,
+  MapMeta,
   NeighborhoodSummary,
   NeighborhoodWithCount,
   NewsItem,
@@ -649,6 +650,21 @@ export async function getCatalogMeta(): Promise<CatalogMeta> {
       sourceCount: Number(row.sourceCount),
     })),
     stats,
+  };
+}
+
+export async function getMapMeta(): Promise<MapMeta> {
+  const [regionRows, neighborhoodRows] = await Promise.all([
+    db
+      .select({ slug: regions.slug, name: regions.name })
+      .from(regions)
+      .orderBy(asc(regions.sortOrder)),
+    listNeighborhoods(),
+  ]);
+
+  return {
+    regions: regionRows,
+    neighborhoods: neighborhoodRows,
   };
 }
 

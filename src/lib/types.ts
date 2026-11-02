@@ -193,3 +193,8 @@ export type CatalogMeta = {
   tags: Array<TagSummary & { sourceCount: number }>;
   stats: CatalogStats;
 };
+
+export type MapMeta = {
+  regions: Array<Pick<RegionSummary, "slug" | "name">>;
+  neighborhoods: NeighborhoodWithCount[];
+};
