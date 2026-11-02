@@ -13,7 +13,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={isDark ? "Ativar modo claro" : "Ativar modo noturno"}
       title={isDark ? "Modo claro" : "Modo noturno"}
-      className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:border-brand/30 hover:text-brand"
+      className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:border-brand/30 hover:text-brand sm:size-9"
     >
       {mounted ? (
         isDark ? (

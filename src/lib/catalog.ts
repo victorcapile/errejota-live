@@ -473,7 +473,7 @@ export async function listCameras(options?: {
     .leftJoin(regions, eq(neighborhoods.regionId, regions.id))
     .leftJoin(sources, eq(cameras.sourceId, sources.id))
     .where(filters.length > 0 ? and(...filters) : undefined)
-    .orderBy(asc(cameras.name));
+    .orderBy(asc(cameras.externalId), asc(cameras.name));
 
   return rows.map((row) =>
     mapCamera(row.camera, row.neighborhood, row.region, row.source),
@@ -508,6 +508,7 @@ function mapCamera(
     sourcePageUrl: source?.sourcePageUrl ?? null,
     sourceAddressHint: source?.addressHint ?? null,
     lastCheckedAt: source?.lastCheckedAt ?? null,
+    isOnline: camera.isOnline ?? null,
   };
 }
 

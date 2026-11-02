@@ -31,7 +31,7 @@ import { formatDate } from "@/lib/format";
 export const metadata: Metadata = {
   title: "Sobre",
   description:
-    "Metodologia, limites e política editorial do Sauron, um catálogo geográfico de fontes públicas de câmeras e contexto urbano do Rio de Janeiro.",
+    "Metodologia, limites e política editorial do Rio em Foco, um catálogo geográfico de fontes públicas de câmeras e contexto urbano do Rio de Janeiro.",
 };
 
 const NOT_DONE = [
@@ -156,13 +156,13 @@ export default function AboutPage() {
       <header className="max-w-3xl">
         <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
           <Compass aria-hidden className="size-4 text-brand" />
-          Sobre o Sauron
+          Sobre o Rio em Foco
         </p>
         <h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
           Ferramenta OSINT para estudar o território do Rio de Janeiro.
         </h1>
         <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
-          O Sauron é um catálogo geográfico de fontes públicas de câmeras do Rio
+          O Rio em Foco é um catálogo geográfico de fontes públicas de câmeras do Rio
           de Janeiro: um mapa com bairros delimitados e pontos de câmera, cada
           um ligando à página oficial do provedor. Serve para estudar o território
           e descobrir fontes oficiais, sem reproduzir vídeo, rastrear pessoas
@@ -171,7 +171,7 @@ export default function AboutPage() {
 
         <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted">
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
-            Versão 0.9 beta
+            Versão 1.1 alpha
           </span>
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
             Rio de Janeiro · RJ
@@ -263,7 +263,7 @@ export default function AboutPage() {
           title="Independência e atribuição"
         >
           <p>
-            O Sauron é um projeto pessoal de estudo, sem vínculo com os
+            O Rio em Foco é um projeto pessoal de estudo, sem vínculo com os
             provedores citados. Marcas, páginas e conteúdos pertencem aos
             respectivos titulares. O catálogo apenas descreve e liga para as
             fontes oficiais.

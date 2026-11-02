@@ -8,46 +8,46 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", monospace;
 
-  --color-background: var(--sauron-background);
-  --color-foreground: var(--sauron-foreground);
-  --color-card: var(--sauron-card);
-  --color-line: var(--sauron-line);
-  --color-muted: var(--sauron-muted);
-  --color-brand: var(--sauron-brand);
-  --color-brand-strong: var(--sauron-brand-strong);
-  --color-accent: var(--sauron-accent);
-  --color-accent-soft: var(--sauron-accent-soft);
+  --color-background: var(--theme-background);
+  --color-foreground: var(--theme-foreground);
+  --color-card: var(--theme-card);
+  --color-line: var(--theme-line);
+  --color-muted: var(--theme-muted);
+  --color-brand: var(--theme-brand);
+  --color-brand-strong: var(--theme-brand-strong);
+  --color-accent: var(--theme-accent);
+  --color-accent-soft: var(--theme-accent-soft);
 }
 
 :root {
-  --sauron-background: #f6f3ea;
-  --sauron-foreground: #16212a;
-  --sauron-card: #fffdf8;
-  --sauron-line: #e2dccf;
-  --sauron-muted: #5d686f;
-  --sauron-brand: #0f4c5c;
-  --sauron-brand-strong: #0a3540;
-  --sauron-accent: #c26a1b;
-  --sauron-accent-soft: #f6e3ca;
+  --theme-background: #f6f3ea;
+  --theme-foreground: #16212a;
+  --theme-card: #fffdf8;
+  --theme-line: #e2dccf;
+  --theme-muted: #5d686f;
+  --theme-brand: #0f4c5c;
+  --theme-brand-strong: #0a3540;
+  --theme-accent: #c26a1b;
+  --theme-accent-soft: #f6e3ca;
   color-scheme: light;
 }
 
 [data-theme="dark"] {
-  --sauron-background: #0a1418;
-  --sauron-foreground: #e6e2d8;
-  --sauron-card: #121d22;
-  --sauron-line: #24323a;
-  --sauron-muted: #94a3a8;
-  --sauron-brand: #5ab5c5;
-  --sauron-brand-strong: #79c9d8;
-  --sauron-accent: #e79a4f;
-  --sauron-accent-soft: #3a2616;
+  --theme-background: #0a1418;
+  --theme-foreground: #e6e2d8;
+  --theme-card: #121d22;
+  --theme-line: #24323a;
+  --theme-muted: #94a3a8;
+  --theme-brand: #5ab5c5;
+  --theme-brand-strong: #79c9d8;
+  --theme-accent: #e79a4f;
+  --theme-accent-soft: #3a2616;
   color-scheme: dark;
 }
 
 @layer base {
   * {
-    border-color: var(--sauron-line);
+    border-color: var(--theme-line);
   }
 
   html {
@@ -58,20 +58,20 @@
     min-height: 100dvh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    background-color: var(--sauron-background);
-    color: var(--sauron-foreground);
+    background-color: var(--theme-background);
+    color: var(--theme-foreground);
     font-family: var(--font-sans);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
 
   ::selection {
-    background-color: var(--sauron-accent-soft);
-    color: var(--sauron-brand-strong);
+    background-color: var(--theme-accent-soft);
+    color: var(--theme-brand-strong);
   }
 
   :focus-visible {
-    outline: 2px solid var(--sauron-accent);
+    outline: 2px solid var(--theme-accent);
     outline-offset: 3px;
   }
 
@@ -117,7 +117,7 @@
   color: #06181e;
 }
 
-.sauron-map-marker {
+.map-marker {
   display: grid;
   place-items: center;
   border: 3px solid #fffdf8;
@@ -127,15 +127,15 @@
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
-.sauron-map-marker:hover {
+.map-marker:hover {
   transform: scale(1.12);
 }
 
-.sauron-map-marker-active {
+.map-marker-active {
   transform: scale(1.18);
 }
 
-.sauron-map-event {
+.map-event {
   display: grid;
   place-items: center;
   border: 2px solid #fffdf8;
@@ -150,11 +150,11 @@
   position: relative;
 }
 
-.sauron-map-event:hover {
+.map-event:hover {
   transform: scale(1.12);
 }
 
-.sauron-map-event-count {
+.map-event-count {
   position: absolute;
   top: -6px;
   right: -6px;
@@ -171,27 +171,27 @@
   border: 2px solid #fffdf8;
 }
 
-[data-theme="dark"] .sauron-map-event {
+[data-theme="dark"] .map-event {
   background: #121d22;
   border-color: #24323a;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
-[data-theme="dark"] .sauron-map-event-count {
+[data-theme="dark"] .map-event-count {
   border-color: #121d22;
 }
 
-.sauron-user-location {
+.map-user-location {
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  background: var(--sauron-brand-strong);
-  border: 3px solid var(--sauron-card);
+  background: var(--theme-brand-strong);
+  border: 3px solid var(--theme-card);
   box-shadow: 0 0 0 0 rgba(10, 53, 64, 0.45);
-  animation: sauron-user-location-ping 2s ease-out infinite;
+  animation: user-location-ping 2s ease-out infinite;
 }
 
-@keyframes sauron-user-location-ping {
+@keyframes user-location-ping {
   0% {
     box-shadow: 0 0 0 0 rgba(10, 53, 64, 0.45);
   }
@@ -203,7 +203,7 @@
   }
 }
 
-[data-theme="dark"] .sauron-user-location {
+[data-theme="dark"] .map-user-location {
   background: #79c9d8;
   border-color: #121d22;
   box-shadow:
@@ -211,21 +211,21 @@
     0 0 0 0 rgba(121, 201, 216, 0.5);
 }
 
-.sauron-popup-title {
+.map-popup-title {
   font-size: 13px;
   font-weight: 600;
   margin: 0;
   line-height: 1.2;
 }
 
-.sauron-popup-meta {
+.map-popup-meta {
   font-size: 11px;
   color: #5d686f;
   margin: 2px 0 0;
   line-height: 1.3;
 }
 
-.sauron-map-popup .maplibregl-popup-content {
+.map-popup-shell .maplibregl-popup-content {
   background: #fffdf8;
   color: #16212a;
   border-radius: 14px;
@@ -234,13 +234,13 @@
   font-family: var(--font-sans);
 }
 
-[data-theme="dark"] .sauron-map-popup .maplibregl-popup-content {
+[data-theme="dark"] .map-popup-shell .maplibregl-popup-content {
   background: #121d22;
   color: #e6e2d8;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
 }
 
-[data-theme="dark"] .sauron-popup-meta {
+[data-theme="dark"] .map-popup-meta {
   color: #94a3a8;
 }
 
@@ -282,10 +282,10 @@
   color: inherit;
 }
 
-.sauron-map-popup .maplibregl-popup-tip {
+.map-popup-shell .maplibregl-popup-tip {
   border-top-color: #fffdf8;
 }
 
-[data-theme="dark"] .sauron-map-popup .maplibregl-popup-tip {
+[data-theme="dark"] .map-popup-shell .maplibregl-popup-tip {
   border-top-color: #121d22;
 }

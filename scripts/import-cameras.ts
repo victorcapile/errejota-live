@@ -48,6 +48,7 @@ type ParsedRow = {
   pageUrl: string;
   providerName: string;
   neighborhoodSlug: string | null;
+  isOnline: boolean | null;
 };
 
 const HEADER_ALIASES: Record<string, string[]> = {
@@ -77,6 +78,16 @@ const HEADER_ALIASES: Record<string, string[]> = {
     "neighborhood",
     "bairroslug",
     "bairro",
+  ],
+  isOnline: [
+    "isonline",
+    "online",
+    "status",
+    "ativa",
+    "ativo",
+    "ligada",
+    "availability",
+    "disponivel",
   ],
 };
 
@@ -359,6 +370,36 @@ function findBairro(
   return null;
 }
 
+function parseOnline(raw: string | undefined): boolean | null {
+  if (!raw) {
+    return null;
+  }
+
+  const value = raw
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  if (
+    ["0", "false", "off", "offline", "inativa", "inativo", "desligada", "nao", "indisponivel"].includes(
+      value,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    ["1", "true", "on", "online", "ativa", "ativo", "ligada", "sim", "disponivel"].includes(
+      value,
+    )
+  ) {
+    return true;
+  }
+
+  return null;
+}
+
 function sanitizePageUrl(raw: string | undefined): {
   pageUrl: string;
   warning: string | null;
@@ -480,6 +521,7 @@ function buildImportRow(
       pageUrl,
       providerName: record.providerName || DEFAULT_PROVIDER,
       neighborhoodSlug,
+      isOnline: parseOnline(record.isOnline),
     },
     outsideRio,
   };
@@ -571,53 +613,59 @@ async function main() {
       neighborhoodId,
       neighborhoodSlug: row.neighborhoodSlug,
       regionSlug,
+      isOnline: row.isOnline,
       importedAt: today,
       updatedAt: now,
     };
   });
 
-  // Lotes pequenos para caber no limite de parâmetros do SQLite.
+  // Lotes pequenos para caber no limite de parâmetros. Tudo em uma transação
+  // reduz o custo de commit no banco local (PGlite).
   const BATCH_SIZE = 60;
-  for (let start = 0; start < values.length; start += BATCH_SIZE) {
-    const batch = values.slice(start, start + BATCH_SIZE);
-
-    await db
-      .insert(cameras)
-      .values(batch)
-      .onConflictDoUpdate({
-        target: cameras.id,
-        set: {
-          name: sql`excluded.name`,
-          latitude: sql`excluded.latitude`,
-          longitude: sql`excluded.longitude`,
-          pageUrl: sql`excluded.page_url`,
-          providerName: sql`excluded.provider_name`,
-          sourceId: sql`excluded.source_id`,
-          neighborhoodId: sql`excluded.neighborhood_id`,
-          neighborhoodSlug: sql`excluded.neighborhood_slug`,
-          regionSlug: sql`excluded.region_slug`,
-          updatedAt: sql`excluded.updated_at`,
-        },
-      });
-
-    const written = Math.min(start + BATCH_SIZE, values.length);
-    if (written % 500 === 0 || written === values.length) {
-      console.log(`  ${written}/${values.length} câmeras gravadas…`);
-    }
-  }
-
   let replaced = 0;
-  if (replace) {
-    const externalIds = parsed.map((row) => row.externalId);
-    const result = externalIds.length
-      ? await db
-          .delete(cameras)
-          .where(notInArray(cameras.externalId, externalIds))
-      : await db.delete(cameras);
-    replaced = Number(
-      (result as { rowsAffected?: number }).rowsAffected ?? 0,
-    );
-  }
+
+  await db.transaction(async (tx) => {
+    for (let start = 0; start < values.length; start += BATCH_SIZE) {
+      const batch = values.slice(start, start + BATCH_SIZE);
+
+      await tx
+        .insert(cameras)
+        .values(batch)
+        .onConflictDoUpdate({
+          target: cameras.id,
+          set: {
+            name: sql`excluded.name`,
+            latitude: sql`excluded.latitude`,
+            longitude: sql`excluded.longitude`,
+            pageUrl: sql`excluded.page_url`,
+            providerName: sql`excluded.provider_name`,
+            sourceId: sql`excluded.source_id`,
+            neighborhoodId: sql`excluded.neighborhood_id`,
+            neighborhoodSlug: sql`excluded.neighborhood_slug`,
+            regionSlug: sql`excluded.region_slug`,
+            isOnline: sql`excluded.is_online`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        });
+
+      const written = Math.min(start + BATCH_SIZE, values.length);
+      if (written % 500 === 0 || written === values.length) {
+        console.log(`  ${written}/${values.length} câmeras gravadas…`);
+      }
+    }
+
+    if (replace) {
+      const externalIds = parsed.map((row) => row.externalId);
+      const result = externalIds.length
+        ? await tx
+            .delete(cameras)
+            .where(notInArray(cameras.externalId, externalIds))
+        : await tx.delete(cameras);
+      replaced = Number(
+        (result as { rowsAffected?: number }).rowsAffected ?? 0,
+      );
+    }
+  });
 
   const report: CameraImportReport = {
     totalRows: records.length,

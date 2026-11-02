@@ -23,9 +23,9 @@ export function SiteNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="flex flex-1 justify-center"
+      className="flex min-w-0 flex-1 justify-center"
     >
-      <ul className="flex items-center gap-1 rounded-full border border-line/70 bg-card/60 p-1">
+      <ul className="flex items-center gap-0.5 rounded-full border border-line/70 bg-card/60 p-0.5 sm:gap-1 sm:p-1">
         {NAV_ITEMS.map((item) => {
           const active = item.isActive(pathname);
 
@@ -34,7 +34,7 @@ export function SiteNav() {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`inline-flex h-8 items-center rounded-full px-4 text-xs font-medium transition-colors sm:h-9 sm:px-5 sm:text-sm ${
+                className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium transition-colors sm:h-9 sm:px-5 sm:text-sm ${
                   active
                     ? "bg-brand text-white shadow-sm"
                     : "text-muted hover:text-brand"

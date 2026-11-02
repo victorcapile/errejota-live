@@ -7,7 +7,9 @@ import {
   ChevronLeft,
   LocateFixed,
   Menu,
+  Moon,
   Search,
+  Sun,
   X,
 } from "lucide-react";
 import { CameraDossierPanel } from "@/components/map/CameraDossierPanel";
@@ -31,6 +33,12 @@ const MapCanvas = dynamic(
 type Props = {
   meta: MapMeta;
 };
+
+type StatusFilter = "all" | "online" | "offline";
+
+function isStatusFilter(value: string | null): value is StatusFilter {
+  return value === "online" || value === "offline";
+}
 
 function MapPlaceholder() {
   return (
@@ -92,7 +100,7 @@ export function MapExplorer({
   meta,
 }: Props) {
   const searchParams = useSearchParams();
-  const { theme } = useTheme();
+  const { theme, toggle } = useTheme();
 
   const initialRegion = searchParams.get("region");
   const initialNeighborhood = searchParams.get("neighborhood");
@@ -106,6 +114,10 @@ export function MapExplorer({
       : "",
   );
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const initialStatus = searchParams.get("status");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    isStatusFilter(initialStatus) ? initialStatus : "all",
+  );
   const [showNeighborhoods, setShowNeighborhoods] = useState(true);
   const [showCameras, setShowCameras] = useState(true);
   const isDesktop = useSyncExternalStore(
@@ -142,10 +154,11 @@ export function MapExplorer({
     if (region) params.set("region", region);
     if (neighborhood) params.set("neighborhood", neighborhood);
     if (query.trim()) params.set("q", query.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
 
     const search = params.toString();
     window.history.replaceState(null, "", search ? `/?${search}` : "/");
-  }, [region, neighborhood, query]);
+  }, [region, neighborhood, query, statusFilter]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -182,6 +195,7 @@ export function MapExplorer({
         haystack: normalizeText(
           [
             camera.name,
+            camera.externalId,
             camera.providerName,
             camera.neighborhoodName,
             camera.regionName,
@@ -193,7 +207,8 @@ export function MapExplorer({
     [cameras],
   );
 
-  const filteredCameras = useMemo(() => {
+  // Câmeras que passam pelos filtros de região, bairro e busca.
+  const scopedCameras = useMemo(() => {
     const tokens = normalizeText(query).split(" ").filter(Boolean);
 
     return cameraSearchIndex
@@ -212,9 +227,57 @@ export function MapExplorer({
       .map(({ camera }) => camera);
   }, [cameraSearchIndex, region, neighborhood, query]);
 
+  const statusCounts = useMemo(() => {
+    let online = 0;
+    let offline = 0;
+    for (const camera of scopedCameras) {
+      if (camera.isOnline === true) online += 1;
+      else if (camera.isOnline === false) offline += 1;
+    }
+    return {
+      all: scopedCameras.length,
+      online,
+      offline,
+      unknown: scopedCameras.length - online - offline,
+    };
+  }, [scopedCameras]);
+
+  const filteredCameras = useMemo(() => {
+    if (statusFilter === "all") {
+      return scopedCameras;
+    }
+    return scopedCameras.filter((camera) =>
+      statusFilter === "online"
+        ? camera.isOnline === true
+        : camera.isOnline === false,
+    );
+  }, [scopedCameras, statusFilter]);
+
+  const offlineCount = useMemo(
+    () => filteredCameras.filter((camera) => camera.isOnline === false).length,
+    [filteredCameras],
+  );
+  const onlineCount = useMemo(
+    () => filteredCameras.filter((camera) => camera.isOnline === true).length,
+    [filteredCameras],
+  );
+  const unknownCount =
+    filteredCameras.length - onlineCount - offlineCount;
+
+  // Base dos contadores geográficos: respeita o filtro de situação para que os
+  // números de região/bairro batam com o que aparece no mapa.
+  const statusFilteredCameras = useMemo(() => {
+    if (statusFilter === "all") return cameras;
+    return cameras.filter((camera) =>
+      statusFilter === "online"
+        ? camera.isOnline === true
+        : camera.isOnline === false,
+    );
+  }, [cameras, statusFilter]);
+
   const camerasByNeighborhood = useMemo(() => {
     const map = new Map<string, number>();
-    for (const camera of cameras) {
+    for (const camera of statusFilteredCameras) {
       if (camera.neighborhoodSlug) {
         map.set(
           camera.neighborhoodSlug,
@@ -223,17 +286,17 @@ export function MapExplorer({
       }
     }
     return map;
-  }, [cameras]);
+  }, [statusFilteredCameras]);
 
   const camerasByRegion = useMemo(() => {
     const map = new Map<string, number>();
-    for (const camera of cameras) {
+    for (const camera of statusFilteredCameras) {
       if (camera.regionSlug) {
         map.set(camera.regionSlug, (map.get(camera.regionSlug) ?? 0) + 1);
       }
     }
     return map;
-  }, [cameras]);
+  }, [statusFilteredCameras]);
 
   const regionsWithCameras = meta.regions.filter(
     (item) => (camerasByRegion.get(item.slug) ?? 0) > 0,
@@ -275,8 +338,13 @@ export function MapExplorer({
     if (!dossierNeighborhood) return [];
     return cameras
       .filter((camera) => camera.neighborhoodSlug === dossierNeighborhood.slug)
+      .filter((camera) => {
+        if (statusFilter === "online") return camera.isOnline === true;
+        if (statusFilter === "offline") return camera.isOnline === false;
+        return true;
+      })
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  }, [cameras, dossierNeighborhood]);
+  }, [cameras, dossierNeighborhood, statusFilter]);
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-background lg:relative lg:inset-auto lg:z-auto lg:h-[calc(100dvh-4rem)]">
@@ -293,12 +361,34 @@ export function MapExplorer({
             aria-label="Filtros e bairros"
             aria-hidden={!sidebarOpen}
             inert={!sidebarOpen}
-            className={`absolute inset-y-0 left-0 z-40 flex w-[min(88vw,22rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-72 lg:rounded-2xl lg:border ${
+            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-80 lg:rounded-2xl lg:border ${
               sidebarOpen
                 ? "translate-x-0"
                 : "-translate-x-[calc(100%+1rem)]"
             }`}
           >
+            <div className="flex items-center justify-between gap-2 border-b border-line/70 px-4 py-3 lg:hidden">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                Tema
+              </span>
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={
+                  theme === "dark" ? "Ativar modo claro" : "Ativar modo noturno"
+                }
+                title={theme === "dark" ? "Modo claro" : "Modo noturno"}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-background px-2.5 py-1.5 text-[11px] font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand"
+              >
+                {theme === "dark" ? (
+                  <Sun aria-hidden className="size-3.5" />
+                ) : (
+                  <Moon aria-hidden className="size-3.5" />
+                )}
+                {theme === "dark" ? "Modo claro" : "Modo noturno"}
+              </button>
+            </div>
+
             <div className="p-4">
               <div className="relative">
                 <Search
@@ -340,11 +430,59 @@ export function MapExplorer({
               <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                 Filtros
               </h3>
-              <div className="mt-3">
+
+              <h4 className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
+                Situação
+              </h4>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Chip
+                  active={statusFilter === "all"}
+                  onClick={() => setStatusFilter("all")}
+                  count={statusCounts.all}
+                >
+                  Todas
+                </Chip>
+                <Chip
+                  active={statusFilter === "online"}
+                  onClick={() => setStatusFilter("online")}
+                  count={statusCounts.online}
+                >
+                  <span
+                    className="size-2 shrink-0 rounded-full bg-brand"
+                    aria-hidden
+                  />
+                  Online
+                </Chip>
+                <Chip
+                  active={statusFilter === "offline"}
+                  onClick={() => setStatusFilter("offline")}
+                  count={statusCounts.offline}
+                >
+                  <span
+                    className="size-2 shrink-0 rounded-full bg-foreground opacity-30"
+                    aria-hidden
+                  />
+                  Offline
+                </Chip>
+              </div>
+              {statusCounts.unknown > 0 ? (
+                <p className="mt-2 text-[10px] leading-snug text-muted/80">
+                  {statusCounts.unknown}{" "}
+                  {statusCounts.unknown === 1
+                    ? "câmera ainda sem classificação"
+                    : "câmeras ainda sem classificação"}
+                  .
+                </p>
+              ) : null}
+
+              <h4 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
+                Região
+              </h4>
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 <Chip
                   active={region === ""}
                   onClick={() => handleRegionChange("")}
-                  count={cameras.length}
+                  count={statusFilteredCameras.length}
                 >
                   Todas
                 </Chip>
@@ -429,7 +567,7 @@ export function MapExplorer({
               onClick={() => setSidebarOpenPreference(false)}
               aria-label="Recolher menu"
               title="Recolher menu"
-              className="absolute left-[min(88vw,22rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[19rem]"
+              className="absolute left-[min(92vw,24rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[21rem]"
             >
               <ChevronLeft aria-hidden className="size-5" />
             </button>
@@ -458,16 +596,51 @@ export function MapExplorer({
               <LocateFixed aria-hidden className="size-5" />
             </button>
 
-            <div className="pointer-events-none absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-20">
-              <div className="pointer-events-auto rounded-xl border border-line bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
+            <div
+              className={`pointer-events-none absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-20 max-w-[calc(100vw-2rem)] ${
+                dossierOpen ? "lg:right-[23.5rem]" : ""
+              }`}
+            >
+              <div className="pointer-events-auto max-w-full rounded-xl border border-line bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
-                  <LocateFixed aria-hidden className="size-3.5 text-brand" />
-                  {camerasLoading
-                    ? "Carregando câmeras…"
-                    : `${filteredCameras.length} ${
-                        filteredCameras.length === 1 ? "câmera" : "câmeras"
-                      } no mapa`}
+                  <LocateFixed aria-hidden className="size-3.5 shrink-0 text-brand" />
+                  <span>
+                    {camerasLoading
+                      ? "Carregando câmeras…"
+                      : `${filteredCameras.length} ${
+                          filteredCameras.length === 1 ? "câmera" : "câmeras"
+                        } no mapa`}
+                  </span>
                 </p>
+                {!camerasLoading && (offlineCount > 0 || onlineCount > 0) ? (
+                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted">
+                    <span
+                      aria-hidden
+                      className="size-1.5 rounded-full bg-brand"
+                    />
+                    {onlineCount} online
+                    {offlineCount > 0 ? (
+                      <>
+                        <span aria-hidden className="text-line">
+                          ·
+                        </span>
+                        <span
+                          aria-hidden
+                          className="size-1.5 rounded-full bg-foreground opacity-30"
+                        />
+                        {offlineCount} offline
+                      </>
+                    ) : null}
+                    {unknownCount > 0 ? (
+                      <>
+                        <span aria-hidden className="text-line">
+                          ·
+                        </span>
+                        {unknownCount} sem status
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
               </div>
             </div>
 

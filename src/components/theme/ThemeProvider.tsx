@@ -25,6 +25,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const current = document.documentElement.dataset.theme;
+    // Sincroniza o tema que o script inline aplicou antes da hidratação.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(current === "dark" ? "dark" : "light");
     setMounted(true);
   }, []);
@@ -34,7 +36,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const next = current === "dark" ? "light" : "dark";
       document.documentElement.dataset.theme = next;
       try {
-        localStorage.setItem("sauron-theme", next);
+        localStorage.setItem("rio-em-foco-theme", next);
       } catch {
         // Preferência não persistida; o tema ainda vale para esta sessão.
       }

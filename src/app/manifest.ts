@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Sauron — catálogo de fontes públicas do Rio",
-    short_name: "Sauron",
+    name: "Rio em Foco — catálogo de fontes públicas do Rio",
+    short_name: "Rio em Foco",
     description:
       "Catálogo geográfico de fontes públicas de câmeras e contexto urbano do Rio de Janeiro. Links oficiais, status declarado e proveniência, sem players.",
     start_url: "/",

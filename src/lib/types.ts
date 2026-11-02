@@ -158,6 +158,7 @@ export type Camera = {
   sourcePageUrl?: string | null;
   sourceAddressHint?: string | null;
   lastCheckedAt?: string | null;
+  isOnline: boolean | null;
 };
 
 export type CameraImportReport = {

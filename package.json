@@ -1,6 +1,6 @@
 {
-  "name": "sauron",
-  "version": "0.9.0",
+  "name": "rio-em-foco",
+  "version": "1.1.0-alpha",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,9 +13,13 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:news": "tsx src/db/fetch-news.ts",
     "db:cameras": "tsx scripts/import-cameras.ts",
+    "db:status": "tsx scripts/check-camera-status.ts",
+    "db:camera:set": "tsx scripts/set-camera-status.ts",
+    "db:local": "tsx scripts/setup-local-db.ts && npm run db:seed && npm run db:cameras -- --replace",
     "db:setup": "npm run db:push && npm run db:seed && npm run db:cameras -- --replace"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.14",
     "@next/env": "^16.4.3",
     "drizzle-orm": "^0.45.4",
     "fast-xml-parser": "^5.11.2",

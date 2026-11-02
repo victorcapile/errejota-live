@@ -12,7 +12,7 @@ export function SiteFooter() {
     <footer className="mt-16 hidden border-t border-line bg-card/60 lg:block">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.6fr_1fr_1fr]">
         <div>
-          <p className="text-sm font-semibold tracking-tight">Sauron</p>
+          <p className="text-sm font-semibold tracking-tight">Rio em Foco</p>
           <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
             Catálogo geográfico de fontes públicas de câmeras e contexto urbano
             do Rio de Janeiro. Organizamos links oficiais, status declarado e
@@ -63,6 +63,8 @@ export function SiteFooter() {
               </a>
             </li>
             <li>
+              {/* Endpoint JSON da API, não uma página do App Router. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/api/sources"
                 className="text-foreground/80 transition-colors hover:text-brand"

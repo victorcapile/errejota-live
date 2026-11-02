@@ -292,7 +292,7 @@ async function seedNews() {
 }
 
 async function main() {
-  console.log("Sauron — preparando catálogo...");
+  console.log("Rio em Foco — preparando catálogo...");
 
   await seedRegions();
   await seedNeighborhoods();

@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
 
-const THEME_SCRIPT = `try{var t=localStorage.getItem("sauron-theme");document.documentElement.dataset.theme=t==="dark"?"dark":"light";}catch(e){document.documentElement.dataset.theme="light";}`;
+const THEME_SCRIPT = `try{var t=localStorage.getItem("rio-em-foco-theme");if(t==null){t=localStorage.getItem("theme");}document.documentElement.dataset.theme=t==="dark"?"dark":"light";}catch(e){document.documentElement.dataset.theme="light";}`;
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -17,10 +17,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_TITLE,
-    template: "%s · Sauron",
+    template: "%s · Rio em Foco",
   },
   description: SITE_DESCRIPTION,
-  applicationName: "Sauron",
+  applicationName: "Rio em Foco",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "Sauron",
+    siteName: "Rio em Foco",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },

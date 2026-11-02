@@ -1,6 +1,6 @@
 # Como contribuir
 
-Obrigado por querer ajudar no Sauron. Este guia reúne o fluxo para preparar o ambiente, propor uma mudança e manter o mapa confiável.
+Obrigado por querer ajudar no Rio em Foco. Este guia reúne o fluxo para preparar o ambiente, propor uma mudança e manter o mapa confiável.
 
 ## Antes de começar
 
@@ -69,7 +69,9 @@ Atualize os documentos de proveniência junto com os dados. Não trate uma pági
 - Schema: `src/db/schema.ts`.
 - Consultas: `src/lib/catalog.ts`.
 - Seeds idempotentes: `src/db/seed.ts` e `src/db/seed-data/`.
-- Conexão: `src/db/index.ts` (`DATABASE_URL` ou `POSTGRES_URL`).
+- Conexão: `src/db/index.ts` (`DATABASE_URL`/`POSTGRES_URL` ou PGlite local em `data/pglite`).
+- Banco local: `npm run db:local` cria e popula `data/pglite` sem precisar de servidor externo.
+- Estado das câmeras: `src/lib/camera-status.ts` e `npm run db:status`.
 
 Mudanças de schema precisam atualizar o código que lê e grava os campos e qualquer documentação afetada. O banco de produção não deve ser usado para experimentos locais. Nunca cole uma URI de conexão ou saída que contenha credenciais em uma issue ou pull request.
 

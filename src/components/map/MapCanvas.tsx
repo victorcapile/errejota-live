@@ -15,7 +15,8 @@ if (typeof window !== "undefined") {
 import { REGION_COLORS } from "@/lib/constants";
 import type { Camera } from "@/lib/types";
 
-const RIO_CENTER: [number, number] = [-43.1729, -22.9068];
+// Centro inicial do mapa: Tijuca (fallback quando o usuário não usa o GPS).
+const DEFAULT_CENTER: [number, number] = [-43.236379, -22.938758];
 
 const MAP_STYLES = {
   light: "https://tiles.openfreemap.org/styles/positron",
@@ -35,6 +36,7 @@ type CameraFeatureCollection = {
       provider: string;
       neighborhood: string;
       region: string;
+      online: number;
     };
   }>;
 };
@@ -55,6 +57,7 @@ function buildCameraGeoJson(cameras: Camera[]): CameraFeatureCollection {
         provider: camera.providerName,
         neighborhood: camera.neighborhoodName ?? "",
         region: camera.regionSlug ?? "",
+        online: camera.isOnline === false ? 0 : 1,
       },
     })),
   };
@@ -64,24 +67,56 @@ function createCameraPopupContent(
   name: string,
   provider: string,
   neighborhood: string,
+  online: boolean,
 ): HTMLDivElement {
   const content = document.createElement("div");
-  content.className = "sauron-popup";
+  content.className = "map-popup";
 
   const title = document.createElement("p");
-  title.className = "sauron-popup-title";
+  title.className = "map-popup-title";
   title.textContent = name;
 
   const meta = document.createElement("p");
-  meta.className = "sauron-popup-meta";
+  meta.className = "map-popup-meta";
   meta.textContent = [provider, neighborhood].filter(Boolean).join(" · ");
 
   const hint = document.createElement("p");
-  hint.className = "sauron-popup-meta";
-  hint.textContent = "Clique para abrir a página oficial.";
+  hint.className = "map-popup-meta";
+  hint.textContent = online
+    ? "Clique para abrir a página oficial."
+    : "Câmera offline no provedor — clique para abrir a página oficial.";
 
   content.append(title, meta, hint);
   return content;
+}
+
+function cameraCirclePaint(
+  color: string,
+): NonNullable<maplibregl.CircleLayerSpecification["paint"]> {
+  return {
+    "circle-radius": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      10,
+      3,
+      14,
+      5,
+      17,
+      7,
+    ],
+    // Câmeras offline ficam apagadas: cinza mais escuro com ~30% de opacidade.
+    "circle-color": ["case", ["==", ["get", "online"], 0], "#4b4642", color],
+    "circle-opacity": ["case", ["==", ["get", "online"], 0], 0.3, 0.95],
+    "circle-stroke-color": [
+      "case",
+      ["==", ["get", "online"], 0],
+      "#78716c",
+      "#ffffff",
+    ],
+    "circle-stroke-width": 1.2,
+    "circle-stroke-opacity": ["case", ["==", ["get", "online"], 0], 0.3, 1],
+  };
 }
 
 function regionColor(region: string | null | undefined): string {
@@ -108,6 +143,7 @@ function syncCameraLayers(
     const sourceId = `cameras-${region}`;
     const pointsId = `cameras-${region}-pontos`;
     const color = regionColor(region === "sem-regiao" ? null : region);
+    const paint = cameraCirclePaint(color);
 
     const source = map.getSource(sourceId) as
       | maplibregl.GeoJSONSource
@@ -127,23 +163,23 @@ function syncCameraLayers(
         id: pointsId,
         type: "circle",
         source: sourceId,
-        paint: {
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10,
-            3,
-            14,
-            5,
-            17,
-            7,
-          ],
-          "circle-color": color,
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 1.2,
-        },
+        paint,
       });
+    }
+
+    if (map.getLayer(pointsId)) {
+      map.setPaintProperty(pointsId, "circle-color", paint["circle-color"]);
+      map.setPaintProperty(pointsId, "circle-opacity", paint["circle-opacity"]);
+      map.setPaintProperty(
+        pointsId,
+        "circle-stroke-color",
+        paint["circle-stroke-color"],
+      );
+      map.setPaintProperty(
+        pointsId,
+        "circle-stroke-opacity",
+        paint["circle-stroke-opacity"],
+      );
     }
   }
 
@@ -191,7 +227,7 @@ function locateUser(
     (position) => {
       const { latitude, longitude } = position.coords;
       const element = document.createElement("div");
-      element.className = "sauron-user-location";
+      element.className = "map-user-location";
       markerRef.current?.remove();
       markerRef.current = new maplibregl.Marker({ element, anchor: "center" })
         .setLngLat([longitude, latitude])
@@ -265,7 +301,7 @@ export function MapCanvas({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLES[themeRef.current],
-      center: RIO_CENTER,
+      center: DEFAULT_CENTER,
       zoom: 11,
       attributionControl: false,
     });
@@ -478,7 +514,7 @@ export function MapCanvas({
           offset: 12,
           closeButton: false,
           closeOnClick: false,
-          className: "sauron-map-popup",
+          className: "map-popup-shell",
         });
       }
 
@@ -490,6 +526,7 @@ export function MapCanvas({
             String(properties.name ?? "Câmera"),
             String(properties.provider ?? ""),
             String(properties.neighborhood ?? ""),
+            Number(properties.online) !== 0,
           ),
         )
         .addTo(map);

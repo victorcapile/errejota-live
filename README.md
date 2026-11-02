@@ -20,32 +20,38 @@ O Rio em Foco não transmite nem grava vídeo. O mapa armazena pontos e metadado
 
 - Next.js 16, React 19 e TypeScript.
 - Tailwind CSS 4 e MapLibre GL.
-- PostgreSQL no Supabase, acessado no servidor com Drizzle ORM.
+- PostgreSQL no Supabase, acessado no servidor com Drizzle ORM. Sem `DATABASE_URL`, o desenvolvimento usa um PostgreSQL local em WASM (PGlite).
 - Dados iniciais mantidos em `src/db/seed-data/`; câmeras importadas de `data/cameras.json`.
 
 ## Rodar localmente
 
-Você precisa de Node.js, npm e de uma instância PostgreSQL. Para desenvolvimento com dados reais, crie um projeto Supabase seu e use a URL de conexão PostgreSQL do projeto. Não use nem publique credenciais do banco de outra pessoa.
+Você precisa de Node.js e npm. O banco pode ser local ou um projeto Supabase seu.
+
+Para desenvolver sem configurar nada, use o banco local (PGlite), que é criado dentro de `data/pglite`:
 
 ```bash
-git clone https://github.com/victorcapile/sauron.git
-cd sauron
+git clone https://github.com/victorcapile/rio-em-foco.git
+cd rio-em-foco
 npm ci
-cp .env.example .env.local
-```
-
-Edite `.env.local` e preencha `DATABASE_URL` com a URL PostgreSQL do seu banco Supabase. `POSTGRES_URL` também é aceito. Mantenha senhas e URLs privadas fora de `NEXT_PUBLIC_*` e nunca as envie em commits ou issues.
-
-Prepare o banco e inicie o servidor:
-
-```bash
-npm run db:setup
+npm run db:local
 npm run dev
 ```
 
 Abra [http://localhost:3000](http://localhost:3000).
 
+Para usar o Supabase, copie `.env.example` para `.env.local` e preencha `DATABASE_URL` (ou `POSTGRES_URL`) com a URL PostgreSQL do seu projeto. Mantenha senhas e URLs privadas fora de `NEXT_PUBLIC_*` e nunca as envie em commits ou issues.
+
+```bash
+cp .env.example .env.local
+npm run db:setup
+npm run dev
+```
+
 > `db:setup` aplica o schema com Drizzle, grava os dados iniciais e importa `data/cameras.json`. A importação de câmeras usa `--replace`: remove do banco câmeras ausentes do arquivo. Use um banco de desenvolvimento seu e confira o conteúdo do arquivo antes de rodar o comando.
+
+> O PGlite grava no sistema de arquivos e aceita apenas um processo por vez. Pare `npm run dev` antes de rodar `db:local`, `db:seed` ou `db:cameras` no banco local.
+
+> `npm run build` precisa de `DATABASE_URL`/`POSTGRES_URL`: o build usa vários workers em paralelo e o banco local (PGlite) é apenas para desenvolvimento.
 
 ## Comandos úteis
 
@@ -56,9 +62,13 @@ Abra [http://localhost:3000](http://localhost:3000).
 | `npm run typecheck` | Verifica os tipos TypeScript. |
 | `npm run build` | Gera a compilação de produção. |
 | `npm run db:push` | Sincroniza o schema Drizzle com o banco configurado. |
+| `npm run db:local` | Cria o banco local (PGlite), aplica o schema, grava os seeds e importa as câmeras. |
 | `npm run db:seed` | Grava ou atualiza regiões, bairros, fontes, tags e notícias curadas. |
 | `npm run db:cameras` | Importa câmeras sem remover as existentes. |
 | `npm run db:cameras -- --replace` | Importa câmeras e remove as que não estão no arquivo de entrada. |
+| `npm run db:status` | Verifica no provedor quais câmeras estão online/offline e grava o estado. |
+| `npm run db:camera:set -- 004827 offline` | Marca uma câmera manualmente como `online`, `offline` ou `unknown`. Use `--search="nome"` para descobrir o ID. |
+| `npm run db:camera:set -- --all=online` | Marca todas as câmeras como online de uma vez. |
 
 ## Estrutura do projeto
 
@@ -76,6 +86,8 @@ docs/                    Arquitetura, fontes, catálogo e dados de câmera
 ## Endpoints de leitura
 
 - `GET /api/cameras?region=<slug>&neighborhood=<slug>` — câmeras do mapa.
+- `GET /api/cameras/status` — resumo de câmeras online, offline e sem status.
+- `POST /api/cameras/status` — verifica um lote de câmeras no provedor (usado por `npm run db:status`).
 - `GET /api/sources` — lista paginada de fontes; aceita busca e filtros documentados em `src/lib/catalog-params.ts`.
 - `GET /api/sources/<slug>` — detalhe de uma fonte.
 - `GET /api/neighborhoods?region=<slug>&q=<texto>` — bairros e contagem de fontes.

@@ -6,21 +6,21 @@ import { SiteNav } from "./SiteNav";
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-line/70 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-6 sm:px-6">
         <Link
           href="/"
-          className="group flex shrink-0 items-center gap-2.5"
-          aria-label="Sauron — página inicial"
+          className="group flex shrink-0 items-center gap-2"
+          aria-label="Rio em Foco — página inicial"
         >
-          <span className="grid size-9 place-items-center rounded-xl bg-brand text-white shadow-sm transition-colors group-hover:bg-brand-strong">
-            <Eye aria-hidden className="size-5" />
+          <span className="grid size-8 place-items-center rounded-xl bg-brand text-white shadow-sm transition-colors group-hover:bg-brand-strong sm:size-9">
+            <Eye aria-hidden className="size-4 sm:size-5" />
           </span>
-          <span className="leading-tight">
-            <span className="block text-base font-semibold tracking-tight text-foreground">
+          <span className="leading-tight max-[359px]:hidden">
+            <span className="block text-sm font-semibold tracking-tight text-foreground sm:text-base">
               Rio em Foco
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted sm:block">
-              Mapa do Rio · v0.9 beta
+              Mapa do Rio · v1.1 alpha
             </span>
           </span>
         </Link>

@@ -16,6 +16,15 @@ export function CameraDossierPanel({
   open,
   onClose,
 }: CameraDossierPanelProps) {
+  const onlineCount = neighborhoodCameras.filter(
+    (camera) => camera.isOnline === true,
+  ).length;
+  const offlineCount = neighborhoodCameras.filter(
+    (camera) => camera.isOnline === false,
+  ).length;
+  const unknownCount =
+    neighborhoodCameras.length - onlineCount - offlineCount;
+
   return (
     <div
       aria-hidden={!open}
@@ -45,38 +54,67 @@ export function CameraDossierPanel({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <section>
-          <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-            Câmeras disponíveis neste bairro
-          </h4>
+          <div className="flex items-baseline justify-between gap-2">
+            <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+              Câmeras neste bairro
+            </h4>
+            {onlineCount + offlineCount > 0 ? (
+              <p className="shrink-0 text-[10px] tabular-nums text-muted">
+                {onlineCount} online
+                {offlineCount > 0 ? ` · ${offlineCount} offline` : ""}
+                {unknownCount > 0 ? ` · ${unknownCount} sem status` : ""}
+              </p>
+            ) : null}
+          </div>
           {neighborhoodCameras.length > 0 ? (
             <ul className="mt-3 space-y-2">
-              {neighborhoodCameras.map((neighborhoodCamera) => (
-                <li key={neighborhoodCamera.id}>
-                  <a
-                    href={neighborhoodCamera.pageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex w-full items-start justify-between gap-3 rounded-lg border border-line bg-card px-3 py-2 text-left transition-colors hover:border-brand/30 hover:text-brand"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[11px] font-medium text-foreground">
-                        {neighborhoodCamera.name}
+              {neighborhoodCameras.map((neighborhoodCamera) => {
+                const offline = neighborhoodCamera.isOnline === false;
+                return (
+                  <li key={neighborhoodCamera.id}>
+                    <a
+                      href={neighborhoodCamera.pageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={
+                        offline
+                          ? "Câmera offline no provedor"
+                          : "Abrir página oficial da câmera"
+                      }
+                      className={`flex w-full items-start justify-between gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                        offline
+                          ? "border-line/60 bg-card/40 opacity-60 grayscale hover:opacity-80"
+                          : "border-line bg-card hover:border-brand/30 hover:text-brand"
+                      }`}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={`block truncate text-[11px] font-medium ${
+                            offline ? "text-muted" : "text-foreground"
+                          }`}
+                        >
+                          {neighborhoodCamera.name}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[10px] text-muted">
+                          {neighborhoodCamera.providerName}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block truncate text-[10px] text-muted">
-                        {neighborhoodCamera.providerName}
-                      </span>
-                    </span>
-                  </a>
-                </li>
-              ))}
+                      {offline ? (
+                        <span className="mt-0.5 shrink-0 rounded-full border border-line bg-background px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted">
+                          offline
+                        </span>
+                      ) : null}
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="mt-3 text-[11px] text-muted">
-              Nenhuma câmera cadastrada neste bairro.
+              Nenhuma câmera com os filtros atuais neste bairro.
             </p>
           )}
         </section>
-
       </div>
     </div>
   );

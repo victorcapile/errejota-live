@@ -219,7 +219,7 @@ async function SourceDetail({
 
           <p className="mt-3 text-[11px] text-muted">
             O link abre {hostname(source.sourcePageUrl)} em uma nova aba, fora do
-            Sauron. Nenhum vídeo é carregado nesta página.
+            Rio em Foco. Nenhum vídeo é carregado nesta página.
           </p>
 
           <section aria-labelledby="checagem" className="mt-10">
@@ -294,7 +294,7 @@ async function SourceDetail({
               </a>
             ) : null}
             <p className="mt-4 rounded-lg border border-amber-200/60 bg-white/60 p-3 text-[11px] leading-relaxed text-muted dark:border-amber-900/50 dark:bg-black/20">
-              O Sauron não hospeda, grava, transcodifica ou redistribui imagens
+              O Rio em Foco não hospeda, grava, transcodifica ou redistribui imagens
               das fontes. O uso de cada página oficial segue os termos do
               provedor.
             </p>

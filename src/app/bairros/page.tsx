@@ -9,7 +9,7 @@ import type { NeighborhoodWithCount, RegionSummary } from "@/lib/types";
 export const metadata: Metadata = {
   title: "Bairros",
   description:
-    "Índice geográfico dos bairros do Rio de Janeiro presentes no catálogo Sauron, com contagem de fontes públicas por região.",
+    "Índice geográfico dos bairros do Rio de Janeiro presentes no catálogo Rio em Foco, com contagem de fontes públicas por região.",
 };
 
 const GEO_REGIONS = new Set([

@@ -209,6 +209,7 @@ export const cameras = pgTable(
     ),
     neighborhoodSlug: text("neighborhood_slug"),
     regionSlug: text("region_slug"),
+    isOnline: boolean("is_online"),
     importedAt: text("imported_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
