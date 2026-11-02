@@ -9,7 +9,7 @@ const THEME_SCRIPT = `try{var t=localStorage.getItem("sauron-theme");document.do
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-const SITE_TITLE = "Sauron — fontes públicas do Rio de Janeiro";
+const SITE_TITLE = "Rio em Foco — fontes públicas do Rio de Janeiro";
 const SITE_DESCRIPTION =
   "Catálogo geográfico de fontes públicas de câmeras e contexto urbano do Rio de Janeiro. Links oficiais, status declarado e proveniência, sem players.";
 
