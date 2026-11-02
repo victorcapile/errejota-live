@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import {
   ArrowLeft,
@@ -118,6 +119,7 @@ export default function SourcePage({
 async function SourceDetail({
   params,
 }: Pick<PageProps<"/fontes/[slug]">, "params">) {
+  await connection();
   const { slug } = await params;
   const source = await getSourceBySlug(slug);
 

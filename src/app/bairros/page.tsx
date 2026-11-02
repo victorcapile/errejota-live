@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { ArrowRight, MapPin, MapPinned } from "lucide-react";
 import { NeighborhoodSkeleton } from "@/components/catalog/CatalogSkeletons";
@@ -57,6 +58,7 @@ export default function NeighborhoodsPage() {
 }
 
 async function NeighborhoodIndex() {
+  await connection();
   const meta = await getCatalogMeta();
 
   const groups = meta.regions
