@@ -364,23 +364,21 @@ export async function getSourceBySlug(
     return null;
   }
 
-  const [tagMap, statusRows] = await Promise.all([
-    loadTagsBySourceId([row.source.id]),
-    db
-      .select({
-        id: sourceStatusChecks.id,
-        checkedAt: sourceStatusChecks.checkedAt,
-        status: sourceStatusChecks.status,
-        httpStatus: sourceStatusChecks.httpStatus,
-        errorCode: sourceStatusChecks.errorCode,
-        latencyMs: sourceStatusChecks.latencyMs,
-        notes: sourceStatusChecks.notes,
-      })
-      .from(sourceStatusChecks)
-      .where(eq(sourceStatusChecks.sourceId, row.source.id))
-      .orderBy(desc(sourceStatusChecks.checkedAt))
-      .limit(10),
-  ]);
+  const tagMap = await loadTagsBySourceId([row.source.id]);
+  const statusRows = await db
+    .select({
+      id: sourceStatusChecks.id,
+      checkedAt: sourceStatusChecks.checkedAt,
+      status: sourceStatusChecks.status,
+      httpStatus: sourceStatusChecks.httpStatus,
+      errorCode: sourceStatusChecks.errorCode,
+      latencyMs: sourceStatusChecks.latencyMs,
+      notes: sourceStatusChecks.notes,
+    })
+    .from(sourceStatusChecks)
+    .where(eq(sourceStatusChecks.sourceId, row.source.id))
+    .orderBy(desc(sourceStatusChecks.checkedAt))
+    .limit(10);
 
   const statusChecks: StatusCheck[] = statusRows.map((check) => ({
     id: check.id,
@@ -528,51 +526,42 @@ function emptyCountRecord<T extends string>(
 }
 
 export async function getCatalogStats(): Promise<CatalogStats> {
-  const [
-    totalSourceRows,
-    totalNeighborhoodRows,
-    totalRegionRows,
-    totalTagRows,
-    totalCameraRows,
-    coordinateRows,
-    featuredRows,
-    demoRows,
-    availabilityRows,
-    permissionRows,
-    scopeRows,
-    lastCheckedRows,
-  ] = await Promise.all([
-    db.select({ value: count() }).from(sources),
-    db.select({ value: count() }).from(neighborhoods),
-    db.select({ value: count() }).from(regions),
-    db.select({ value: count() }).from(tags),
-    db.select({ value: count() }).from(cameras),
-    db
-      .select({ value: count() })
-      .from(sources)
-      .where(and(isNotNull(sources.latitude), isNotNull(sources.longitude))),
-    db
-      .select({ value: count() })
-      .from(sources)
-      .where(eq(sources.isFeatured, true)),
-    db
-      .select({ value: count() })
-      .from(sources)
-      .where(eq(sources.isDemo, true)),
-    db
-      .select({ status: sources.availabilityStatus, value: count() })
-      .from(sources)
-      .groupBy(sources.availabilityStatus),
-    db
-      .select({ status: sources.permissionStatus, value: count() })
-      .from(sources)
-      .groupBy(sources.permissionStatus),
-    db
-      .select({ status: sources.scope, value: count() })
-      .from(sources)
-      .groupBy(sources.scope),
-    db.select({ value: max(sources.lastCheckedAt) }).from(sources),
-  ]);
+  // Consultas sequenciais: o pooler do Supabase e o cliente com max: 1 não
+  // lidam bem com várias consultas disparadas em paralelo.
+  const totalSourceRows = await db.select({ value: count() }).from(sources);
+  const totalNeighborhoodRows = await db
+    .select({ value: count() })
+    .from(neighborhoods);
+  const totalRegionRows = await db.select({ value: count() }).from(regions);
+  const totalTagRows = await db.select({ value: count() }).from(tags);
+  const totalCameraRows = await db.select({ value: count() }).from(cameras);
+  const coordinateRows = await db
+    .select({ value: count() })
+    .from(sources)
+    .where(and(isNotNull(sources.latitude), isNotNull(sources.longitude)));
+  const featuredRows = await db
+    .select({ value: count() })
+    .from(sources)
+    .where(eq(sources.isFeatured, true));
+  const demoRows = await db
+    .select({ value: count() })
+    .from(sources)
+    .where(eq(sources.isDemo, true));
+  const availabilityRows = await db
+    .select({ status: sources.availabilityStatus, value: count() })
+    .from(sources)
+    .groupBy(sources.availabilityStatus);
+  const permissionRows = await db
+    .select({ status: sources.permissionStatus, value: count() })
+    .from(sources)
+    .groupBy(sources.permissionStatus);
+  const scopeRows = await db
+    .select({ status: sources.scope, value: count() })
+    .from(sources)
+    .groupBy(sources.scope);
+  const lastCheckedRows = await db
+    .select({ value: max(sources.lastCheckedAt) })
+    .from(sources);
 
   const byAvailability = emptyCountRecord(AVAILABILITY_STATUS_VALUES);
   for (const row of availabilityRows) {
@@ -606,35 +595,27 @@ export async function getCatalogStats(): Promise<CatalogStats> {
 }
 
 export async function getCatalogMeta(): Promise<CatalogMeta> {
-  const [
-    stats,
-    categoryRows,
-    regionRows,
-    tagRows,
-    neighborhoodRows,
-  ] = await Promise.all([
-    getCatalogStats(),
-    db
-      .select({ value: sources.category, count: count() })
-      .from(sources)
-      .groupBy(sources.category),
-    db
-      .select({ region: regions, sourceCount: count(sources.id) })
-      .from(regions)
-      .leftJoin(sources, eq(sources.regionId, regions.id))
-      .groupBy(regions.id)
-      .orderBy(asc(regions.sortOrder)),
-    db
-      .select({
-        tag: tags,
-        sourceCount: count(sourceTags.sourceId),
-      })
-      .from(tags)
-      .leftJoin(sourceTags, eq(sourceTags.tagId, tags.id))
-      .groupBy(tags.id)
-      .orderBy(asc(tags.label)),
-    listNeighborhoods(),
-  ]);
+  const stats = await getCatalogStats();
+  const categoryRows = await db
+    .select({ value: sources.category, count: count() })
+    .from(sources)
+    .groupBy(sources.category);
+  const regionRows = await db
+    .select({ region: regions, sourceCount: count(sources.id) })
+    .from(regions)
+    .leftJoin(sources, eq(sources.regionId, regions.id))
+    .groupBy(regions.id)
+    .orderBy(asc(regions.sortOrder));
+  const tagRows = await db
+    .select({
+      tag: tags,
+      sourceCount: count(sourceTags.sourceId),
+    })
+    .from(tags)
+    .leftJoin(sourceTags, eq(sourceTags.tagId, tags.id))
+    .groupBy(tags.id)
+    .orderBy(asc(tags.label));
+  const neighborhoodRows = await listNeighborhoods();
 
   const categoryCounts = new Map(
     categoryRows.map((row) => [row.value as Category, Number(row.count)]),
