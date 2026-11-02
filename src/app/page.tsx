@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { MapExplorer } from "@/components/map/MapExplorer";
 import { MapSkeleton } from "@/components/map/MapSkeleton";
@@ -22,6 +23,7 @@ export default function Home() {
 }
 
 async function MapHome() {
+  await connection();
   const meta = await getMapMeta();
 
   return <MapExplorer meta={meta} />;
