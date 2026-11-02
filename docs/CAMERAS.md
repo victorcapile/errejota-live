@@ -1,17 +1,18 @@
 # Câmeras no mapa — importação local
 
-O Sauron exibe **pontos de câmera** somente a partir de um arquivo que você
-fornece (CSV ou JSON). O importador não acessa o COR-Rio, não chama a API do
-app, não contorna o gate de acesso e não baixa vídeo. Ele apenas lê o arquivo
-local e grava os pontos no banco `data/catalog.db`.
+O Sauron exibe **pontos de câmera** a partir de um arquivo local (CSV ou JSON).
+O importador não acessa o COR-Rio, não chama a API do app, não contorna o gate
+de acesso e não baixa vídeo. Ele lê o arquivo e grava os pontos no PostgreSQL
+Supabase configurado por `DATABASE_URL` ou `POSTGRES_URL`.
 
 Cada ponto guarda uma **URL da página oficial** do provedor. Clicar no ponto
 abre essa página em nova aba. Nenhum vídeo é embutido, gravado ou reproduzido
 dentro do Sauron.
 
-> A lista atual foi importada do arquivo `data/cameras.json` fornecido pelo
-> usuário: 7.571 câmeras, 7.555 dentro de um bairro do recorte e 16 em vias
-> (Linha Vermelha, Radar Mendanha) fora dos contornos disponíveis.
+> O arquivo atual do repositório contém 7.571 câmeras: 7.555 associadas a um
+> bairro do recorte e 16 em vias (Linha Vermelha e Radar Mendanha) fora dos
+> contornos disponíveis. Consulte `docs/FONTES.md` para a proveniência e a
+> licença dos dados.
 
 ---
 

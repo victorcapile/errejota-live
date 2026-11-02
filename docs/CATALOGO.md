@@ -157,7 +157,7 @@ A busca usa `search_text`, um campo derivado e normalizado com:
 nome + descrição + provedor + bairro + região + categoria + tags
 ```
 
-Isso mantém a consulta simples e previsível no SQLite. A fase 4 pode trocar por FTS5 sem alterar a API.
+Isso mantém a consulta simples e previsível no PostgreSQL. Se a busca textual mudar, preserve os parâmetros e o formato da API ou documente a mudança junto com o código.
 
 ### Ordenações
 
