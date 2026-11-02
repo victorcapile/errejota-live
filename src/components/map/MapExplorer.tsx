@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
@@ -19,7 +18,6 @@ import {
 } from "@/lib/constants";
 import { normalizeText } from "@/lib/text";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import type { Camera, CatalogMeta } from "@/lib/types";
 
 const MapCanvas = dynamic(
@@ -281,7 +279,7 @@ export function MapExplorer({
   }, [cameras, dossierNeighborhood]);
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden bg-background">
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-background lg:relative lg:inset-auto lg:z-auto lg:h-[calc(100dvh-4rem)]">
       <div className="relative h-full w-full overflow-hidden">
         {sidebarOpen ? (
           <button
@@ -301,18 +299,6 @@ export function MapExplorer({
                 : "-translate-x-[calc(100%+1rem)]"
             }`}
           >
-            <div className="flex min-h-14 items-center justify-between border-b border-line px-4">
-              <span className="text-sm font-semibold text-foreground">Sauron</span>
-              <button
-                type="button"
-                onClick={() => setSidebarOpenPreference(false)}
-                aria-label="Recolher menu"
-                title="Recolher menu"
-                className="grid size-9 place-items-center rounded-lg text-muted transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-              >
-                <ChevronLeft aria-hidden className="size-5" />
-              </button>
-            </div>
             <div className="p-4">
               <div className="relative">
                 <Search
@@ -435,17 +421,19 @@ export function MapExplorer({
                 onToggle={() => setShowCameras((v) => !v)}
               />
             </div>
-            <div className="mt-auto flex items-center justify-between border-t border-line/70 p-3">
-              <Link
-                href="/sobre"
-                onClick={() => setSidebarOpenPreference(false)}
-                className="rounded-lg px-2 py-2 text-xs font-medium text-muted transition-colors hover:bg-background hover:text-brand"
-              >
-                Sobre o projeto
-              </Link>
-              <ThemeToggle />
-            </div>
           </aside>
+
+          {sidebarOpen ? (
+            <button
+              type="button"
+              onClick={() => setSidebarOpenPreference(false)}
+              aria-label="Recolher menu"
+              title="Recolher menu"
+              className="absolute left-[min(88vw,22rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[19rem]"
+            >
+              <ChevronLeft aria-hidden className="size-5" />
+            </button>
+          ) : null}
 
           <main className="absolute inset-0 overflow-hidden bg-background">
             <MapCanvas

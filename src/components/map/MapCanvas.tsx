@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type {
   Map as MapLibreMap,
@@ -233,6 +233,9 @@ export function MapCanvas({
   theme: "light" | "dark";
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [hoveredNeighborhoodName, setHoveredNeighborhoodName] = useState<
+    string | null
+  >(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const userLocationMarkerRef = useRef<MapLibreMarker | null>(null);
   const cameraPopupRef = useRef<maplibregl.Popup | null>(null);
@@ -409,6 +412,8 @@ export function MapCanvas({
     map.on("mousemove", "bairros-fill", (e) => {
       const feature = e.features?.[0];
       if (!feature) return;
+      const neighborhoodName = String(feature.properties?.name ?? "");
+      setHoveredNeighborhoodName(neighborhoodName || null);
       map.getCanvas().style.cursor = "pointer";
       const nextId = feature.id;
       if (hoveredBairro !== null && hoveredBairro !== nextId) {
@@ -422,6 +427,7 @@ export function MapCanvas({
 
     map.on("mouseleave", "bairros-fill", () => {
       map.getCanvas().style.cursor = "";
+      setHoveredNeighborhoodName(null);
       if (hoveredBairro !== null && map.getSource("bairros")) {
         map.removeFeatureState({ source: "bairros", id: hoveredBairro });
         hoveredBairro = null;
@@ -597,5 +603,14 @@ export function MapCanvas({
     }
   }, [locateRequest]);
 
-  return <div ref={containerRef} className="size-full" />;
+  return (
+    <>
+      <div ref={containerRef} className="size-full" />
+      {showNeighborhoods && hoveredNeighborhoodName ? (
+        <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_4rem)] z-10 max-w-[calc(100%_-_8rem)] -translate-x-1/2 truncate rounded-lg border border-line bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-md backdrop-blur">
+          {hoveredNeighborhoodName}
+        </div>
+      ) : null}
+    </>
+  );
 }

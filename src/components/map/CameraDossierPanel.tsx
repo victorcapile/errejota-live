@@ -23,7 +23,7 @@ export function CameraDossierPanel({
       className={`absolute inset-x-0 bottom-0 z-20 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[22rem] lg:rounded-2xl lg:border ${
         open
           ? "translate-y-0 pointer-events-auto lg:translate-x-0"
-          : "translate-y-full pointer-events-none lg:translate-y-0 lg:translate-x-full"
+          : "translate-y-[calc(100%_+_1rem)] pointer-events-none lg:translate-y-0 lg:translate-x-[calc(100%_+_1rem)]"
       }`}
       data-testid="camera-dossier-panel"
     >
