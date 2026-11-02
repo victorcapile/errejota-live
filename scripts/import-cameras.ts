@@ -37,6 +37,7 @@ type BairroFeature = {
   geometry:
     | { type: "Polygon"; coordinates: number[][][] }
     | { type: "MultiPolygon"; coordinates: number[][][][] };
+  bounds?: [number, number, number, number];
 };
 
 type ParsedRow = {
@@ -296,7 +297,32 @@ function loadBairros(): BairroFeature[] {
   const data = JSON.parse(fs.readFileSync(file, "utf8")) as {
     features: BairroFeature[];
   };
-  return data.features;
+
+  return data.features.map((bairro) => {
+    const polygons =
+      bairro.geometry.type === "Polygon"
+        ? [bairro.geometry.coordinates]
+        : bairro.geometry.coordinates;
+    const bounds: [number, number, number, number] = [
+      Infinity,
+      Infinity,
+      -Infinity,
+      -Infinity,
+    ];
+
+    for (const polygon of polygons) {
+      for (const ring of polygon) {
+        for (const [longitude, latitude] of ring) {
+          bounds[0] = Math.min(bounds[0], longitude);
+          bounds[1] = Math.min(bounds[1], latitude);
+          bounds[2] = Math.max(bounds[2], longitude);
+          bounds[3] = Math.max(bounds[3], latitude);
+        }
+      }
+    }
+
+    return { ...bairro, bounds };
+  });
 }
 
 function findBairro(
@@ -305,6 +331,17 @@ function findBairro(
   bairros: BairroFeature[],
 ): BairroFeature | null {
   for (const bairro of bairros) {
+    const bounds = bairro.bounds;
+    if (
+      bounds &&
+      (longitude < bounds[0] ||
+        latitude < bounds[1] ||
+        longitude > bounds[2] ||
+        latitude > bounds[3])
+    ) {
+      continue;
+    }
+
     if (bairro.geometry.type === "Polygon") {
       if (
         pointInPolygon(longitude, latitude, bairro.geometry.coordinates)
