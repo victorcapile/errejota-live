@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sauron">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Olho — Sauron">
   <rect width="512" height="512" rx="112" fill="#0f4c5c"/>
-  <circle cx="256" cy="256" r="176" fill="none" stroke="#f6f3ea" stroke-opacity=".16" stroke-width="12"/>
-  <path d="M306 206 430 146v82l-124 44z" fill="#c26a1b"/>
-  <path d="M206 206 82 146v82l124 44z" fill="#c26a1b" opacity=".55"/>
-  <circle cx="256" cy="226" r="30" fill="#f6e3ca"/>
-  <path d="M222 318h68l-10-92h-48z" fill="#f6f3ea"/>
-  <rect x="202" y="318" width="108" height="18" rx="9" fill="#f6f3ea"/>
-  <path d="M228 350h56l14 98H214z" fill="#f6f3ea"/>
-  <rect x="214" y="400" width="84" height="48" rx="10" fill="#0f4c5c"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#f6f3ea" stroke-opacity=".12" stroke-width="10"/>
+  <path d="M72 256c44-78 105-122 184-122s140 44 184 122c-44 78-105 122-184 122S116 334 72 256Z" fill="#f6f3ea"/>
+  <circle cx="256" cy="256" r="86" fill="#c26a1b"/>
+  <circle cx="256" cy="256" r="42" fill="#0f4c5c"/>
+  <circle cx="286" cy="226" r="15" fill="#f6e3ca"/>
 </svg>
