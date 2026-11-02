@@ -377,7 +377,7 @@ export function MapExplorer({
                 aria-label={
                   theme === "dark" ? "Ativar modo claro" : "Ativar modo noturno"
                 }
-                title={theme === "dark" ? "Modo claro" : "Modo noturno"}
+                title={theme === "dark" ? "Dia" : "Noite"}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-background px-2.5 py-1.5 text-[11px] font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand"
               >
                 {theme === "dark" ? (
@@ -385,7 +385,7 @@ export function MapExplorer({
                 ) : (
                   <Moon aria-hidden className="size-3.5" />
                 )}
-                {theme === "dark" ? "Modo claro" : "Modo noturno"}
+                {theme === "dark" ? "Dia" : "Noite"}
               </button>
             </div>
 
