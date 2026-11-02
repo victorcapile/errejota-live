@@ -4,8 +4,6 @@ import type { ReactNode } from "react";
 import {
   ArrowRight,
   Braces,
-  CirclePlay,
-  Clock,
   Compass,
   Database,
   EyeOff,
@@ -18,28 +16,30 @@ import {
   VideoOff,
   Wrench,
 } from "lucide-react";
-import {
-  AVAILABILITY_STATUS_META,
-  AVAILABILITY_STATUS_VALUES,
-  CATALOG_LAST_CHECKED_AT,
-  MEDIA_TYPE_META,
-  PERMISSION_STATUS_META,
-  PERMISSION_STATUS_VALUES,
-} from "@/lib/constants";
+import { CATALOG_LAST_CHECKED_AT } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Sobre",
   description:
-    "Metodologia, limites e política editorial do Rio em Foco, um catálogo geográfico de fontes públicas de câmeras e contexto urbano do Rio de Janeiro.",
+    "Metodologia, limites, status e API do Rio em Foco, um mapa e catálogo de câmeras e fontes públicas do Rio de Janeiro.",
 };
+
+const DATA = {
+  cameras: 7571,
+  neighborhoods: 162,
+  regions: 9,
+  sources: 23,
+} as const;
+
+const CAMERA_EXPORT_DATE = "2026-11-01";
 
 const NOT_DONE = [
   {
     icon: VideoOff,
     title: "Nenhum player",
     description:
-      "Todas as fontes são links externos. Não incorporamos vídeo nesta fase.",
+      "Todas as fontes são links externos. Nenhum vídeo é embutido ou reproduzido no site.",
   },
   {
     icon: ScanEye,
@@ -64,6 +64,29 @@ const NOT_DONE = [
 const ENDPOINTS = [
   {
     method: "GET",
+    path: "/api/cameras",
+    description:
+      "Câmeras do mapa; aceita region, neighborhood e busca por nome.",
+  },
+  {
+    method: "GET",
+    path: "/api/cameras/status",
+    description: "Resumo de câmeras online, offline e sem status.",
+  },
+  {
+    method: "POST",
+    path: "/api/cameras/status",
+    description:
+      "Verifica um lote no endpoint de sessão do provedor e grava o estado.",
+  },
+  {
+    method: "POST",
+    path: "/api/cameras/status/manual",
+    description:
+      "Marca uma câmera manualmente como online, offline ou sem status.",
+  },
+  {
+    method: "GET",
     path: "/api/sources",
     description: "Lista paginada com busca, filtros e ordenação.",
   },
@@ -82,44 +105,7 @@ const ENDPOINTS = [
     path: "/api/meta",
     description: "Categorias, regiões, bairros, tags e estatísticas.",
   },
-  {
-    method: "GET",
-    path: "/api/cameras",
-    description:
-      "Câmeras importadas de arquivo local; aceita region e neighborhood.",
-  },
-];
-
-const PHASES = [
-  {
-    number: "01",
-    title: "Catálogo",
-    status: "Atual",
-    description:
-      "Fontes oficiais, busca, filtros, bairros, proveniência, API e PWA.",
-  },
-  {
-    number: "02",
-    title: "Mapa",
-    status: "Atual",
-    description:
-      "Mapa com MapLibre GL e estilo claro/escuro. Clustering e mais pontos ficam para depois.",
-  },
-  {
-    number: "03",
-    title: "Players",
-    status: "Futuro",
-    description:
-      "Um tipo por vez, somente com permissão verificada e auditoria registrada.",
-  },
-  {
-    number: "04",
-    title: "Operação",
-    status: "Futuro",
-    description:
-      "Importador idempotente, revisão editorial e monitor conservador.",
-  },
-];
+] as const;
 
 function Section({
   id,
@@ -150,6 +136,24 @@ function Section({
   );
 }
 
+function FeatureCard({
+  icon: Icon,
+  title,
+  text,
+}: {
+  icon: typeof Layers;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-card p-4">
+      <Icon aria-hidden className="size-4 text-brand" />
+      <p className="mt-2 text-sm font-medium text-foreground">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">{text}</p>
+    </div>
+  );
+}
+
 export default function AboutPage() {
   return (
     <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:py-16">
@@ -159,14 +163,14 @@ export default function AboutPage() {
           Sobre o Rio em Foco
         </p>
         <h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-          Ferramenta OSINT para estudar o território do Rio de Janeiro.
+          Mapa e catálogo das câmeras e fontes públicas do Rio de Janeiro.
         </h1>
         <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
-          O Rio em Foco é um catálogo geográfico de fontes públicas de câmeras do Rio
-          de Janeiro: um mapa com bairros delimitados e pontos de câmera, cada
-          um ligando à página oficial do provedor. Serve para estudar o território
-          e descobrir fontes oficiais, sem reproduzir vídeo, rastrear pessoas
-          ou burlar acesso.
+          O Rio em Foco reúne {DATA.cameras.toLocaleString("pt-BR")} câmeras e{" "}
+          {DATA.sources} fontes públicas em um mapa por região e bairro. Cada
+          ponto leva à página oficial do provedor; o status é verificado no
+          player e pode ser ajustado manualmente. Sem vídeo embutido, gravação
+          ou rastreamento.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted">
@@ -177,60 +181,136 @@ export default function AboutPage() {
             Rio de Janeiro · RJ
           </span>
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
-            Revisão de {formatDate(CATALOG_LAST_CHECKED_AT)}
+            {DATA.cameras.toLocaleString("pt-BR")} câmeras
+          </span>
+          <span className="rounded-full border border-line bg-card px-3 py-1.5">
+            Catálogo revisado em {formatDate(CATALOG_LAST_CHECKED_AT)}
           </span>
         </div>
       </header>
 
       <div className="mt-12 space-y-12">
         <Section
-          id="produto"
-          eyebrow="O produto"
-          title="Proveniência antes de interface"
+          id="mapa"
+          eyebrow="Como funciona"
+          title="Um mapa, não um player"
         >
           <p>
-            Cada ficha reúne a URL oficial, o provedor, a licença ou condição de
-            uso, a data da última checagem e o status declarado. O botão
-            principal sempre leva à página do provedor em uma nova aba.
+            Os pontos vêm de um arquivo local exportado do mapa público do
+            COR-Rio e fornecido pelo usuário. O projeto não raspa a lista, não
+            usa UA do app e não contorna os controles de acesso do provedor.
+            Cada ponto guarda nome, coordenadas, bairro e o link oficial.
           </p>
           <p>
-            Os pontos âmbar do mapa são câmeras de um arquivo local fornecido
-            pelo usuário (CSV ou JSON), não de raspagem. Cada ponto abre a
-            página oficial do provedor em nova aba; nenhum vídeo é embutido ou
-            reproduzido aqui.
+            Os pontos usam a cor da região. Câmeras marcadas como offline
+            continuam no mapa, mas com a bolinha apagada. Os filtros do menu
+            combinam situação, região, bairro e busca; ao selecionar um bairro,
+            o dossiê lista as câmeras com o link oficial e o status.
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
+            <FeatureCard
+              icon={Layers}
+              title="Filtros combinados"
+              text="Situação, região, bairro e busca no mesmo painel."
+            />
+            <FeatureCard
+              icon={Map}
+              title="Dossiê do bairro"
+              text="Lista as câmeras da área, com link e status de cada uma."
+            />
+            <FeatureCard
+              icon={Link2}
+              title="Link-only"
+              text="O clique abre a página do provedor; nenhum vídeo é embutido."
+            />
+          </div>
+        </Section>
+
+        <Section
+          id="status"
+          eyebrow="Status das câmeras"
+          title="Online, offline ou inconclusivo"
+        >
+          <p>
+            A checagem automática consulta o endpoint de sessão que o player do
+            provedor usa. Falhas de sessão viram offline; um 200 indica que a
+            sessão abriu, mas não garante que o vídeo esteja passando. Por isso
+            o status é conservador e pode ser ajustado manualmente.
+          </p>
+          <p>
+            Cada câmera no dossiê tem um botão para marcar online ou offline. A
+            marcação manual fica gravada e a checagem automática padrão não a
+            sobrescreve. Câmeras offline aparecem apagadas no mapa e com o selo
+            <span className="mx-1 rounded-full border border-line bg-background px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted">
+              offline
+            </span>
+            no dossiê.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <FeatureCard
+              icon={Radio}
+              title="Checagem automática"
+              text="Uma requisição por câmera ao endpoint de sessão do player."
+            />
+            <FeatureCard
+              icon={Wrench}
+              title="Ajuste manual"
+              text="O botão do dossiê corrige o estado observado no player."
+            />
+            <FeatureCard
+              icon={EyeOff}
+              title="Offline visível"
+              text="O ponto não some: fica cinza-claro, apagado, com contorno."
+            />
+          </div>
+        </Section>
+
+        <Section
+          id="dados"
+          eyebrow="Dados"
+          title="O que está no mapa"
+        >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              {
-                icon: Link2,
-                title: "Link-only por padrão",
-                text: "O embed é uma exceção documentada, nunca uma conveniência.",
-              },
-              {
-                icon: Clock,
-                title: "Checagem datada",
-                text: "“Página respondeu” não é o mesmo que “vídeo ao vivo”.",
-              },
-              {
-                icon: Database,
-                title: "Dados explícitos",
-                text: "Status, permissão e proveniência são campos do catálogo.",
-              },
+              { label: "câmeras", value: DATA.cameras },
+              { label: "bairros", value: DATA.neighborhoods },
+              { label: "regiões", value: DATA.regions },
+              { label: "fontes", value: DATA.sources },
             ].map((item) => (
               <div
-                key={item.title}
+                key={item.label}
                 className="rounded-xl border border-line bg-card p-4"
               >
-                <item.icon aria-hidden className="size-4 text-brand" />
-                <p className="mt-2 text-sm font-medium text-foreground">
-                  {item.title}
+                <p className="text-2xl font-semibold tabular-nums text-foreground">
+                  {item.value.toLocaleString("pt-BR")}
                 </p>
-                <p className="mt-1 text-xs leading-relaxed text-muted">
-                  {item.text}
+                <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                  {item.label}
                 </p>
               </div>
             ))}
           </div>
+          <p>
+            As câmeras vêm de{" "}
+            <code className="rounded bg-background px-1 py-0.5 text-[11px] text-foreground">
+              data/cameras.json
+            </code>
+            , exportado do mapa público do COR-Rio em{" "}
+            {formatDate(CAMERA_EXPORT_DATE)}. Os contornos de bairros vêm de{" "}
+            <code className="rounded bg-background px-1 py-0.5 text-[11px] text-foreground">
+              public/bairros.geojson
+            </code>
+            ; as fontes do catálogo são curadas em{" "}
+            <code className="rounded bg-background px-1 py-0.5 text-[11px] text-foreground">
+              src/db/seed-data/sources.ts
+            </code>
+            .
+          </p>
+          <p>
+            Dados de terceiros mantêm as licenças, atribuições e condições
+            indicadas nas páginas originais. O mapa é um índice de links, não
+            uma cópia dos serviços.
+          </p>
         </Section>
 
         <Section
@@ -256,6 +336,47 @@ export default function AboutPage() {
           </div>
         </Section>
 
+        <Section
+          id="api"
+          eyebrow="API"
+          title="Leitura e manutenção"
+        >
+          <p className="inline-flex items-center gap-2 text-xs text-foreground">
+            <Braces aria-hidden className="size-4 text-brand" />
+            Endpoints públicos para leitura e rotas de manutenção do status.
+          </p>
+          <ul className="space-y-2">
+            {ENDPOINTS.map((endpoint) => (
+              <li
+                key={`${endpoint.method}-${endpoint.path}`}
+                className="rounded-xl border border-line bg-card p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                      endpoint.method === "GET"
+                        ? "bg-brand/10 text-brand"
+                        : "bg-accent/10 text-accent"
+                    }`}
+                  >
+                    {endpoint.method}
+                  </span>
+                  <code className="text-[11px] font-medium text-foreground">
+                    {endpoint.path}
+                  </code>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted">
+                  {endpoint.description}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs">
+            Parâmetros inválidos recebem 400; item inexistente recebe 404;
+            falhas de consulta recebem 500. Em produção, as rotas POST exigem o
+            token de manutenção configurado no ambiente.
+          </p>
+        </Section>
 
         <Section
           id="creditos"
@@ -269,10 +390,11 @@ export default function AboutPage() {
             fontes oficiais.
           </p>
           <p>
-            A referência de produto é o CamerasRJ, usada apenas como inspiração
-            de organização. O CamerasRJ suspendeu suas transmissões em outubro
-            de 2026 após notificação do COR-Rio; por isso, nenhum feed ou lista
-            dele é reutilizado aqui.
+            Os pontos de câmera vêm de um arquivo exportado do mapa público do
+            COR-Rio e fornecido pelo usuário; não há raspagem, player embutido
+            ou redistribuição de vídeo. A referência de produto é o CamerasRJ,
+            que suspendeu suas transmissões em outubro de 2026 após notificação
+            do COR-Rio; nenhum feed ou lista dele é reutilizado aqui.
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Link
@@ -295,9 +417,10 @@ export default function AboutPage() {
       </div>
 
       <p className="mt-8 flex items-start gap-2 text-[11px] leading-relaxed text-muted">
-        <Wrench aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-        Projeto em desenvolvimento incremental. O catálogo é revisado
-        manualmente e pode conter fontes com estado inconclusivo.
+        <Database aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+        Projeto em desenvolvimento incremental. O catálogo e o status das
+        câmeras são revisados manualmente e podem conter estados inconclusivos;
+        a checagem automática não substitui a conferência no player oficial.
       </p>
 
       <p className="mt-6 text-center text-[11px] text-muted">
