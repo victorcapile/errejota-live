@@ -37,6 +37,7 @@ export async function POST(request: Request) {
     delayMs?: number;
     onlyUnknown?: boolean;
     region?: string | null;
+    neighborhood?: string | null;
   };
 
   try {
@@ -45,6 +46,8 @@ export async function POST(request: Request) {
       delayMs: typeof body.delayMs === "number" ? body.delayMs : undefined,
       onlyUnknown: body.onlyUnknown,
       region: typeof body.region === "string" ? body.region : null,
+      neighborhood:
+        typeof body.neighborhood === "string" ? body.neighborhood : null,
     });
 
     return Response.json(report);

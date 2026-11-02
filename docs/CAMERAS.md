@@ -163,10 +163,10 @@ quando quiser reclassificar tudo. A rota usada é
 ## 4. Na interface
 
 - **Bolinha colorida** no mapa = câmera online (ou ainda sem status).
-- **Bolinha apagada** (cinza escuro com 30% de opacidade) = câmera offline no
-  provedor, seja pelo campo `online: false` do arquivo, seja pela verificação
-  automática. O dossiê do bairro mostra o selo `offline` e deixa esses itens
-  esmaecidos.
+- **Bolinha apagada** (cinza claro com contorno escuro e ~60% de opacidade) =
+  câmera offline no provedor, seja pelo campo `online: false` do arquivo, seja
+  pela verificação automática. O dossiê do bairro mostra o selo `offline` e
+  deixa esses itens esmaecidos.
 - **Triângulo** = fonte catalogada que tem coordenada própria (poucas).
 - Clicar na bolinha abre `page_url` em nova aba, com
   `rel="noopener noreferrer"`.
@@ -178,8 +178,8 @@ quando quiser reclassificar tudo. A rota usada é
   para o dossiê e é guardado na URL como `?status=online` ou `?status=offline`.
 - O cartão do mapa mostra quantas câmeras estão visíveis e quantas estão online
   e offline.
-- Quando a geolocalização não é usada, o mapa abre centrado na **Freguesia
-  (Jacarepaguá)**.
+- Sem geolocalização, o mapa abre centrado na **Tijuca no mobile** e na
+  **Freguesia (Jacarepaguá) no desktop**.
 - A API pública é `GET /api/cameras`, com filtros opcionais
   `?region=centro` e `?neighborhood=copacabana`.
 

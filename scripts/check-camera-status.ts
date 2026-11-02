@@ -5,6 +5,7 @@
  * Uso:
  *   npm run db:status                      # checa todas as câmeras ainda sem status
  *   npm run db:status -- --region=centro   # só uma região
+ *   npm run db:status -- --neighborhood=freguesia-jacarepagua
  *   npm run db:status -- --all             # recheca todas (inclusive já checadas)
  *   npm run db:status -- --limit=30 --delay=600
  *
@@ -20,6 +21,7 @@ type Options = {
   limit: number;
   delayMs: number;
   region: string | null;
+  neighborhood: string | null;
   onlyUnknown: boolean;
   maxBatches: number;
   baseUrl: string;
@@ -43,6 +45,7 @@ const options: Options = {
   limit: readNumber("limit", 25),
   delayMs: Math.max(readNumber("delay", 600), 250),
   region: readFlag("region"),
+  neighborhood: readFlag("neighborhood"),
   onlyUnknown: !process.argv.includes("--all"),
   maxBatches: Math.floor(readNumber("max-batches", 0)),
   baseUrl: readFlag("url") ?? process.env.APP_URL ?? "http://localhost:3000",
@@ -80,7 +83,7 @@ async function main() {
   console.log(
     `Verificando câmeras em ${options.baseUrl} (lote ${options.limit}, intervalo ${options.delayMs}ms${
       options.region ? `, região ${options.region}` : ""
-    })…`,
+    }${options.neighborhood ? `, bairro ${options.neighborhood}` : ""})…`,
   );
 
   let batches = 0;
@@ -88,6 +91,7 @@ async function main() {
   let online = 0;
   let offline = 0;
   let unknown = 0;
+  let targetTotal: number | null = null;
 
   while (true) {
     let report: CameraStatusBatchReport;
@@ -100,6 +104,7 @@ async function main() {
           delayMs: options.delayMs,
           onlyUnknown: options.onlyUnknown,
           region: options.region,
+          neighborhood: options.neighborhood,
         }),
       });
     } catch (error) {
@@ -113,10 +118,23 @@ async function main() {
     online += report.online;
     offline += report.offline;
     unknown += report.unknown;
+    if (targetTotal === null) {
+      targetTotal = report.total;
+    }
+
+    const remaining = options.onlyUnknown
+      ? report.remaining
+      : Math.max((targetTotal ?? 0) - checked, 0);
 
     console.log(
-      `  lote ${batches}: ${report.checked} checadas · ${report.online} online · ${report.offline} offline · ${report.unknown} desconhecidas · ${report.remaining} restantes`,
+      `  lote ${batches}: ${report.checked} checadas · ${report.online} online · ${report.offline} offline · ${report.unknown} desconhecidas · ${remaining} restantes`,
     );
+
+    for (const result of report.results) {
+      if (result.status === "offline") {
+        console.log(`    offline: ${result.externalId} — ${result.name}`);
+      }
+    }
 
     if (report.rateLimited) {
       console.log("  Provedor pediu para desacelerar; aguardando 30s…");
@@ -124,7 +142,19 @@ async function main() {
       continue;
     }
 
-    if (report.checked === 0 || report.remaining === 0) {
+    if (report.checked === 0) {
+      break;
+    }
+
+    if (options.onlyUnknown && report.remaining === 0) {
+      break;
+    }
+
+    if (
+      !options.onlyUnknown &&
+      targetTotal !== null &&
+      checked >= targetTotal
+    ) {
       break;
     }
 

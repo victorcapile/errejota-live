@@ -130,6 +130,7 @@ export function MapExplorer({
   const [locateRequest, setLocateRequest] = useState(0);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [camerasLoading, setCamerasLoading] = useState(true);
+  const [updatingCameraId, setUpdatingCameraId] = useState<string | null>(null);
   const [dismissedDossierNeighborhood, setDismissedDossierNeighborhood] =
     useState<string | null>(null);
   const [searchBounds, setSearchBounds] = useState<{
@@ -334,6 +335,75 @@ export function MapExplorer({
     }
   }
 
+  async function handleCameraStatusChange(
+    camera: Camera,
+    status: "online" | "offline",
+  ) {
+    setUpdatingCameraId(camera.id);
+    try {
+      const body = JSON.stringify({ externalId: camera.externalId, status });
+
+      const post = (token: string | null) =>
+        fetch("/api/cameras/status/manual", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "x-status-token": token } : {}),
+          },
+          body,
+        });
+
+      let token: string | null = null;
+      try {
+        token = window.sessionStorage.getItem("rio-em-foco-status-token");
+      } catch {
+        token = null;
+      }
+
+      let response = await post(token);
+
+      if (response.status === 403) {
+        const informed = window.prompt(
+          "Token de manutenção para alterar o status das câmeras:",
+        );
+        if (informed) {
+          try {
+            window.sessionStorage.setItem(
+              "rio-em-foco-status-token",
+              informed,
+            );
+          } catch {
+            // Sem sessionStorage: usa o token apenas nesta requisição.
+          }
+          response = await post(informed);
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = (await response.json()) as {
+        cameras?: Array<{ externalId: string; isOnline: boolean | null }>;
+      };
+      const updated = payload.cameras?.find(
+        (item) => item.externalId === camera.externalId,
+      );
+      const isOnline = updated ? updated.isOnline : status === "online";
+
+      setCameras((current) =>
+        current.map((item) =>
+          item.id === camera.id ? { ...item, isOnline } : item,
+        ),
+      );
+    } catch (error) {
+      console.error("Falha ao atualizar o status da câmera:", error);
+      window.alert("Não foi possível atualizar o status desta câmera.");
+    } finally {
+      setUpdatingCameraId(null);
+    }
+  }
+
   const dossierCameras = useMemo(() => {
     if (!dossierNeighborhood) return [];
     return cameras
@@ -361,7 +431,7 @@ export function MapExplorer({
             aria-label="Filtros e bairros"
             aria-hidden={!sidebarOpen}
             inert={!sidebarOpen}
-            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-80 lg:rounded-2xl lg:border ${
+            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-[21rem] lg:rounded-2xl lg:border ${
               sidebarOpen
                 ? "translate-x-0"
                 : "-translate-x-[calc(100%+1rem)]"
@@ -555,7 +625,7 @@ export function MapExplorer({
               onClick={() => setSidebarOpenPreference(false)}
               aria-label="Recolher menu"
               title="Recolher menu"
-              className="absolute left-[min(92vw,24rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[21rem]"
+              className="absolute left-[min(92vw,24rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[22rem]"
             >
               <ChevronLeft aria-hidden className="size-5" />
             </button>
@@ -638,6 +708,8 @@ export function MapExplorer({
                 neighborhoodCameras={dossierCameras}
                 open={dossierOpen}
                 onClose={() => setDismissedDossierNeighborhood(neighborhood || null)}
+                onStatusChange={handleCameraStatusChange}
+                updatingCameraId={updatingCameraId}
               />
             ) : null}
 

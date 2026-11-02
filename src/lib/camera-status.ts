@@ -144,6 +144,7 @@ export type CameraStatusBatchOptions = {
   onlyUnknown?: boolean;
   delayMs?: number;
   region?: string | null;
+  neighborhood?: string | null;
 };
 
 export type CameraStatusBatchReport = {
@@ -151,6 +152,7 @@ export type CameraStatusBatchReport = {
   online: number;
   offline: number;
   unknown: number;
+  total: number;
   remaining: number;
   rateLimited: boolean;
   results: CameraStatusProbe[];
@@ -163,6 +165,9 @@ function batchFilters(options: CameraStatusBatchOptions) {
   }
   if (options.region) {
     filters.push(eq(cameras.regionSlug, options.region));
+  }
+  if (options.neighborhood) {
+    filters.push(eq(cameras.neighborhoodSlug, options.neighborhood));
   }
   return filters.length > 0 ? and(...filters) : undefined;
 }
@@ -263,6 +268,7 @@ export async function runCameraStatusBatch(
     online: results.filter((item) => item.status === "online").length,
     offline: results.filter((item) => item.status === "offline").length,
     unknown: results.filter((item) => item.status === "unknown").length,
+    total: Number(remainingRows[0]?.value ?? 0),
     remaining: Number(remainingRows[0]?.value ?? 0),
     rateLimited,
     results,

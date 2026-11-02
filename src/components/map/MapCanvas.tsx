@@ -15,8 +15,18 @@ if (typeof window !== "undefined") {
 import { REGION_COLORS } from "@/lib/constants";
 import type { Camera } from "@/lib/types";
 
-// Centro inicial do mapa: Freguesia (Jacarepaguá), fallback sem GPS.
-const DEFAULT_CENTER: [number, number] = [-43.342118, -22.934761];
+// Centro inicial sem GPS: Tijuca no mobile e Freguesia (Jacarepaguá) no desktop.
+const MOBILE_CENTER: [number, number] = [-43.236379, -22.938758];
+const DESKTOP_CENTER: [number, number] = [-43.342118, -22.934761];
+
+function initialMapCenter(): [number, number] {
+  if (typeof window === "undefined") {
+    return DESKTOP_CENTER;
+  }
+  return window.matchMedia("(min-width: 1024px)").matches
+    ? DESKTOP_CENTER
+    : MOBILE_CENTER;
+}
 
 const MAP_STYLES = {
   light: "https://tiles.openfreemap.org/styles/positron",
@@ -105,17 +115,18 @@ function cameraCirclePaint(
       17,
       7,
     ],
-    // Câmeras offline ficam apagadas: cinza mais escuro com ~30% de opacidade.
-    "circle-color": ["case", ["==", ["get", "online"], 0], "#4b4642", color],
-    "circle-opacity": ["case", ["==", ["get", "online"], 0], 0.3, 0.95],
+    // Câmeras offline: cinza claro, 60% de opacidade e contorno escuro para
+    // continuarem visíveis no mapa sem parecerem câmeras ativas.
+    "circle-color": ["case", ["==", ["get", "online"], 0], "#b3aca3", color],
+    "circle-opacity": ["case", ["==", ["get", "online"], 0], 0.6, 0.95],
     "circle-stroke-color": [
       "case",
       ["==", ["get", "online"], 0],
-      "#78716c",
+      "#3f3a36",
       "#ffffff",
     ],
-    "circle-stroke-width": 1.2,
-    "circle-stroke-opacity": ["case", ["==", ["get", "online"], 0], 0.3, 1],
+    "circle-stroke-width": ["case", ["==", ["get", "online"], 0], 1.5, 1.2],
+    "circle-stroke-opacity": ["case", ["==", ["get", "online"], 0], 0.9, 1],
   };
 }
 
@@ -301,7 +312,7 @@ export function MapCanvas({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLES[themeRef.current],
-      center: DEFAULT_CENTER,
+      center: initialMapCenter(),
       zoom: 11,
       attributionControl: false,
     });

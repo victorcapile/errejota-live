@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Loader2, Power, PowerOff, X } from "lucide-react";
 import type { Camera, NeighborhoodWithCount } from "@/lib/types";
 
 type CameraDossierPanelProps = {
@@ -8,6 +8,8 @@ type CameraDossierPanelProps = {
   neighborhoodCameras: Camera[];
   open: boolean;
   onClose: () => void;
+  onStatusChange: (camera: Camera, status: "online" | "offline") => void;
+  updatingCameraId?: string | null;
 };
 
 export function CameraDossierPanel({
@@ -15,6 +17,8 @@ export function CameraDossierPanel({
   neighborhoodCameras,
   open,
   onClose,
+  onStatusChange,
+  updatingCameraId,
 }: CameraDossierPanelProps) {
   const onlineCount = neighborhoodCameras.filter(
     (camera) => camera.isOnline === true,
@@ -71,7 +75,10 @@ export function CameraDossierPanel({
               {neighborhoodCameras.map((neighborhoodCamera) => {
                 const offline = neighborhoodCamera.isOnline === false;
                 return (
-                  <li key={neighborhoodCamera.id}>
+                  <li
+                    key={neighborhoodCamera.id}
+                    className="flex items-start gap-2"
+                  >
                     <a
                       href={neighborhoodCamera.pageUrl}
                       target="_blank"
@@ -81,7 +88,7 @@ export function CameraDossierPanel({
                           ? "Câmera offline no provedor"
                           : "Abrir página oficial da câmera"
                       }
-                      className={`flex w-full items-start justify-between gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                      className={`flex min-w-0 flex-1 items-start justify-between gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
                         offline
                           ? "border-line/60 bg-card/40 opacity-60 grayscale hover:opacity-80"
                           : "border-line bg-card hover:border-brand/30 hover:text-brand"
@@ -105,6 +112,36 @@ export function CameraDossierPanel({
                         </span>
                       ) : null}
                     </a>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onStatusChange(
+                          neighborhoodCamera,
+                          offline ? "online" : "offline",
+                        )
+                      }
+                      disabled={updatingCameraId === neighborhoodCamera.id}
+                      aria-label={
+                        offline
+                          ? `Marcar ${neighborhoodCamera.name} como online`
+                          : `Marcar ${neighborhoodCamera.name} como offline`
+                      }
+                      title={
+                        offline ? "Marcar como online" : "Marcar como offline"
+                      }
+                      className="mt-1 grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-50"
+                    >
+                      {updatingCameraId === neighborhoodCamera.id ? (
+                        <Loader2
+                          aria-hidden
+                          className="size-3.5 animate-spin"
+                        />
+                      ) : offline ? (
+                        <Power aria-hidden className="size-3.5" />
+                      ) : (
+                        <PowerOff aria-hidden className="size-3.5" />
+                      )}
+                    </button>
                   </li>
                 );
               })}
