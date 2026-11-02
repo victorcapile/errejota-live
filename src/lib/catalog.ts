@@ -399,6 +399,7 @@ export async function getSourceBySlug(
 export async function getNeighborhoodBySlug(
   slug: string,
 ): Promise<NeighborhoodSummary | null> {
+  await ensureCameraSchema();
   const rows = await db
     .select({ neighborhood: neighborhoods, region: regions })
     .from(neighborhoods)
@@ -418,6 +419,7 @@ export async function listNeighborhoods(options?: {
   region?: string;
   q?: string;
 }): Promise<NeighborhoodWithCount[]> {
+  await ensureCameraSchema();
   const regionFilter = options?.region
     ? eq(regions.slug, options.region)
     : undefined;

@@ -427,7 +427,7 @@ export const NEIGHBORHOOD_SEED: NeighborhoodSeed[] = [
   {
     slug: "freguesia-jacarepagua",
     name: "Freguesia (Jacarepaguá)",
-    regionSlug: "zona-oeste",
+    regionSlug: "zona-sudoeste",
     latitude: -22.934761,
     longitude: -43.342118,
     summary: null,

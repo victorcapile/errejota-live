@@ -2,28 +2,38 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 
 /**
- * Garante que a coluna `cameras.is_online` exista no Postgres de produção.
+ * Ajustes idempotentes de schema/dados que precisam existir antes das consultas.
  *
- * O schema local é criado pelas migrations do Drizzle, mas o banco do Supabase
- * pode estar em uma versão anterior. O `ALTER TABLE ... IF NOT EXISTS` é
- * idempotente e roda uma vez por processo, antes das consultas que usam a coluna.
+ * - Cria `cameras.is_online` se o banco de produção estiver em uma versão anterior.
+ * - Corrige a região da Freguesia (Jacarepaguá) para Zona Sudoeste, que é a
+ *   região usada pelo GeoJSON e pelas câmeras importadas.
+ *
+ * Roda uma vez por processo.
  */
 let schemaReady: Promise<void> | null = null;
 
 export function ensureCameraSchema(): Promise<void> {
-  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
-    return Promise.resolve();
-  }
-
   schemaReady ??= (async () => {
     try {
       await db.execute(
         sql`alter table "cameras" add column if not exists "is_online" boolean`,
       );
+      await db.execute(sql`
+        update "neighborhoods"
+        set "region_id" = 'region_zona-sudoeste'
+        where "slug" = 'freguesia-jacarepagua'
+          and "region_id" <> 'region_zona-sudoeste'
+      `);
+      await db.execute(sql`
+        update "cameras"
+        set "region_slug" = 'zona-sudoeste'
+        where "neighborhood_slug" = 'freguesia-jacarepagua'
+          and "region_slug" <> 'zona-sudoeste'
+      `);
     } catch (error) {
       // Sem permissão de DDL ou banco indisponível: as consultas vão falhar e
       // o erro real aparece nos logs da rota.
-      console.error("Falha ao garantir a coluna cameras.is_online:", error);
+      console.error("Falha ao aplicar ajustes de schema/dados:", error);
     }
   })();
 
