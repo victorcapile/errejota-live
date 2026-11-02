@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import {
+  DEFAULT_CATALOG_QUERY,
+  getCatalogMeta,
+  getCatalogStats,
+  listCameras,
+  listNeighborhoods,
+  listSources,
+} from "@/lib/catalog";
 
 const QUERIES: Record<string, () => Promise<unknown>> = {
   select1: () => db.execute(sql`select 1 as ok`),
@@ -17,6 +25,11 @@ const QUERIES: Record<string, () => Promise<unknown>> = {
     ),
   sources_max: () =>
     db.execute(sql`select max(last_checked_at) as value from sources`),
+  cameras_list: () => listCameras(),
+  sources_list: () => listSources(DEFAULT_CATALOG_QUERY),
+  neighborhoods_list: () => listNeighborhoods(),
+  catalog_stats: () => getCatalogStats(),
+  catalog_meta: () => getCatalogMeta(),
 };
 
 export async function GET(request: Request) {
