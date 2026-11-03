@@ -40,9 +40,9 @@ export function CameraDossierPanel({
       }`}
       data-testid="camera-dossier-panel"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-line/70 p-4">
+      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-4 pt-4 pb-2">
         <div className="min-w-0">
-          <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">
+          <h3 className="text-sm font-semibold leading-snug text-foreground">
             {neighborhood.name}
             <span className="ml-1.5 text-xs font-normal text-muted">
               · {neighborhood.regionName}
@@ -79,7 +79,7 @@ export function CameraDossierPanel({
                 return (
                   <li
                     key={neighborhoodCamera.id}
-                    className="flex items-start gap-2"
+                    className="flex items-center gap-2"
                   >
                     <a
                       href={neighborhoodCamera.pageUrl}
@@ -132,7 +132,7 @@ export function CameraDossierPanel({
                       title={
                         offline ? "Marcar como online" : "Marcar como offline"
                       }
-                      className="mt-1 grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-50"
+                      className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-50"
                     >
                       {updatingCameraId === neighborhoodCamera.id ? (
                         <Loader2
