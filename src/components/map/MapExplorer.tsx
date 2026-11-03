@@ -137,7 +137,6 @@ export function MapExplorer({
     points: [number, number][];
     key: number;
   } | null>(null);
-  const [focusRequest, setFocusRequest] = useState(0);
   const selectedNeighborhood = meta.neighborhoods.find(
     (candidate) => candidate.slug === neighborhood,
   );
@@ -308,16 +307,12 @@ export function MapExplorer({
     (item) => !region || item.regionSlug === region,
   );
 
-  const focusPoint = useMemo(
-    () =>
-      selectedNeighborhood
-        ? {
-            latitude: selectedNeighborhood.latitude as number,
-            longitude: selectedNeighborhood.longitude as number,
-          }
-        : null,
-    [selectedNeighborhood],
-  );
+  const focusPoint = selectedNeighborhood
+    ? {
+        latitude: selectedNeighborhood.latitude as number,
+        longitude: selectedNeighborhood.longitude as number,
+      }
+    : null;
   const focusKey = neighborhood || region || "all";
 
   function handleRegionChange(next: RegionSlug | "") {
@@ -327,8 +322,6 @@ export function MapExplorer({
   }
 
   function handleNeighborhoodChange(next: string) {
-    // Incrementa mesmo quando o bairro é o mesmo (re-clique deve refazer o foco).
-    setFocusRequest((count) => count + 1);
     setNeighborhood(next);
     setDismissedDossierNeighborhood(next ? null : neighborhood || null);
     if (window.matchMedia("(max-width: 1023px)").matches) {
@@ -646,7 +639,6 @@ export function MapExplorer({
               showCameras={showCameras}
               focusPoint={focusPoint}
               focusKey={focusKey}
-              focusRequest={focusRequest}
               fitBoundsRequest={searchBounds}
               locateRequest={locateRequest}
               theme={theme}
@@ -657,7 +649,7 @@ export function MapExplorer({
               onClick={() => setLocateRequest((request) => request + 1)}
               aria-label="Centralizar minha localização"
               title="Centralizar minha localização"
-              className="absolute right-[10px] bottom-[calc(23rem+env(safe-area-inset-bottom))] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:top-[calc(env(safe-area-inset-top)+8rem)]"
+              className="absolute right-[10px] top-[calc(env(safe-area-inset-top)+8rem)] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               <LocateFixed aria-hidden className="size-5" />
             </button>

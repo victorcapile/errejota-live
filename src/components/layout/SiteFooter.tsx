@@ -40,6 +40,40 @@ export function SiteFooter() {
             ))}
           </ul>
         </nav>
+
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
+            Transparência
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            <li>
+              <Link
+                href="/sobre"
+                className="text-foreground/80 transition-colors hover:text-brand"
+              >
+                Metodologia
+              </Link>
+            </li>
+            <li>
+              <a
+                href="/api/meta"
+                className="text-foreground/80 transition-colors hover:text-brand"
+              >
+                Metadados da API
+              </a>
+            </li>
+            <li>
+              {/* Endpoint JSON da API, não uma página do App Router. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a
+                href="/api/sources"
+                className="text-foreground/80 transition-colors hover:text-brand"
+              >
+                Fontes em JSON
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div className="border-t border-line">
