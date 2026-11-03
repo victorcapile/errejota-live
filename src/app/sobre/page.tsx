@@ -1,14 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  ArrowRight,
-  EyeOff,
-  Layers,
-  Map,
-  ShieldCheck,
-  VideoOff,
-} from "lucide-react";
+import { EyeOff, Layers, Map, ShieldCheck, VideoOff } from "lucide-react";
 import { CATALOG_LAST_CHECKED_AT } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
 
@@ -73,7 +65,7 @@ export default function AboutPage() {
 
         <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted">
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
-            Versão 1.1 alpha
+            Versão 1.2
           </span>
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
             Rio de Janeiro · RJ
@@ -137,37 +129,6 @@ export default function AboutPage() {
         </Section>
 
         <Section
-          id="dados"
-          eyebrow="Dados"
-          title="O que está no mapa"
-        >
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: "câmeras", value: DATA.cameras },
-              { label: "bairros", value: DATA.neighborhoods },
-              { label: "regiões", value: DATA.regions },
-              { label: "fontes", value: DATA.sources },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-xl border border-line bg-card p-4"
-              >
-                <p className="text-2xl font-semibold tabular-nums text-foreground">
-                  {item.value.toLocaleString("pt-BR")}
-                </p>
-                <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                  {item.label}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p>
-            O status das câmeras (online/offline) é verificado e pode ser
-            ajustado manualmente. Câmeras offline aparecem apagadas no mapa.
-          </p>
-        </Section>
-
-        <Section
           id="limites"
           eyebrow="Limites"
           title="O que este projeto não faz"
@@ -212,23 +173,6 @@ export default function AboutPage() {
             respectivos titulares. O catálogo apenas descreve e liga para as
             fontes oficiais.
           </p>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Link
-              href="/bairros"
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-brand px-4 text-xs font-semibold text-white transition-colors hover:bg-brand-strong"
-            >
-              <Map aria-hidden className="size-3.5" />
-              Explorar bairros
-              <ArrowRight aria-hidden className="size-3.5" />
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-line bg-card px-4 text-xs font-medium transition-colors hover:border-brand/30 hover:text-brand"
-            >
-              <Layers aria-hidden className="size-3.5" />
-              Voltar ao mapa
-            </Link>
-          </div>
         </Section>
       </div>
 

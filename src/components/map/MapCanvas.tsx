@@ -102,6 +102,7 @@ function createCameraPopupContent(
 
 function cameraCirclePaint(
   color: string,
+  theme: "light" | "dark" = "light",
 ): NonNullable<maplibregl.CircleLayerSpecification["paint"]> {
   return {
     "circle-radius": [
@@ -122,7 +123,7 @@ function cameraCirclePaint(
     "circle-stroke-color": [
       "case",
       ["==", ["get", "online"], 0],
-      "#3f3a36",
+      theme === "dark" ? "#e6e2d8" : "#3f3a36",
       "#ffffff",
     ],
     "circle-stroke-width": 1.2,
@@ -140,6 +141,7 @@ function syncCameraLayers(
   map: MapLibreMap,
   cameras: Camera[],
   visible: boolean,
+  theme: "light" | "dark" = "light",
 ): void {
   // Keep cameras in region-specific sources so each marker uses its region color.
   const byRegion = new Map<string, Camera[]>();
@@ -154,7 +156,7 @@ function syncCameraLayers(
     const sourceId = `cameras-${region}`;
     const pointsId = `cameras-${region}-pontos`;
     const color = regionColor(region === "sem-regiao" ? null : region);
-    const paint = cameraCirclePaint(color);
+    const paint = cameraCirclePaint(color, theme);
 
     const source = map.getSource(sourceId) as
       | maplibregl.GeoJSONSource
@@ -265,6 +267,7 @@ export function MapCanvas({
   showCameras,
   focusPoint,
   focusKey,
+  focusRequest,
   fitBoundsRequest,
   locateRequest,
   theme,
@@ -275,6 +278,7 @@ export function MapCanvas({
   showCameras: boolean;
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
+  focusRequest: number;
   fitBoundsRequest: { points: [number, number][]; key: number } | null;
   locateRequest: number;
   theme: "light" | "dark";
@@ -317,10 +321,18 @@ export function MapCanvas({
       attributionControl: false,
     });
 
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      "top-right",
-    );
+    const addZoomControl = () => {
+      map.addControl(
+        new maplibregl.NavigationControl({ showCompass: false }),
+        "top-right",
+      );
+    };
+
+    if (typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches) {
+      addZoomControl();
+    } else {
+      // No mobile não faz sentido manter zoom controls; o GPS já ocupa o espaço.
+    }
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
@@ -439,14 +451,18 @@ export function MapCanvas({
         });
     };
 
+    if (map.isStyleLoaded()) {
+      loadBairros();
+    } else {
+      map.once("load", loadBairros);
+    }
     map.on("style.load", loadBairros);
-    loadBairros();
 
     const loadCameras = () => {
       if (mapRef.current !== map) return;
       const sync = () => {
         if (mapRef.current !== map) return;
-        syncCameraLayers(map, camerasRef.current, showCamerasRef.current);
+        syncCameraLayers(map, camerasRef.current, showCamerasRef.current, themeRef.current);
       };
       cameraSyncRef.current = { map, sync };
       sync();
@@ -591,7 +607,11 @@ export function MapCanvas({
     showCamerasRef.current = showCameras;
     const entry = cameraSyncRef.current;
     if (entry && entry.map === mapRef.current) {
-      entry.sync();
+      try {
+        entry.sync();
+      } catch {
+        // Style not loaded yet.
+      }
     }
   }, [cameras, showCameras]);
 
@@ -603,6 +623,10 @@ export function MapCanvas({
     }
 
     if (focusPoint) {
+      if (!map.isStyleLoaded()) {
+        return; // Aguarda o estilo carregar.
+      }
+
       const mobileOffset = window.matchMedia("(max-width: 1023px)").matches
         ? -Math.round(map.getContainer().clientHeight * 0.17)
         : 0;
@@ -630,15 +654,30 @@ export function MapCanvas({
                   coords.type === "MultiPolygon"
                 ) {
                   const bounds = new maplibregl.LngLatBounds();
-                  const rings =
-                    coords.type === "Polygon"
-                      ? coords.coordinates
-                      : coords.coordinates.flat();
+                  const polygons =
+                    coords.type === "Polygon" ? [coords.coordinates] : coords.coordinates;
+
+                  // Filtra polígonos pequenos (ilhotas, slivers) que distorcem
+                  // o fitBounds. Só usa o polígono principal (maior área).
+                  const areas = polygons.map((poly: number[][][]) => {
+                    const ring = poly[0];
+                    let area = 0;
+                    for (let i = 0; i < ring.length - 1; i++) {
+                      area += ring[i][0] * ring[i + 1][1];
+                      area -= ring[i + 1][0] * ring[i][1];
+                    }
+                    return Math.abs(area) / 2;
+                  });
+                  const maxArea = Math.max(...areas);
+                  const mainIndex = areas.indexOf(maxArea);
+
+                  const rings = polygons[mainIndex];
                   for (const ring of rings) {
                     for (const coord of ring) {
                       bounds.extend(coord as [number, number]);
                     }
                   }
+
                   const isMobile = window.matchMedia("(max-width: 1023px)").matches;
                   map.fitBounds(bounds, {
                     padding: isMobile
@@ -660,18 +699,22 @@ export function MapCanvas({
       }
 
       if (!fitted) {
-        map.flyTo({
-          center: [focusPoint.longitude, focusPoint.latitude],
-          zoom: 12,
-          offset: [0, mobileOffset],
-          duration: 700,
-        });
+        try {
+          map.flyTo({
+            center: [focusPoint.longitude, focusPoint.latitude],
+            zoom: 12,
+            offset: [0, mobileOffset],
+            duration: 700,
+          });
+        } catch {
+          // Style not loaded yet.
+        }
       }
       return;
     }
     };
     void run();
-  }, [focusPoint, focusKey]);
+  }, [focusPoint, focusKey, focusRequest]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -713,7 +756,7 @@ export function MapCanvas({
     <>
       <div ref={containerRef} className="size-full" />
       {showNeighborhoods && hoveredNeighborhoodName ? (
-        <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_4rem)] z-10 max-w-[calc(100%_-_8rem)] -translate-x-1/2 truncate rounded-lg border border-line bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-md backdrop-blur">
+        <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_6rem)] z-10 max-w-[calc(100%_-_8rem)] -translate-x-1/2 truncate rounded-lg border border-line bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-md backdrop-blur">
           {hoveredNeighborhoodName}
         </div>
       ) : null}

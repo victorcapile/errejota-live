@@ -20,7 +20,7 @@ export function SiteHeader() {
               Rio em Foco
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted sm:block">
-              Mapa do Rio · v1.1 alpha
+              Mapa do Rio · v1.2
             </span>
           </span>
         </Link>
