@@ -101,8 +101,28 @@ async function probeCamera(camera: {
       }
 
       if (sessionId) {
-        // Encerra a sessão em segundo plano para não somar latência à checagem.
+        // The session start endpoint returns 200 for ALL cameras (online and
+        // offline). To distinguish truly offline cameras we also probe the WHEP
+        // negotiation endpoint. Offline cameras return an SDP answer without
+        // valid media tracks or fail the ICE negotiation.
+        const whepResult = await probeWhep(sessionId, camera.pageUrl);
         void stopSession(sessionId);
+
+        if (whepResult === "online") {
+          return { status: "online", httpStatus: 200, latencyMs };
+        }
+
+        if (whepResult === "offline") {
+          return {
+            status: "offline",
+            httpStatus: 200,
+            latencyMs,
+            note: "WHEP negotiation failed or no media tracks in answer.",
+          };
+        }
+
+        // WHEP inconclusive - fall back to session-only (mark as online since
+        // session was created successfully; manual verification may be needed).
         return { status: "online", httpStatus: 200, latencyMs };
       }
 
@@ -136,6 +156,73 @@ async function probeCamera(camera: {
       latencyMs: Date.now() - startedAt,
       note: error instanceof Error ? error.message : "Falha de rede",
     };
+  }
+}
+
+/**
+ * Probes the WHEP endpoint to determine if the camera is truly online.
+ * Returns "online" if the SDP answer contains valid media tracks,
+ * "offline" if the negotiation fails or returns no media, and
+ * "unknown" if the result is inconclusive.
+ */
+async function probeWhep(
+  sessionId: string,
+  pageUrl: string,
+): Promise<"online" | "offline" | "unknown"> {
+  const minimalSdp = [
+    "v=0",
+    "o=- 0 0 IN IP4 127.0.0.1",
+    "s=-",
+    "t=0 0",
+    "m=video 9 UDP/TLS/RTP/SAVPF 96",
+    "c=IN IP4 0.0.0.0",
+    "a=rtpmap:96 VP8/90000",
+  ].join("\\r\\n");
+
+  try {
+    const response = await fetch(`${PROVIDER_BASE_URL}/api/camera/player/whep/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/sdp",
+        "X-Camera-Session": sessionId,
+        "User-Agent": PROVIDER_USER_AGENT,
+        Referer: pageUrl || PROVIDER_BASE_URL,
+      },
+      body: minimalSdp,
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+
+    const body = await response.text();
+
+    if (response.status === 429) {
+      return "unknown";
+    }
+
+    if (!response.ok) {
+      // Non-2xx WHEP response indicates the camera is unavailable.
+      return "offline";
+    }
+
+    // Check if the SDP answer contains valid media tracks.
+    // Offline cameras may return an answer without m= lines or with
+    // zero port (m=video 0 ...).
+    const hasVideoTrack = /m=video\\s+(?!0\\s)/.test(body);
+    const hasAudioTrack = /m=audio\\s+(?!0\\s)/.test(body);
+
+    if (hasVideoTrack || hasAudioTrack) {
+      return "online";
+    }
+
+    // SDP answer without active media tracks → likely offline.
+    if (body.includes("m=video 0") || body.includes("m=audio 0")) {
+      return "offline";
+    }
+
+    // Inconclusive - couldn't determine from SDP.
+    return "unknown";
+  } catch {
+    return "unknown";
   }
 }
 

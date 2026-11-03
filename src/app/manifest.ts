@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Rio em Foco — catálogo de fontes públicas do Rio",
+    name: "Rio em Foco — Ferramenta OSINT",
     short_name: "Rio em Foco",
     description:
       "Catálogo geográfico de fontes públicas de câmeras e contexto urbano do Rio de Janeiro. Links oficiais, status declarado e proveniência, sem players.",

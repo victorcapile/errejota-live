@@ -115,8 +115,8 @@ function cameraCirclePaint(
       17,
       7,
     ],
-    // Câmeras offline: cinza claro, 60% de opacidade e contorno escuro para
-    // continuarem visíveis no mapa sem parecerem câmeras ativas.
+    // Câmeras offline: cinza claro, 60% de opacidade e contorno escuro,
+    // mesmo tamanho das câmeras online.
     "circle-color": ["case", ["==", ["get", "online"], 0], "#b3aca3", color],
     "circle-opacity": ["case", ["==", ["get", "online"], 0], 0.6, 0.95],
     "circle-stroke-color": [
@@ -125,7 +125,7 @@ function cameraCirclePaint(
       "#3f3a36",
       "#ffffff",
     ],
-    "circle-stroke-width": ["case", ["==", ["get", "online"], 0], 1.5, 1.2],
+    "circle-stroke-width": 1.2,
     "circle-stroke-opacity": ["case", ["==", ["get", "online"], 0], 0.9, 1],
   };
 }
@@ -596,6 +596,7 @@ export function MapCanvas({
   }, [cameras, showCameras]);
 
   useEffect(() => {
+    const run = async () => {
     const map = mapRef.current;
     if (!map) {
       return;
@@ -605,14 +606,71 @@ export function MapCanvas({
       const mobileOffset = window.matchMedia("(max-width: 1023px)").matches
         ? -Math.round(map.getContainer().clientHeight * 0.17)
         : 0;
-      map.flyTo({
-        center: [focusPoint.longitude, focusPoint.latitude],
-        zoom: 14,
-        offset: [0, mobileOffset],
-        duration: 700,
-      });
+
+      // Se um bairro específico foi selecionado, ajusta o zoom para mostrar
+      // o bairro inteiro (fitBounds no polígono do bairro).
+      const slug = focusKey; // focusKey = neighborhood slug quando bairro selecionado
+      let fitted = false;
+      if (slug && slug !== "all") {
+        const doFit = async () => {
+          try {
+            // Busca o polígono do bairro no geojson para ajustar o zoom
+            // e mostrar o bairro inteiro.
+            const resp = await fetch("/bairros.geojson");
+            if (resp.ok) {
+              const geojson = await resp.json();
+              const feature = geojson.features?.find(
+                (f: { properties?: { slug?: string } }) =>
+                  f.properties?.slug === slug,
+              );
+              if (feature?.geometry) {
+                const coords = feature.geometry;
+                if (
+                  coords.type === "Polygon" ||
+                  coords.type === "MultiPolygon"
+                ) {
+                  const bounds = new maplibregl.LngLatBounds();
+                  const rings =
+                    coords.type === "Polygon"
+                      ? coords.coordinates
+                      : coords.coordinates.flat();
+                  for (const ring of rings) {
+                    for (const coord of ring) {
+                      bounds.extend(coord as [number, number]);
+                    }
+                  }
+                  const isMobile = window.matchMedia("(max-width: 1023px)").matches;
+                  map.fitBounds(bounds, {
+                    padding: isMobile
+                      ? { top: 40, bottom: 220, left: 40, right: 40 }
+                      : { top: 40, bottom: 40, left: 40, right: 380 },
+                    duration: 700,
+                    maxZoom: 15,
+                  });
+                  fitted = true;
+                }
+              }
+            }
+          } catch {
+            // Fallback para flyTo abaixo.
+          }
+        };
+
+        await doFit();
+      }
+
+      if (!fitted) {
+        map.flyTo({
+          center: [focusPoint.longitude, focusPoint.latitude],
+          zoom: 12,
+          offset: [0, mobileOffset],
+          duration: 700,
+        });
+      }
       return;
     }
+    };
+    void run();
   }, [focusPoint, focusKey]);
 
   useEffect(() => {

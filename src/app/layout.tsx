@@ -9,9 +9,9 @@ const THEME_SCRIPT = `try{var t=localStorage.getItem("rio-em-foco-theme");if(t==
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-const SITE_TITLE = "Rio em Foco — fontes públicas do Rio de Janeiro";
+const SITE_TITLE = "Rio em Foco — Ferramenta OSINT do Rio de Janeiro";
 const SITE_DESCRIPTION =
-  "Catálogo geográfico de fontes públicas de câmeras e contexto urbano do Rio de Janeiro. Links oficiais, status declarado e proveniência, sem players.";
+  "Ferramenta OSINT de mapeamento de fontes públicas de câmeras e contexto urbano do Rio de Janeiro. Links oficiais, status declarado e proveniência, sem players.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
