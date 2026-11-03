@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Power, PowerOff, X } from "lucide-react";
+import { Camera as CameraIcon, Loader2, Power, PowerOff, X } from "lucide-react";
 import type { Camera, NeighborhoodWithCount } from "@/lib/types";
 
 type CameraDossierPanelProps = {
@@ -44,8 +44,10 @@ export function CameraDossierPanel({
         <div className="min-w-0">
           <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">
             {neighborhood.name}
+            <span className="ml-1.5 text-xs font-normal text-muted">
+              · {neighborhood.regionName}
+            </span>
           </h3>
-          <p className="mt-0.5 text-xs text-muted">{neighborhood.regionName}</p>
         </div>
         <button
           type="button"
@@ -96,10 +98,14 @@ export function CameraDossierPanel({
                     >
                       <span className="min-w-0 flex-1">
                         <span
-                          className={`block truncate text-[11px] font-medium ${
+                          className={`flex items-center gap-1.5 truncate text-[11px] font-medium ${
                             offline ? "text-muted" : "text-foreground"
                           }`}
                         >
+                          <CameraIcon
+                            aria-hidden
+                            className="size-3 shrink-0 text-muted"
+                          />
                           {neighborhoodCamera.name}
                         </span>
                       </span>
