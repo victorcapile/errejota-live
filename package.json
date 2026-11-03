@@ -21,6 +21,7 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.5.14",
     "@next/env": "^16.4.3",
+    "@vercel/analytics": "^1.4.1",
     "drizzle-orm": "^0.45.4",
     "fast-xml-parser": "^5.11.2",
     "lucide-react": "^1.66.0",
