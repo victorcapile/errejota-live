@@ -40,9 +40,9 @@ export function CameraDossierPanel({
       }`}
       data-testid="camera-dossier-panel"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-line/70 p-4">
+      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-4 py-3">
         <div className="min-w-0">
-          <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">
+          <h3 className="text-sm font-semibold leading-snug text-foreground">
             {neighborhood.name}
             <span className="ml-1.5 text-xs font-normal text-muted">
               · {neighborhood.regionName}
@@ -58,7 +58,7 @@ export function CameraDossierPanel({
           <X className="size-4" />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         <section>
           <div className="flex items-baseline justify-between gap-2">
             <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
@@ -73,7 +73,7 @@ export function CameraDossierPanel({
             ) : null}
           </div>
           {neighborhoodCameras.length > 0 ? (
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-2 space-y-1.5">
               {neighborhoodCameras.map((neighborhoodCamera) => {
                 const offline = neighborhoodCamera.isOnline === false;
                 return (
@@ -90,7 +90,7 @@ export function CameraDossierPanel({
                           ? "Câmera offline no provedor"
                           : "Abrir página oficial da câmera"
                       }
-                      className={`flex min-w-0 flex-1 items-start justify-between gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
+                      className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
                         offline
                           ? "border-line/60 bg-card/40 opacity-60 grayscale hover:opacity-80"
                           : "border-line bg-card hover:border-brand/30 hover:text-brand"
