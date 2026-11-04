@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   applicationName: "Errejota",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
+    icon: "/icon.svg?v=2",
+    shortcut: "/icon.svg?v=2",
   },
   openGraph: {
     type: "website",
