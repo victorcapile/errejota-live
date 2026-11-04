@@ -444,7 +444,7 @@ export function MapExplorer({
                 : "-translate-x-[calc(100%+1rem)]"
             }`}
           >
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex items-center justify-between gap-2 border-b border-line/70 px-4 py-3 lg:hidden">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                 Filtros
@@ -504,7 +504,7 @@ export function MapExplorer({
               </div>
             </div>
 
-            <div className="px-3 pt-2 pb-4 border-b border-line/70">
+            <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 pb-4">
 
               <h4 className="mt-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
                 Situação
@@ -571,7 +571,7 @@ export function MapExplorer({
                   </Chip>
                 ))}
               </div>
-              <section className="mt-4 border-t border-line/70 pt-3">
+              <section className="mt-4 flex min-h-0 flex-1 flex-col border-t border-line/70 pt-3">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                     Bairros
@@ -580,7 +580,7 @@ export function MapExplorer({
                     {visibleNeighborhoods.length}
                   </span>
                 </div>
-                <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
                   <button
                     type="button"
                     onClick={() => handleNeighborhoodChange("")}
