@@ -438,12 +438,13 @@ export function MapExplorer({
             aria-label="Filtros e bairros"
             aria-hidden={!sidebarOpen}
             inert={!sidebarOpen}
-            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-[23rem] lg:rounded-2xl lg:border ${
+            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-hidden border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-[23rem] lg:rounded-2xl lg:border ${
               sidebarOpen
                 ? "translate-x-0"
                 : "-translate-x-[calc(100%+1rem)]"
             }`}
           >
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <div className="flex items-center justify-between gap-2 border-b border-line/70 px-4 py-3 lg:hidden">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                 Filtros
@@ -623,6 +624,21 @@ export function MapExplorer({
                 show={showCameras}
                 onToggle={() => setShowCameras((v) => !v)}
               />
+            </div>
+            </div>
+
+            <div className="shrink-0 border-t border-line/70 px-4 py-3">
+              <p className="text-[11px] leading-relaxed text-muted">
+                Desenvolvido por Victor Capilé ·{" "}
+                <a
+                  href="https://github.com/victorcapile/errejota-live"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-brand hover:underline"
+                >
+                  GitHub
+                </a>
+              </p>
             </div>
           </aside>
 

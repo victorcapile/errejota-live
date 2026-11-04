@@ -235,7 +235,7 @@ export default function AboutPage() {
       <p className="mt-6 text-center text-[11px] text-muted">
         Desenvolvido por Victor Capilé ·{" "}
         <a
-          href="https://github.com/victorcapile/errejota"
+          href="https://github.com/victorcapile/errejota-live"
           target="_blank"
           rel="noopener noreferrer"
           className="text-brand hover:underline"

@@ -30,7 +30,7 @@ Você precisa de Node.js e npm. O banco pode ser local ou um projeto Supabase se
 Para desenvolver sem configurar nada, use o banco local (PGlite), que é criado dentro de `data/pglite`:
 
 ```bash
-git clone https://github.com/victorcapile/errejota.git
+git clone https://github.com/victorcapile/errejota-live.git
 cd errejota
 npm ci
 npm run db:local
