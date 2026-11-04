@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
 
-const THEME_SCRIPT = `try{var t=localStorage.getItem("rio-em-foco-theme");if(t==null){t=localStorage.getItem("theme");}document.documentElement.dataset.theme=t==="dark"?"dark":"light";}catch(e){document.documentElement.dataset.theme="light";}`;
+const THEME_SCRIPT = `try{var t=localStorage.getItem("errejota-theme");if(t==null){t=localStorage.getItem("theme");}document.documentElement.dataset.theme=t==="dark"?"dark":"light";}catch(e){document.documentElement.dataset.theme="light";}`;
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://errejota.live";
 
-const SITE_TITLE = "Rio em Foco — Ferramenta OSINT do Rio de Janeiro";
+const SITE_TITLE = "Errejota — Ferramenta OSINT do Rio de Janeiro";
 const SITE_DESCRIPTION =
   "Ferramenta OSINT de mapeamento de fontes públicas de câmeras e contexto urbano do Rio de Janeiro. Links oficiais, status declarado e proveniência, sem players.";
 
@@ -17,10 +18,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_TITLE,
-    template: "%s · Rio em Foco",
+    template: "%s · Errejota",
   },
   description: SITE_DESCRIPTION,
-  applicationName: "Rio em Foco",
+  applicationName: "Errejota",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: "/icon.svg",
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "Rio em Foco",
+    siteName: "Errejota",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </main>
             <SiteFooter />
           </div>
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

@@ -36,7 +36,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const next = current === "dark" ? "light" : "dark";
       document.documentElement.dataset.theme = next;
       try {
-        localStorage.setItem("rio-em-foco-theme", next);
+        localStorage.setItem("errejota-theme", next);
       } catch {
         // Preferência não persistida; o tema ainda vale para esta sessão.
       }

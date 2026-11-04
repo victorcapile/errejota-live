@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Eye } from "lucide-react";
+import { PresenceBadge } from "@/components/presence/PresenceBadge";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { SiteNav } from "./SiteNav";
 
@@ -10,14 +11,14 @@ export function SiteHeader() {
         <Link
           href="/"
           className="group flex shrink-0 items-center gap-2"
-          aria-label="Rio em Foco — página inicial"
+          aria-label="Errejota — página inicial"
         >
           <span className="grid size-8 place-items-center rounded-xl bg-brand text-white shadow-sm transition-colors group-hover:bg-brand-strong sm:size-9">
             <Eye aria-hidden className="size-4 sm:size-5" />
           </span>
           <span className="leading-tight max-[359px]:hidden">
             <span className="block text-sm font-semibold tracking-tight text-foreground sm:text-base">
-              Rio em Foco
+              Errejota
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted sm:block">
               Mapa do Rio · v1.1 alpha
@@ -27,7 +28,10 @@ export function SiteHeader() {
 
         <SiteNav />
 
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden lg:block">
+            <PresenceBadge />
+          </div>
           <ThemeToggle />
         </div>
       </div>

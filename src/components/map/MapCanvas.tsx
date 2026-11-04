@@ -34,6 +34,117 @@ const MAP_STYLES = {
 } as const;
 
 const CAMERA_SOURCE_PREFIX = "cameras-";
+const HIGHLIGHT_SOURCE = "camera-highlight";
+const HIGHLIGHT_HALO_LAYER = "camera-highlight-halo";
+const HIGHLIGHT_DOT_LAYER = "camera-highlight-dot";
+
+function ensureHighlightLayers(map: MapLibreMap): void {
+  if (!map.getSource(HIGHLIGHT_SOURCE)) {
+    map.addSource(HIGHLIGHT_SOURCE, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    });
+  }
+
+  if (!map.getLayer(HIGHLIGHT_HALO_LAYER)) {
+    map.addLayer({
+      id: HIGHLIGHT_HALO_LAYER,
+      type: "circle",
+      source: HIGHLIGHT_SOURCE,
+      paint: {
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10,
+          ["*", 7, ["+", 1, ["*", 1.7, ["coalesce", ["feature-state", "t"], 0]]]],
+          14,
+          ["*", 11, ["+", 1, ["*", 1.7, ["coalesce", ["feature-state", "t"], 0]]]],
+          17,
+          ["*", 15, ["+", 1, ["*", 1.7, ["coalesce", ["feature-state", "t"], 0]]]],
+        ],
+        "circle-color": "rgba(0, 0, 0, 0)",
+        "circle-stroke-color": "#0f4c5c",
+        "circle-stroke-width": 2,
+        "circle-stroke-opacity": [
+          "-",
+          0.85,
+          ["*", 0.7, ["coalesce", ["feature-state", "t"], 0]],
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer(HIGHLIGHT_DOT_LAYER)) {
+    map.addLayer({
+      id: HIGHLIGHT_DOT_LAYER,
+      type: "circle",
+      source: HIGHLIGHT_SOURCE,
+      paint: {
+        "circle-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10,
+          ["*", 4, ["+", 1, ["*", 0.9, ["coalesce", ["feature-state", "t"], 0]]]],
+          14,
+          ["*", 6, ["+", 1, ["*", 0.9, ["coalesce", ["feature-state", "t"], 0]]]],
+          17,
+          ["*", 8, ["+", 1, ["*", 0.9, ["coalesce", ["feature-state", "t"], 0]]]],
+        ],
+        "circle-color": "#0f4c5c",
+        "circle-opacity": 1,
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": [
+          "+",
+          1.5,
+          ["*", 1.5, ["coalesce", ["feature-state", "t"], 0]],
+        ],
+        "circle-stroke-opacity": 1,
+      },
+    });
+  }
+}
+
+function setHighlightData(
+  map: MapLibreMap,
+  camera: Camera | null,
+  color: string,
+): void {
+  const source = map.getSource(HIGHLIGHT_SOURCE) as
+    | maplibregl.GeoJSONSource
+    | undefined;
+  if (!source) return;
+
+  if (!camera) {
+    source.setData({ type: "FeatureCollection", features: [] });
+    return;
+  }
+
+  source.setData({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        id: 1,
+        geometry: {
+          type: "Point",
+          coordinates: [camera.longitude, camera.latitude],
+        },
+        properties: {},
+      },
+    ],
+  });
+
+  if (map.getLayer(HIGHLIGHT_HALO_LAYER)) {
+    map.setPaintProperty(HIGHLIGHT_HALO_LAYER, "circle-stroke-color", color);
+  }
+  if (map.getLayer(HIGHLIGHT_DOT_LAYER)) {
+    map.setPaintProperty(HIGHLIGHT_DOT_LAYER, "circle-color", color);
+  }
+}
+
+
 type CameraFeatureCollection = {
   type: "FeatureCollection";
   features: Array<{
@@ -263,6 +374,7 @@ export function MapCanvas({
   onSelectNeighborhood,
   showNeighborhoods,
   showCameras,
+  highlightedCamera,
   focusPoint,
   focusKey,
   fitBoundsRequest,
@@ -273,6 +385,7 @@ export function MapCanvas({
   onSelectNeighborhood: (slug: string) => void;
   showNeighborhoods: boolean;
   showCameras: boolean;
+  highlightedCamera: Camera | null;
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
   fitBoundsRequest: { points: [number, number][]; key: number } | null;
@@ -294,6 +407,8 @@ export function MapCanvas({
   const showCamerasRef = useRef(showCameras);
   const onSelectNeighborhoodRef = useRef(onSelectNeighborhood);
   const themeRef = useRef(theme);
+  const highlightedCameraRef = useRef<Camera | null>(highlightedCamera);
+  const highlightFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     camerasRef.current = cameras;
@@ -454,6 +569,23 @@ export function MapCanvas({
 
     map.on("style.load", loadCameras);
 
+    const loadHighlight = () => {
+      try {
+        ensureHighlightLayers(map);
+        const camera = highlightedCameraRef.current;
+        if (camera) {
+          setHighlightData(map, camera, regionColor(camera.regionSlug));
+          map.setFeatureState({ source: HIGHLIGHT_SOURCE, id: 1 }, { t: 1 });
+        }
+      } catch {
+        // Style ainda não carregado.
+      }
+    };
+    map.on("style.load", loadHighlight);
+    if (map.isStyleLoaded()) {
+      loadHighlight();
+    }
+
     let hoveredBairro: string | number | null = null;
 
     map.on("mousemove", "bairros-fill", (e) => {
@@ -594,6 +726,63 @@ export function MapCanvas({
       entry.sync();
     }
   }, [cameras, showCameras]);
+
+  useEffect(() => {
+    highlightedCameraRef.current = highlightedCamera;
+    const map = mapRef.current;
+
+    if (highlightFrameRef.current !== null) {
+      cancelAnimationFrame(highlightFrameRef.current);
+      highlightFrameRef.current = null;
+    }
+
+    if (!map) {
+      return;
+    }
+
+    try {
+      if (!highlightedCamera) {
+        setHighlightData(map, null, "#0f4c5c");
+        return;
+      }
+      setHighlightData(
+        map,
+        highlightedCamera,
+        regionColor(highlightedCamera.regionSlug),
+      );
+    } catch {
+      return;
+    }
+
+    // Animação de crescimento (easeOutCubic) ao passar o mouse.
+    const start = performance.now();
+    const duration = 420;
+    const tick = (now: number) => {
+      if (mapRef.current !== map) {
+        return;
+      }
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      try {
+        map.setFeatureState({ source: HIGHLIGHT_SOURCE, id: 1 }, { t: eased });
+      } catch {
+        return;
+      }
+      if (progress < 1) {
+        highlightFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        highlightFrameRef.current = null;
+      }
+    };
+    highlightFrameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (highlightFrameRef.current !== null) {
+        cancelAnimationFrame(highlightFrameRef.current);
+        highlightFrameRef.current = null;
+      }
+    };
+  }, [highlightedCamera]);
 
   useEffect(() => {
     const run = async () => {

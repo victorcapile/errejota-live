@@ -4,7 +4,7 @@ Este documento descreve a aplicação que está no repositório hoje. O projeto 
 
 ## Objetivo e limites
 
-O Rio em Foco organiza câmeras e outras fontes públicas por região e bairro, com links para as páginas oficiais e contexto sobre a origem dos dados. O mapa mostra pontos cadastrados e limites de bairros; selecionar um bairro abre o dossiê com as câmeras disponíveis naquela área.
+O Errejota organiza câmeras e outras fontes públicas por região e bairro, com links para as páginas oficiais e contexto sobre a origem dos dados. O mapa mostra pontos cadastrados e limites de bairros; selecionar um bairro abre o dossiê com as câmeras disponíveis naquela área.
 
 O produto não opera câmeras, não baixa nem armazena vídeo e não incorpora transmissões. O botão de uma câmera leva à página do provedor. A localização de um ponto deve ser identificada como aproximada quando a origem não fornece precisão suficiente.
 

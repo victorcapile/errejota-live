@@ -1,13 +1,13 @@
 # Câmeras no mapa — importação local
 
-O Rio em Foco exibe **pontos de câmera** a partir de um arquivo local (CSV ou JSON).
+O Errejota exibe **pontos de câmera** a partir de um arquivo local (CSV ou JSON).
 O importador não acessa o COR-Rio, não chama a API do app, não contorna o gate
 de acesso e não baixa vídeo. Ele lê o arquivo e grava os pontos no PostgreSQL
 Supabase configurado por `DATABASE_URL` ou `POSTGRES_URL`.
 
 Cada ponto guarda uma **URL da página oficial** do provedor. Clicar no ponto
 abre essa página em nova aba. Nenhum vídeo é embutido, gravado ou reproduzido
-dentro do Rio em Foco.
+dentro do Errejota.
 
 > O arquivo atual do repositório contém 7.571 câmeras: 7.555 associadas a um
 > bairro do recorte e 16 em vias (Linha Vermelha e Radar Mendanha) fora dos
@@ -187,11 +187,11 @@ quando quiser reclassificar tudo. A rota usada é
 
 ## 5. Limites deliberados
 
-- O Rio em Foco **não** raspa a lista do COR-Rio, **não** usa UA do app e **não**
+- O Errejota **não** raspa a lista do COR-Rio, **não** usa UA do app e **não**
   contorna o `Referer`. A lista só entra porque foi fornecida pelo usuário em
   arquivo local. A verificação de status faz uma requisição por câmera, com
   intervalo e recuo quando o provedor responde `429`.
-- O Rio em Foco **não** incorpora o vídeo WebRTC do COR-Rio nem tenta reproduzi-lo.
+- O Errejota **não** incorpora o vídeo WebRTC do COR-Rio nem tenta reproduzi-lo.
 - Uma câmera importada não recebe selo de “verificada” nem aparece como “ao
   vivo”. O estado é sempre “link para página oficial”.
 - Dados de localização são os que você forneceu. Não há geocodificação externa

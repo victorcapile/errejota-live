@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { CameraDossierPanel } from "@/components/map/CameraDossierPanel";
+import { PresenceBadge } from "@/components/presence/PresenceBadge";
 import {
   REGION_VALUES,
   REGION_COLORS,
@@ -120,6 +121,7 @@ export function MapExplorer({
   );
   const [showNeighborhoods, setShowNeighborhoods] = useState(true);
   const [showCameras, setShowCameras] = useState(true);
+  const [hoveredCamera, setHoveredCamera] = useState<Camera | null>(null);
   const isDesktop = useSyncExternalStore(
     subscribeToDesktopBreakpoint,
     getDesktopBreakpointSnapshot,
@@ -307,21 +309,27 @@ export function MapExplorer({
     (item) => !region || item.regionSlug === region,
   );
 
-  const focusPoint = selectedNeighborhood
-    ? {
-        latitude: selectedNeighborhood.latitude as number,
-        longitude: selectedNeighborhood.longitude as number,
-      }
-    : null;
+  const focusPoint = useMemo(
+    () =>
+      selectedNeighborhood
+        ? {
+            latitude: selectedNeighborhood.latitude as number,
+            longitude: selectedNeighborhood.longitude as number,
+          }
+        : null,
+    [selectedNeighborhood],
+  );
   const focusKey = neighborhood || region || "all";
 
   function handleRegionChange(next: RegionSlug | "") {
+    setHoveredCamera(null);
     setRegion(next);
     setNeighborhood("");
     setDismissedDossierNeighborhood(neighborhood || null);
   }
 
   function handleNeighborhoodChange(next: string) {
+    setHoveredCamera(null);
     setNeighborhood(next);
     setDismissedDossierNeighborhood(next ? null : neighborhood || null);
     if (window.matchMedia("(max-width: 1023px)").matches) {
@@ -355,7 +363,7 @@ export function MapExplorer({
 
       let token: string | null = null;
       try {
-        token = window.sessionStorage.getItem("rio-em-foco-status-token");
+        token = window.sessionStorage.getItem("errejota-status-token");
       } catch {
         token = null;
       }
@@ -369,7 +377,7 @@ export function MapExplorer({
         if (informed) {
           try {
             window.sessionStorage.setItem(
-              "rio-em-foco-status-token",
+              "errejota-status-token",
               informed,
             );
           } catch {
@@ -431,7 +439,7 @@ export function MapExplorer({
             aria-label="Filtros e bairros"
             aria-hidden={!sidebarOpen}
             inert={!sidebarOpen}
-            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-[21rem] lg:rounded-2xl lg:border ${
+            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-y-auto border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-[23rem] lg:rounded-2xl lg:border ${
               sidebarOpen
                 ? "translate-x-0"
                 : "-translate-x-[calc(100%+1rem)]"
@@ -501,7 +509,7 @@ export function MapExplorer({
               <h4 className="mt-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
                 Situação
               </h4>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-nowrap items-center gap-1.5">
                 <Chip
                   active={statusFilter === "all"}
                   onClick={() => setStatusFilter("all")}
@@ -625,7 +633,7 @@ export function MapExplorer({
               onClick={() => setSidebarOpenPreference(false)}
               aria-label="Recolher menu"
               title="Recolher menu"
-              className="absolute left-[min(92vw,24rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[22rem]"
+              className="absolute left-[min(92vw,24rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[24rem]"
             >
               <ChevronLeft aria-hidden className="size-5" />
             </button>
@@ -637,12 +645,19 @@ export function MapExplorer({
               onSelectNeighborhood={handleNeighborhoodChange}
               showNeighborhoods={showNeighborhoods}
               showCameras={showCameras}
+              highlightedCamera={hoveredCamera}
               focusPoint={focusPoint}
               focusKey={focusKey}
               fitBoundsRequest={searchBounds}
               locateRequest={locateRequest}
               theme={theme}
             />
+
+            {!dossierOpen ? (
+              <div className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-10 lg:hidden">
+                <PresenceBadge variant="floating" />
+              </div>
+            ) : null}
 
             <button
               type="button"
@@ -707,8 +722,12 @@ export function MapExplorer({
                 neighborhood={dossierNeighborhood}
                 neighborhoodCameras={dossierCameras}
                 open={dossierOpen}
-                onClose={() => setDismissedDossierNeighborhood(neighborhood || null)}
+                onClose={() => {
+                  setHoveredCamera(null);
+                  setDismissedDossierNeighborhood(neighborhood || null);
+                }}
                 onStatusChange={handleCameraStatusChange}
+                onHoverCamera={setHoveredCamera}
                 updatingCameraId={updatingCameraId}
               />
             ) : null}

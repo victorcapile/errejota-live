@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gera a planilha de revisão dos bairros do Rio em Foco.
+"""Gera a planilha de revisão dos bairros do Errejota.
 
 Fonte: API local do app (http://localhost:3000).
 Saída: checklist-bairros.xlsx na raiz do projeto.
@@ -109,14 +109,14 @@ def build_rows() -> list[dict]:
 
 def build_workbook(rows: list[dict]) -> Workbook:
     wb = Workbook()
-    wb.properties.title = "Checklist de bairros — Rio em Foco"
+    wb.properties.title = "Checklist de bairros — Errejota"
     wb.properties.subject = "Acompanhamento dos bairros já visitados"
-    wb.properties.creator = "Rio em Foco"
+    wb.properties.creator = "Errejota"
     wb.properties.description = (
-        "Lista dos 162 bairros do Rio em Foco com contagem de câmeras "
+        "Lista dos 162 bairros do Errejota com contagem de câmeras "
         "e coluna para marcar os bairros já visitados."
     )
-    wb.properties.keywords = "Rio em Foco, bairros, câmeras, checklist, revisão"
+    wb.properties.keywords = "Errejota, bairros, câmeras, checklist, revisão"
     wb.calculation.fullCalcOnLoad = True
     wb.calculation.forceFullCalc = True
     wb.calculation.calcMode = "auto"
@@ -138,15 +138,15 @@ def build_workbook(rows: list[dict]) -> Workbook:
     ws.row_dimensions[1].height = 28
 
     ws["C1"].comment = Comment(
-        "Quantidade de câmeras cadastradas neste bairro.", "Rio em Foco"
+        "Quantidade de câmeras cadastradas neste bairro.", "Errejota"
     )
     ws["D1"].comment = Comment(
         "Câmeras marcadas como offline no momento da geração da planilha.",
-        "Rio em Foco",
+        "Errejota",
     )
     ws["E1"].comment = Comment(
         "Marque Sim, Em andamento ou Não. Use o filtro para achar os pendentes.",
-        "Rio em Foco",
+        "Errejota",
     )
 
     data_font = Font(name="Calibri", size=10, color=INK)
@@ -265,7 +265,7 @@ def build_workbook(rows: list[dict]) -> Workbook:
     ws.page_margins.right = 0.35
     ws.page_margins.top = 0.45
     ws.page_margins.bottom = 0.45
-    ws.oddHeader.center.text = "Rio em Foco — Checklist de bairros"
+    ws.oddHeader.center.text = "Errejota — Checklist de bairros"
     ws.oddHeader.center.size = 9
     ws.oddHeader.center.color = MUTED
     ws.oddFooter.center.text = "Página &P de &N"

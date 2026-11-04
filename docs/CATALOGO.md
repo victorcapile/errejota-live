@@ -1,6 +1,6 @@
 # Catálogo — dicionário de dados e política editorial
 
-Este documento descreve como uma fonte entra, é revisada e aparece no Rio em Foco. Ele vale para o seed, para a API e para o futuro painel administrativo.
+Este documento descreve como uma fonte entra, é revisada e aparece no Errejota. Ele vale para o seed, para a API e para o futuro painel administrativo.
 
 ---
 

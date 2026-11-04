@@ -1,6 +1,6 @@
 # Como contribuir
 
-Obrigado por querer ajudar no Rio em Foco. Este guia reúne o fluxo para preparar o ambiente, propor uma mudança e manter o mapa confiável.
+Obrigado por querer ajudar no Errejota. Este guia reúne o fluxo para preparar o ambiente, propor uma mudança e manter o mapa confiável.
 
 ## Antes de começar
 

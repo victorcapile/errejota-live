@@ -57,7 +57,7 @@ para ser contornado nem raspado em massa.
 - **Não verificada para embed.** O endpoint é público na prática, mas sem
   documentação de uso, sem termos de API e com gate por UA/referrer.
 - Portanto: **não importar as 7.571 câmeras** para o catálogo nem para o mapa do
-  Rio em Foco. Isso seria copiar o catálogo de outro serviço e contrariar as regras do
+  Errejota. Isso seria copiar o catálogo de outro serviço e contrariar as regras do
   projeto.
 - O que foi feito: cadastrado **um** item link-only apontando para a página
   pública do mapa (`https://appcor.cor-rio.work/mapa/cameras/`), sem player, sem
@@ -69,7 +69,7 @@ para ser contornado nem raspado em massa.
   `dec57990932e8e0af6ffccf4081f6212c93b1510aaef33f8b0674ed0a618540b`
   (REA `analyze-web-bundle`, `completeness: complete`, 595 nós de AST).
 - `POST /api/camera/player/whep/` respondeu `201 application/sdp`; o SDP anuncia
-  vídeo `H265/90000` com ICE/DTLS — player não implementado no Rio em Foco.
+  vídeo `H265/90000` com ICE/DTLS — player não implementado no Errejota.
 - Captura bruta (`captura.mitm`) e derivados apagados; este documento é a única
   evidência mantida.
 

@@ -54,7 +54,7 @@
 4. As fontes do INEA são estaduais e cobrem todo o RJ; não devem gerar pinos de câmera na cidade.
 5. `inmet` e `chm-marinha` são nacionais; entram como contexto, não como câmera.
 6. `cor-rio` e `cet-rio` são portais institucionais. O fato de o COR operar câmeras não autoriza incorporar imagens.
-7. `cor-rio-cameras` é link-only para o mapa público do COR-Rio. A lista interna de câmeras (7.571 pontos) responde apenas a pedidos do app ou da própria página e **não foi importada** pelo Rio em Foco; o vídeo é WebRTC por sessão e não é incorporado. Ver `docs/auditorias/cor-rio.md`. Pontos individuais só entram se o usuário fornecer um arquivo local (CSV ou JSON); ver `docs/CAMERAS.md`.
+7. `cor-rio-cameras` é link-only para o mapa público do COR-Rio. A lista interna de câmeras (7.571 pontos) responde apenas a pedidos do app ou da própria página e **não foi importada** pelo Errejota; o vídeo é WebRTC por sessão e não é incorporado. Ver `docs/auditorias/cor-rio.md`. Pontos individuais só entram se o usuário fornecer um arquivo local (CSV ou JSON); ver `docs/CAMERAS.md`.
 8. `data-rio` pode conter datasets úteis, mas cada dataset tem licença própria. Não importar em massa sem revisar.
 
 ## Próximas fontes a pesquisar (não cadastradas)

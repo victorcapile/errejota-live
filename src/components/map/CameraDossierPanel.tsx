@@ -9,6 +9,7 @@ type CameraDossierPanelProps = {
   open: boolean;
   onClose: () => void;
   onStatusChange: (camera: Camera, status: "online" | "offline") => void;
+  onHoverCamera?: (camera: Camera | null) => void;
   updatingCameraId?: string | null;
 };
 
@@ -18,6 +19,7 @@ export function CameraDossierPanel({
   open,
   onClose,
   onStatusChange,
+  onHoverCamera,
   updatingCameraId,
 }: CameraDossierPanelProps) {
   const onlineCount = neighborhoodCameras.filter(
@@ -80,6 +82,10 @@ export function CameraDossierPanel({
                   <li
                     key={neighborhoodCamera.id}
                     className="flex items-center gap-2"
+                    onMouseEnter={() => onHoverCamera?.(neighborhoodCamera)}
+                    onMouseLeave={() => onHoverCamera?.(null)}
+                    onFocus={() => onHoverCamera?.(neighborhoodCamera)}
+                    onBlur={() => onHoverCamera?.(null)}
                   >
                     <a
                       href={neighborhoodCamera.pageUrl}

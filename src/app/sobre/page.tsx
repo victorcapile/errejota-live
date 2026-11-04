@@ -15,7 +15,7 @@ import { formatDate } from "@/lib/format";
 export const metadata: Metadata = {
   title: "Sobre",
   description:
-    "O Rio em Foco é uma ferramenta OSINT de mapeamento de fontes públicas do Rio de Janeiro.",
+    "O Errejota é uma ferramenta OSINT de mapeamento de fontes públicas do Rio de Janeiro.",
 };
 
 const DATA = {
@@ -59,13 +59,13 @@ export default function AboutPage() {
     <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:py-16">
       <header className="max-w-3xl">
         <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-          Sobre o Rio em Foco
+          Sobre o Errejota
         </p>
         <h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
           Uma ferramenta OSINT de mapeamento de fontes públicas do Rio de Janeiro.
         </h1>
         <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
-          O Rio em Foco é uma ferramenta de inteligência de fontes abertas (OSINT)
+          O Errejota é uma ferramenta de inteligência de fontes abertas (OSINT)
           que mapeia câmeras e fontes públicas do Rio de Janeiro em um mapa
           interativo por região e bairro. Cada ponto leva à página oficial do
           provedor — sem vídeo embutido, gravação ou rastreamento.
@@ -207,7 +207,7 @@ export default function AboutPage() {
           title="Independência e atribuição"
         >
           <p>
-            O Rio em Foco é um projeto pessoal de estudo, sem vínculo com os
+            O Errejota é um projeto pessoal de estudo, sem vínculo com os
             provedores citados. Marcas, páginas e conteúdos pertencem aos
             respectivos titulares. O catálogo apenas descreve e liga para as
             fontes oficiais.
@@ -235,7 +235,7 @@ export default function AboutPage() {
       <p className="mt-6 text-center text-[11px] text-muted">
         Desenvolvido por Victor Capilé ·{" "}
         <a
-          href="https://github.com/victorcapile/rio-em-foco"
+          href="https://github.com/victorcapile/errejota"
           target="_blank"
           rel="noopener noreferrer"
           className="text-brand hover:underline"

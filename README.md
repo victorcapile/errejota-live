@@ -1,10 +1,10 @@
-# Rio em Foco
+# Errejota
 
-**Mapa colaborativo de câmeras e catálogo de fontes públicas do Rio de Janeiro.** O Rio em Foco organiza informações por região e bairro, mostra onde há câmeras cadastradas e direciona cada pessoa à página oficial da fonte. O projeto também reúne referências de serviços e informações públicas úteis para acompanhar a cidade.
+**Mapa colaborativo de câmeras e catálogo de fontes públicas do Rio de Janeiro.** O Errejota organiza informações por região e bairro, mostra onde há câmeras cadastradas e direciona cada pessoa à página oficial da fonte. O projeto também reúne referências de serviços e informações públicas úteis para acompanhar a cidade.
 
-O Rio em Foco não transmite nem grava vídeo. O mapa armazena pontos e metadados; ao selecionar uma câmera, a pessoa abre o endereço oficial do provedor.
+O Errejota não transmite nem grava vídeo. O mapa armazena pontos e metadados; ao selecionar uma câmera, a pessoa abre o endereço oficial do provedor.
 
-**Site:** [rioemfoco.vercel.app](https://rioemfoco.vercel.app)
+**Site:** [errejota.live](https://errejota.live)
 
 **Contribuições:** veja [CONTRIBUTING.md](CONTRIBUTING.md) antes de abrir uma proposta.
 
@@ -30,8 +30,8 @@ Você precisa de Node.js e npm. O banco pode ser local ou um projeto Supabase se
 Para desenvolver sem configurar nada, use o banco local (PGlite), que é criado dentro de `data/pglite`:
 
 ```bash
-git clone https://github.com/victorcapile/rio-em-foco.git
-cd rio-em-foco
+git clone https://github.com/victorcapile/errejota.git
+cd errejota
 npm ci
 npm run db:local
 npm run dev
@@ -53,6 +53,15 @@ npm run dev
 
 > `npm run build` precisa de `DATABASE_URL`/`POSTGRES_URL`: o build usa vários workers em paralelo e o banco local (PGlite) é apenas para desenvolvimento.
 
+> Local e produção são bancos **separados**: o local é o PGlite (`data/pglite`) e a produção é o Postgres do Supabase. Para espelhar a produção (fonte da verdade) no local:
+
+```bash
+# pare o `npm run dev` antes (o PGlite aceita um processo por vez)
+PRODUCTION_DATABASE_URL="postgresql://..." npm run db:sync
+```
+
+> `db:sync` apaga as tabelas locais e recarrega tudo da produção. O caminho inverso (local → produção) não é feito por esse comando: alterações locais devem ser aplicadas via seed/import ou manualmente, com cuidado.
+
 ## Comandos úteis
 
 | Comando | O que faz |
@@ -68,6 +77,7 @@ npm run dev
 | `npm run db:cameras -- --replace` | Importa câmeras e remove as que não estão no arquivo de entrada. |
 | `npm run db:status` | Verifica no provedor quais câmeras estão online/offline e grava o estado. |
 | `npm run db:camera:set -- 004827 offline` | Marca uma câmera manualmente como `online`, `offline` ou `unknown`. Use `--search="nome"` para descobrir o ID. |
+| `npm run db:sync` | Espelha o banco de produção (Supabase) no banco local (PGlite). Requer `PRODUCTION_DATABASE_URL`. |
 | `npm run db:camera:set -- --all=online` | Marca todas as câmeras como online de uma vez. |
 
 ## Estrutura do projeto

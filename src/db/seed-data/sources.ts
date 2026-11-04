@@ -80,7 +80,7 @@ export const SOURCE_SEED: SourceSeed[] = [
     slug: "cor-rio-cameras",
     name: "COR-Rio — Mapa de Câmeras",
     shortDescription:
-      "Mapa público do Centro de Operações do Rio. Mostra os pontos monitorados por nome e localização no próprio site do COR-Rio. O Rio em Foco apenas linka: não importa a lista nem carrega o vídeo.",
+      "Mapa público do Centro de Operações do Rio. Mostra os pontos monitorados por nome e localização no próprio site do COR-Rio. O Errejota apenas linka: não importa a lista nem carrega o vídeo.",
     category: "traffic",
     providerName: "Prefeitura da Cidade do Rio de Janeiro — COR-Rio",
     providerKind: "municipal",

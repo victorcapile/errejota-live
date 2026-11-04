@@ -292,7 +292,7 @@ async function seedNews() {
 }
 
 async function main() {
-  console.log("Rio em Foco — preparando catálogo...");
+  console.log("Errejota — preparando catálogo...");
 
   await seedRegions();
   await seedNeighborhoods();

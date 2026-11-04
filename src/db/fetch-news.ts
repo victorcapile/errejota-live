@@ -58,7 +58,7 @@ async function fetchFeed(url: string): Promise<FeedEntry[]> {
   const response = await fetch(url, {
     headers: {
       "user-agent":
-        "RioEmFoco/0.1 (catálogo de estudo; coleta de títulos de feeds públicos)",
+        "Errejota/0.1 (catálogo de estudo; coleta de títulos de feeds públicos)",
       accept: "application/rss+xml, application/xml, text/xml",
     },
     signal: AbortSignal.timeout(20_000),
@@ -97,7 +97,7 @@ async function fetchFeed(url: string): Promise<FeedEntry[]> {
 }
 
 async function main() {
-  console.log("Rio em Foco — coletando manchetes de feeds oficiais...");
+  console.log("Errejota — coletando manchetes de feeds oficiais...");
 
   const regionRows = await db
     .select({ id: regions.id, slug: regions.slug })

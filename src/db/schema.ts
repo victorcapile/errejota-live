@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -225,3 +226,13 @@ export type NeighborhoodRow = typeof neighborhoods.$inferSelect;
 export type SourceRow = typeof sources.$inferSelect;
 export type TagRow = typeof tags.$inferSelect;
 export type SourceStatusCheckRow = typeof sourceStatusChecks.$inferSelect;
+
+/**
+ * Presença efêmera: cada aba/navegador registra um "batimento" periódico.
+ * A contagem de usuários online é derivada da janela de tempo (últimos
+ * 60 segundos), então linhas antigas podem ser removidas sem prejuízo.
+ */
+export const presenceSessions = pgTable("presence_sessions", {
+  sessionId: text("session_id").primaryKey(),
+  lastSeen: bigint("last_seen", { mode: "number" }).notNull(),
+});
