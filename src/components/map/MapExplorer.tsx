@@ -615,7 +615,7 @@ export function MapExplorer({
               </section>
             </div>
 
-            <div className="p-3">
+            <div className="hidden p-3 lg:block">
               <ShowNeighborhoodsToggle
                 show={showNeighborhoods}
                 onToggle={() => setShowNeighborhoods((v) => !v)}
