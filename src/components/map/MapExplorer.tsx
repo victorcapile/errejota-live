@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
+  Camera as CameraIcon,
   ChevronLeft,
   LocateFixed,
   Menu,
@@ -264,8 +265,6 @@ export function MapExplorer({
     () => filteredCameras.filter((camera) => camera.isOnline === true).length,
     [filteredCameras],
   );
-  const unknownCount =
-    filteredCameras.length - onlineCount - offlineCount;
 
   // Base dos contadores geográficos: respeita o filtro de situação para que os
   // números de região/bairro batam com o que aparece no mapa.
@@ -654,7 +653,7 @@ export function MapExplorer({
             />
 
             {!dossierOpen ? (
-              <div className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-10 lg:hidden">
+              <div className="absolute right-4 top-[calc(max(1rem,env(safe-area-inset-top))+44px)] z-10 lg:hidden">
                 <PresenceBadge variant="floating" />
               </div>
             ) : null}
@@ -664,7 +663,7 @@ export function MapExplorer({
               onClick={() => setLocateRequest((request) => request + 1)}
               aria-label="Centralizar minha localização"
               title="Centralizar minha localização"
-              className="absolute right-3 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:bottom-auto lg:right-[10px] lg:top-[calc(env(safe-area-inset-top)+151px)]"
+              className="absolute right-3 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:bottom-auto lg:right-[10px] lg:top-[calc(env(safe-area-inset-top)+131px)]"
             >
               <LocateFixed aria-hidden className="size-5" />
             </button>
@@ -674,46 +673,33 @@ export function MapExplorer({
                 dossierOpen ? "lg:right-[23.5rem]" : "lg:right-[10px]"
               }`}
             >
-              <div className="pointer-events-auto flex h-[52px] max-w-full flex-col justify-center rounded-xl border border-line bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
-                  <LocateFixed aria-hidden className="size-3.5 shrink-0 text-brand" />
-                  <span>
-                    {camerasLoading
-                      ? "Carregando câmeras…"
-                      : `${filteredCameras.length} ${
-                          filteredCameras.length === 1 ? "câmera" : "câmeras"
-                        } no mapa`}
+              <div className="pointer-events-auto flex h-[32px] max-w-full items-center gap-3 rounded-xl border border-line bg-card/95 px-3 shadow-sm backdrop-blur">
+                {camerasLoading ? (
+                  <span className="text-[11px] font-medium text-muted">
+                    Carregando…
                   </span>
-                </p>
-                {!camerasLoading && (offlineCount > 0 || onlineCount > 0) ? (
-                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted">
-                    <span
-                      aria-hidden
-                      className="size-1.5 rounded-full bg-brand"
-                    />
-                    {onlineCount} online
-                    {offlineCount > 0 ? (
-                      <>
-                        <span aria-hidden className="text-line">
-                          ·
-                        </span>
-                        <span
-                          aria-hidden
-                          className="size-1.5 rounded-full bg-foreground opacity-30"
-                        />
-                        {offlineCount} offline
-                      </>
-                    ) : null}
-                    {unknownCount > 0 ? (
-                      <>
-                        <span aria-hidden className="text-line">
-                          ·
-                        </span>
-                        {unknownCount} sem status
-                      </>
-                    ) : null}
-                  </p>
-                ) : null}
+                ) : (
+                  <>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-foreground">
+                      <span className="relative flex size-1.5" aria-hidden>
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-500 opacity-70" />
+                        <span className="relative inline-flex size-1.5 rounded-full bg-blue-500" />
+                      </span>
+                      <CameraIcon
+                        aria-hidden
+                        className="size-3.5 shrink-0 text-muted"
+                      />
+                      {onlineCount} online
+                    </span>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-muted">
+                      <span
+                        aria-hidden
+                        className="size-1.5 rounded-full bg-foreground opacity-30"
+                      />
+                      {offlineCount} offline
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 

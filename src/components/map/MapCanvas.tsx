@@ -439,20 +439,12 @@ export function MapCanvas({
         "top-right",
       );
     }
-    map.addControl(
-      new maplibregl.AttributionControl({
-        compact: true,
-        customAttribution:
-          '<a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a>',
-      }),
-      "bottom-right",
-    );
     const topRightControls = map
       .getContainer()
       .querySelector<HTMLElement>(".maplibregl-ctrl-top-right");
     if (topRightControls) {
       topRightControls.style.top =
-        "calc(env(safe-area-inset-top) + 4.375rem)";
+        "calc(env(safe-area-inset-top) + 3.125rem)";
     }
 
     const loadBairros = () => {
@@ -909,6 +901,27 @@ export function MapCanvas({
           {hoveredNeighborhoodName}
         </div>
       ) : null}
+      <div className="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2">
+        <span className="pointer-events-auto whitespace-nowrap rounded bg-background/70 px-1.5 py-0.5 text-[10px] leading-tight text-muted backdrop-blur-sm">
+          <a
+            href="https://openfreemap.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-brand hover:underline"
+          >
+            OpenFreeMap
+          </a>
+          {" · "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-brand hover:underline"
+          >
+            © OpenStreetMap
+          </a>
+        </span>
+      </div>
     </>
   );
 }

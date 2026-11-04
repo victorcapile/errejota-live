@@ -98,6 +98,7 @@ export function PresenceBadge({ variant = "header", className = "" }: Props) {
         data-testid="presence-badge"
       >
         <PresenceDot />
+        <Users aria-hidden className="size-3.5" />
         <span className="tabular-nums text-foreground">{displayCount}</span>
         <span>online</span>
       </span>
