@@ -35,6 +35,11 @@ type Props = {
 export function PresenceBadge({ variant = "header", className = "" }: Props) {
   const [online, setOnline] = useState<number | null>(null);
 
+  // Quem está vendo o badge está online agora. Mostrar 1 de imediato evita o
+  // estado "—" enquanto o primeiro batimento não responde. O valor do servidor
+  // já inclui esta sessão, então nunca somamos 1 por cima dele.
+  const displayCount = Math.max(1, online ?? 1);
+
   useEffect(() => {
     const sessionId = readSessionId();
     let cancelled = false;
@@ -93,7 +98,7 @@ export function PresenceBadge({ variant = "header", className = "" }: Props) {
         data-testid="presence-badge"
       >
         <PresenceDot />
-        <span className="tabular-nums text-foreground">{online ?? "—"}</span>
+        <span className="tabular-nums text-foreground">{displayCount}</span>
         <span>online</span>
       </span>
     );
@@ -109,7 +114,7 @@ export function PresenceBadge({ variant = "header", className = "" }: Props) {
     >
       <PresenceDot />
       <Users aria-hidden className="size-3.5" />
-      <span className="tabular-nums text-foreground">{online ?? "—"}</span>
+      <span className="tabular-nums text-foreground">{displayCount}</span>
       <span className="hidden sm:inline">online</span>
     </span>
   );

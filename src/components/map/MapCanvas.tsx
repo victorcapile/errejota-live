@@ -432,10 +432,13 @@ export function MapCanvas({
       attributionControl: false,
     });
 
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      "top-right",
-    );
+    // Zoom (+/-) só faz sentido no desktop; no mobile os gestos já resolvem.
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      map.addControl(
+        new maplibregl.NavigationControl({ showCompass: false }),
+        "top-right",
+      );
+    }
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
@@ -449,7 +452,7 @@ export function MapCanvas({
       .querySelector<HTMLElement>(".maplibregl-ctrl-top-right");
     if (topRightControls) {
       topRightControls.style.top =
-        "calc(env(safe-area-inset-top) + 3.5rem)";
+        "calc(env(safe-area-inset-top) + 4.375rem)";
     }
 
     const loadBairros = () => {

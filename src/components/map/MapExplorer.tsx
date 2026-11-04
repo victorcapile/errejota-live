@@ -664,17 +664,17 @@ export function MapExplorer({
               onClick={() => setLocateRequest((request) => request + 1)}
               aria-label="Centralizar minha localização"
               title="Centralizar minha localização"
-              className="absolute right-[10px] top-[calc(env(safe-area-inset-top)+8rem)] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              className="absolute right-3 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:bottom-auto lg:right-[10px] lg:top-[calc(env(safe-area-inset-top)+151px)]"
             >
               <LocateFixed aria-hidden className="size-5" />
             </button>
 
             <div
-              className={`pointer-events-none absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-20 max-w-[calc(100vw-2rem)] ${
-                dossierOpen ? "lg:right-[23.5rem]" : ""
+              className={`pointer-events-none absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 max-w-[calc(100vw-2rem)] ${
+                dossierOpen ? "lg:right-[23.5rem]" : "lg:right-[10px]"
               }`}
             >
-              <div className="pointer-events-auto max-w-full rounded-xl border border-line bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
+              <div className="pointer-events-auto flex h-[52px] max-w-full flex-col justify-center rounded-xl border border-line bg-card/95 px-3 py-2 shadow-sm backdrop-blur">
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground">
                   <LocateFixed aria-hidden className="size-3.5 shrink-0 text-brand" />
                   <span>
