@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ferramenta OSINT — Errejota">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="errejota live">
   <rect width="512" height="512" rx="112" fill="#0f4c5c"/>
-  <circle cx="256" cy="256" r="190" fill="none" stroke="#f6f3ea" stroke-opacity=".12" stroke-width="10"/>
-  <path d="M72 256c44-78 105-122 184-122s140 44 184 122c-44 78-105 122-184 122S116 334 72 256Z" fill="#f6f3ea"/>
-  <circle cx="256" cy="256" r="86" fill="#c26a1b"/>
-  <circle cx="256" cy="256" r="42" fill="#0f4c5c"/>
-  <circle cx="286" cy="226" r="15" fill="#f6e3ca"/>
-  <text x="256" y="420" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#f6f3ea">OSINT</text>
+  <g transform="translate(118 62) scale(11.5)" fill="none" stroke="#f6f3ea" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+    <circle cx="12" cy="12" r="3"/>
+  </g>
+  <text x="256" y="422" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="54" font-weight="600" fill="#f6f3ea">errejota live</text>
 </svg>
