@@ -1,15 +1,8 @@
 "use client";
 
 import { CloudRain, Moon, Sun } from "lucide-react";
+import { rainFreshness, rainHeadline } from "@/lib/rain-labels";
 import type { NeighborhoodCondition } from "@/lib/types";
-
-function rainHeadline(mm: number | null): string {
-  if (mm === null) return "Sem dados de chuva";
-  if (mm === 0) return "Sem chuva na estação";
-  if (mm < 2) return "Chuva fraca";
-  if (mm < 5) return "Chuva moderada";
-  return "Chuva forte";
-}
 
 function rainStationLine(condition: NeighborhoodCondition): string {
   if (condition.rainMaxMm === null) {
@@ -56,12 +49,7 @@ export function RainConditionCard({
 }: {
   condition: NeighborhoodCondition;
 }) {
-  const time = condition.rainReadingAt
-    ? new Date(condition.rainReadingAt).toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "sem leitura";
+  const freshness = rainFreshness(condition.rainReadingAt);
 
   return (
     <div className="rain-card-enter flex items-center gap-2.5 rounded-xl border border-line bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
@@ -88,10 +76,20 @@ export function RainConditionCard({
         </p>
       </div>
       <p
-        className="shrink-0 text-[9px] tabular-nums text-muted"
-        title="Horário da leitura na estação (fonte Alerta Rio). A coleta no Errejota ocorre poucos minutos depois."
+        className={`shrink-0 text-[9px] tabular-nums ${
+          freshness.stale
+            ? "font-medium text-amber-600 dark:text-amber-400"
+            : "text-muted"
+        }`}
+        title={
+          freshness.stale
+            ? "Leitura antiga: a fonte não atualizou nas últimas coletas."
+            : "Horário da leitura na estação (fonte Alerta Rio). A coleta no Errejota ocorre poucos minutos depois."
+        }
       >
-        atualizado {time}
+        {freshness.stale
+          ? `leitura ${freshness.time} · desatualizado`
+          : `atualizado ${freshness.time}`}
       </p>
     </div>
   );

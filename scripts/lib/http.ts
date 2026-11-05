@@ -39,11 +39,25 @@ export async function fetchJson<T>(
     try {
       const response = await fetch(url, {
         signal: controller.signal,
-        headers: { Accept: "application/json", ...headers },
+        headers: {
+          Accept: "application/json",
+          "User-Agent":
+            "Mozilla/5.0 (compatible; Errejota/1.3; +https://errejota.live)",
+          Referer: "https://alertario.rio.rj.gov.br/mapa-de-chuvas/",
+          ...headers,
+        },
       });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} em ${url}`);
+      }
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.toLowerCase().includes("json")) {
+        const preview = (await response.text()).slice(0, 140).replace(/\s+/g, " ");
+        throw new Error(
+          `Resposta não-JSON (${contentType || "sem content-type"}) em ${url}: ${preview}`,
+        );
       }
 
       const data = (await response.json()) as T;

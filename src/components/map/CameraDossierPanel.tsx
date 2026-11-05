@@ -9,20 +9,12 @@ import {
   X,
 } from "lucide-react";
 import { RainIcon } from "./RainConditionCard";
+import { rainFreshness, rainHeadline } from "@/lib/rain-labels";
 import type {
   Camera,
   NeighborhoodCondition,
   NeighborhoodWithCount,
 } from "@/lib/types";
-
-
-function rainHeadline(mm: number | null): string {
-  if (mm === null) return "Sem dados de chuva";
-  if (mm === 0) return "Sem chuva na estação";
-  if (mm < 2) return "Chuva fraca";
-  if (mm < 5) return "Chuva moderada";
-  return "Chuva forte";
-}
 
 function rainStationLine(condition: NeighborhoodCondition): string {
   if (condition.rainMaxMm === null) {
@@ -136,17 +128,24 @@ export function CameraDossierPanel({
             </div>
             <div className="shrink-0 text-right">
               <p
-                className="text-[9px] tabular-nums text-muted"
-                title="Horário da leitura na estação (fonte Alerta Rio). A coleta no Errejota ocorre poucos minutos depois."
+                className={`text-[9px] tabular-nums ${
+                  rainFreshness(condition.rainReadingAt).stale
+                    ? "font-medium text-amber-600 dark:text-amber-400"
+                    : "text-muted"
+                }`}
+                title={
+                  rainFreshness(condition.rainReadingAt).stale
+                    ? "Leitura antiga: a fonte não atualizou nas últimas coletas."
+                    : "Horário da leitura na estação (fonte Alerta Rio). A coleta no Errejota ocorre poucos minutos depois."
+                }
               >
-                {condition.rainReadingAt
-                  ? `atualizado ${new Date(
-                      condition.rainReadingAt,
-                    ).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}`
-                  : "sem leitura"}
+                {rainFreshness(condition.rainReadingAt).stale
+                  ? `leitura ${
+                      rainFreshness(condition.rainReadingAt).time
+                    } · desatualizado`
+                  : `atualizado ${
+                      rainFreshness(condition.rainReadingAt).time
+                    }`}
               </p>
             </div>
           </div>
