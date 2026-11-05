@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import postgres from "postgres";
 
-export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const POOLER_HOST = "aws-0-sa-east-1.pooler.supabase.com";
