@@ -129,45 +129,48 @@ export async function listNeighborhoodConditions(params: {
 }): Promise<ConditionsSummary> {
   const metric: RainMetric = params.metric ?? "mm_1h";
 
-  const [stationRows, latest, riskRows, hoodRows, stageRows] =
-    await Promise.all([
-      db
-        .select({
-          id: rainStations.id,
-          name: rainStations.name,
-          neighborhoodSlug: rainStations.neighborhoodSlug,
-          regionSlug: rainStations.regionSlug,
-          latitude: rainStations.latitude,
-          longitude: rainStations.longitude,
-        })
-        .from(rainStations)
-        .where(eq(rainStations.isActive, true)),
-      loadLatestObservations(metric),
-      db
-        .select({
-          neighborhoodSlug: riskIndicators.neighborhoodSlug,
-          class: riskIndicators.class,
-          score: riskIndicators.score,
-          sourceId: riskIndicators.sourceId,
-        })
-        .from(riskIndicators)
-        .where(eq(riskIndicators.kind, "flood_ismfi")),
-      db
-        .select({
-          slug: neighborhoods.slug,
-          name: neighborhoods.name,
-          regionSlug: regions.slug,
-          latitude: neighborhoods.latitude,
-          longitude: neighborhoods.longitude,
-        })
-        .from(neighborhoods)
-        .innerJoin(regions, eq(regions.id, neighborhoods.regionId)),
-      db
-        .select()
-        .from(cityStages)
-        .orderBy(desc(cityStages.effectiveAt))
-        .limit(1),
-    ]);
+  // Consultas sequenciais: o pooler do Supabase e o cliente com max: 1 não
+  // lidam bem com várias queries simultâneas na mesma conexão.
+  const stationRows = await db
+    .select({
+      id: rainStations.id,
+      name: rainStations.name,
+      neighborhoodSlug: rainStations.neighborhoodSlug,
+      regionSlug: rainStations.regionSlug,
+      latitude: rainStations.latitude,
+      longitude: rainStations.longitude,
+    })
+    .from(rainStations)
+    .where(eq(rainStations.isActive, true));
+
+  const latest = await loadLatestObservations(metric);
+
+  const riskRows = await db
+    .select({
+      neighborhoodSlug: riskIndicators.neighborhoodSlug,
+      class: riskIndicators.class,
+      score: riskIndicators.score,
+      sourceId: riskIndicators.sourceId,
+    })
+    .from(riskIndicators)
+    .where(eq(riskIndicators.kind, "flood_ismfi"));
+
+  const hoodRows = await db
+    .select({
+      slug: neighborhoods.slug,
+      name: neighborhoods.name,
+      regionSlug: regions.slug,
+      latitude: neighborhoods.latitude,
+      longitude: neighborhoods.longitude,
+    })
+    .from(neighborhoods)
+    .innerJoin(regions, eq(regions.id, neighborhoods.regionId));
+
+  const stageRows = await db
+    .select()
+    .from(cityStages)
+    .orderBy(desc(cityStages.effectiveAt))
+    .limit(1);
 
   const latestByStation = new Map(
     latest.map((row) => [row.stationId, row]),
