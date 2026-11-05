@@ -5,12 +5,16 @@ import {
   rainObservations,
   rainStations,
 } from "@/db/schema";
-import { RAIN_METRIC_VALUES, type RainMetric } from "@/lib/constants";
+import type { RainMetric } from "@/lib/constants";
 
 const MC_URL = "https://alertario.rio.rj.gov.br/upload/Mapa/mc.json";
 const SOURCE_SLUG = "alerta-rio";
 const FRESH_WINDOW_MS = 4.5 * 60 * 1000;
 const CHECK_THROTTLE_MS = 60 * 1000;
+
+// A UI usa apenas a janela de 1 h; guardar as 8 janelas a cada 5 min
+// multiplicaria o volume sem uso. O script manual continua gravando todas.
+const INGEST_METRICS: RainMetric[] = ["mm_1h"];
 
 const METRIC_FIELDS: Record<RainMetric, string> = {
   mm_5m: "ch05m",
@@ -212,7 +216,7 @@ async function ingestRain(): Promise<IngestResult> {
           set: { name, latitude, longitude, isActive: true, updatedAt: collectedAt },
         });
 
-      const observationRows = RAIN_METRIC_VALUES.map((metric) => {
+      const observationRows = INGEST_METRICS.map((metric) => {
         const value = parseDecimal(station[METRIC_FIELDS[metric]]);
         if (value === null) {
           return null;
