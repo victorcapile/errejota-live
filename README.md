@@ -91,7 +91,7 @@ A camada de chuva usa os dados públicos do **Alerta Rio** (arquivo `mc.json` do
 - `npm run db:rain` — chuva agora (33 estações, atualização ~5 min).
 - `npm run db:risk` — indicador de risco por bairro via ISMFI (`risk_indicators`).
 
-A ingestão é agendada pelo **GitHub Actions** (`.github/workflows/`): chuva a cada 5 minutos e risco diariamente. É preciso configurar o secret `DATABASE_URL` no repositório; o cron da Vercel não é usado porque no plano Hobby roda no máximo uma vez por dia.
+A chuva em produção é ingerida **sob demanda no Vercel**: quando as APIs detectam que a última leitura tem mais de ~5 minutos, buscam a fonte oficial e gravam no banco antes de responder. Assim o app acompanha a atualização de 5 minutos sem depender de cron externo. O risco (ISMFI) continua diário pelo **GitHub Actions**; o workflow de chuva fica apenas para execução manual de contingência.
 
 As fontes, licenças e limitações estão em [docs/FONTES.md](docs/FONTES.md). O Errejota exibe apenas indicadores derivados, com atribuição e link para a origem.
 

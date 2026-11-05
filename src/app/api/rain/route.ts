@@ -1,9 +1,12 @@
 import { getLastIngestRun, listRainReadings } from "@/lib/rain";
+import { ensureFreshRain } from "@/lib/ingest-rain";
 import { conditionsQueryFromUrl } from "@/lib/rain-params";
 
 const CACHE = {
   "Cache-Control": "public, s-maxage=60, stale-while-revalidate=60",
 };
+
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -17,6 +20,7 @@ export async function GET(request: Request) {
   }
 
   try {
+    await ensureFreshRain();
     const result = await listRainReadings({
       region: parsed.query.region,
       neighborhood: parsed.query.neighborhood,

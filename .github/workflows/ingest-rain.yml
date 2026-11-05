@@ -1,11 +1,9 @@
 name: Ingestão de chuva (Alerta Rio)
 
-# O cron da Vercel no plano Hobby roda no máximo uma vez por dia; por isso a
-# ingestão de chuva é agendada pelo GitHub Actions.
+# A ingestão de chuva em produção é sob demanda no Vercel
+# (src/lib/ingest-rain.ts), chamada pelas APIs a cada atualização do app.
+# Este workflow fica como contingência/execução manual.
 on:
-  schedule:
-    # A cada 5 minutos, acompanhando o arquivo oficial (atualiza a cada ~5 min).
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 concurrency:
