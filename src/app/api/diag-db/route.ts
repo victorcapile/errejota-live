@@ -91,8 +91,53 @@ export async function GET(request: Request) {
       : Promise.resolve({ ok: false, error: "sem DATABASE_URL" }),
   ]);
 
+  const appProbe = await (async () => {
+    try {
+      const { db } = await import("@/db");
+      const { sql: drizzleSql } = await import("drizzle-orm");
+      await Promise.race([
+        db.execute(drizzleSql`select 1 as ok`),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("timeout 12s")), 12000);
+        }),
+      ]);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: String(error instanceof Error ? error.message : error).slice(
+          0,
+          200,
+        ),
+      };
+    }
+  })();
+
+  const listProbe = await (async () => {
+    try {
+      const { listCameras } = await import("@/lib/catalog");
+      const rows = await Promise.race([
+        listCameras(),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("timeout 25s")), 25000);
+        }),
+      ]);
+      return { ok: true, count: (rows as unknown[]).length };
+    } catch (error) {
+      return {
+        ok: false,
+        error: String(error instanceof Error ? error.message : error).slice(
+          0,
+          200,
+        ),
+      };
+    }
+  })();
+
   return NextResponse.json(
     {
+      appProbe,
+      listProbe,
       raw: rawProbe,
       databaseUrl: databaseProbe,
       hasDatabaseUrl: Boolean(databaseUrl),
