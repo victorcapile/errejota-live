@@ -79,18 +79,25 @@ export async function GET(request: Request) {
         )}@${POOLER_HOST}:6543/${database}?sslmode=require`
       : "";
 
-  const raw = process.env.POSTGRES_URL ?? process.env.DATABASE_URL ?? "";
-  const [rawProbe, poolerProbe] = await Promise.all([
+  const raw = process.env.POSTGRES_URL ?? "";
+  const databaseUrl = process.env.DATABASE_URL ?? "";
+  const [rawProbe, poolerProbe, databaseProbe] = await Promise.all([
     raw ? probe(raw) : Promise.resolve({ ok: false, error: "sem URL" }),
     pooler
       ? probe(pooler)
       : Promise.resolve({ ok: false, error: "sem ref/senha" }),
+    databaseUrl
+      ? probe(databaseUrl)
+      : Promise.resolve({ ok: false, error: "sem DATABASE_URL" }),
   ]);
 
   return NextResponse.json(
     {
       raw: rawProbe,
+      databaseUrl: databaseProbe,
+      hasDatabaseUrl: Boolean(databaseUrl),
       pooler: poolerProbe,
+      postgresUrl: rawProbe.ok ? raw : null,
       poolerUrl: poolerProbe.ok ? pooler : null,
     },
     { headers: { "Cache-Control": "no-store" } },
