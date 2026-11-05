@@ -14,12 +14,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log("[cameras] rota iniciou");
     const items = await listCameras({ region, neighborhood });
-    console.log("[cameras] listou", items.length);
-    const body = Response.json({ items, total: items.length });
-    console.log("[cameras] resposta pronta");
-    return body;
+    return Response.json({ items, total: items.length });
   } catch (error) {
     console.error("Falha ao listar câmeras:", error);
     return Response.json(

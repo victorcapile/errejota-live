@@ -29,8 +29,8 @@ function createPostgresDatabase(connectionString: string): Database {
     max: 1,
     // Em serverless, conexões ociosas ficam presas e esgotam o pool do Supabase.
     // Um tempo curto evita reutilizar sockets que morreram após pausa/restart.
-    idle_timeout: 1,
-    max_lifetime: 1,
+    idle_timeout: 5,
+    max_lifetime: 60,
     connect_timeout: 10,
     connection: { application_name: "errejota-live" },
   });

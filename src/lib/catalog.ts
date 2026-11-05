@@ -458,9 +458,7 @@ export async function listCameras(options?: {
   region?: string;
   neighborhood?: string;
 }): Promise<Camera[]> {
-  console.log("[cameras] schema iniciou");
   await ensureCameraSchema();
-  console.log("[cameras] schema ok");
   const filters: SQL[] = [];
   if (options?.region) {
     filters.push(eq(cameras.regionSlug, options.region));
@@ -482,7 +480,6 @@ export async function listCameras(options?: {
     .leftJoin(sources, eq(cameras.sourceId, sources.id))
     .where(filters.length > 0 ? and(...filters) : undefined)
     .orderBy(asc(cameras.externalId), asc(cameras.name));
-  console.log("[cameras] query ok", rows.length);
 
   return rows.map((row) =>
     mapCamera(row.camera, row.neighborhood, row.region, row.source),
