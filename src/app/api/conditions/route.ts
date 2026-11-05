@@ -2,8 +2,10 @@ import { getLastIngestRun, listNeighborhoodConditions } from "@/lib/rain";
 import { ensureFreshRain } from "@/lib/ingest-rain";
 import { conditionsQueryFromUrl } from "@/lib/rain-params";
 
+// Sem cache: o primeiro acesso precisa disparar a verificação de frescor e
+// devolver a leitura mais nova, não uma resposta guardada na CDN.
 const CACHE = {
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=60",
+  "Cache-Control": "no-store",
 };
 
 export const maxDuration = 60;

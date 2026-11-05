@@ -10,7 +10,7 @@ import type { RainMetric } from "@/lib/constants";
 const MC_URL = "https://alertario.rio.rj.gov.br/upload/Mapa/mc.json";
 const SOURCE_SLUG = "alerta-rio";
 const FRESH_WINDOW_MS = 4.5 * 60 * 1000;
-const CHECK_THROTTLE_MS = 60 * 1000;
+const CHECK_THROTTLE_MS = 30 * 1000;
 
 // A UI usa apenas a janela de 1 h; guardar as 8 janelas a cada 5 min
 // multiplicaria o volume sem uso. O script manual continua gravando todas.
@@ -309,7 +309,7 @@ export async function ensureFreshRain(): Promise<void> {
     const lastRunAt = lastRun?.startedAt
       ? new Date(lastRun.startedAt).getTime()
       : 0;
-    if (Number.isFinite(lastRunAt) && now - lastRunAt < 150_000) {
+    if (Number.isFinite(lastRunAt) && now - lastRunAt < 60_000) {
       return;
     }
 
