@@ -17,15 +17,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [result, lastRun] = await Promise.all([
-      listNeighborhoodConditions({
-        region: parsed.query.region,
-        neighborhood: parsed.query.neighborhood,
-        metric: parsed.query.metric,
-        limit: parsed.query.limit,
-      }),
-      getLastIngestRun("rain"),
-    ]);
+    const result = await listNeighborhoodConditions({
+      region: parsed.query.region,
+      neighborhood: parsed.query.neighborhood,
+      metric: parsed.query.metric,
+      limit: parsed.query.limit,
+    });
+    const lastRun = await getLastIngestRun("rain");
     return Response.json(
       {
         metric: parsed.query.metric,
