@@ -46,7 +46,7 @@ const RAIN_FIELD_BOUNDS = {
 const RAIN_FIELD_WIDTH = 640;
 const RAIN_FIELD_HEIGHT = 320;
 const TRANSPARENT_PIXEL =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWJiYGBgAAAAAP//XRcpzQAAAAZJREFUAwAADwADJDd96QAAAABJRU5ErkJggg==";
 
 const HIGHLIGHT_SOURCE = "camera-highlight";
 const HIGHLIGHT_HALO_LAYER = "camera-highlight-halo";
@@ -310,7 +310,7 @@ function renderRainField(
   // Nuvens claras no tema escuro e acinzentadas no tema claro.
   const lowColor = isDark ? [118, 146, 178] : [108, 138, 168];
   const highColor = isDark ? [236, 245, 255] : [28, 64, 100];
-  const maxAlpha = isDark ? 0.6 : 0.58;
+  const maxAlpha = isDark ? 0.48 : 0.46;
 
   for (let y = 0; y < RAIN_FIELD_HEIGHT; y += 1) {
     const v = (y + 0.5) / RAIN_FIELD_HEIGHT;
@@ -420,8 +420,13 @@ function syncRainLayers(
 
     if (map.getLayer(RAIN_FIELD_LAYER)) {
       // A camada fica sempre montada: a transição de opacidade cuida do fade
-      // ao abrir/fechar o dossiê ou ligar/desligar a chuva.
-      map.setPaintProperty(RAIN_FIELD_LAYER, "raster-opacity", opacity);
+      // ao abrir/fechar o dossiê ou ligar/desligar a chuva. Sem nenhuma
+      // imagem válida (ex.: API indisponível) ela permanece invisível.
+      map.setPaintProperty(
+        RAIN_FIELD_LAYER,
+        "raster-opacity",
+        rainFieldCache ? opacity : 0,
+      );
     }
   } catch {
     // Estilo ainda carregando.
