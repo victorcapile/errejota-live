@@ -17,9 +17,12 @@ let schemaReady: Promise<void> | null = null;
 export function ensureCameraSchema(): Promise<void> {
   schemaReady ??= (async () => {
     try {
+      console.log("[schema] alter inicio");
       await db.execute(
         sql`alter table "cameras" add column if not exists "is_online" boolean`,
       );
+      console.log("[schema] alter ok");
+      console.log("[schema] upd1 inicio");
       await db.execute(sql`
         update "neighborhoods"
         set "region_id" = 'region_zona-sudoeste'
