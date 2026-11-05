@@ -42,7 +42,9 @@ export async function fetchJson<T>(
         headers: {
           Accept: "application/json",
           "User-Agent":
-            "Mozilla/5.0 (compatible; Errejota/1.3; +https://errejota.live)",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Cache-Control": "no-cache",
           Referer: "https://alertario.rio.rj.gov.br/mapa-de-chuvas/",
           ...headers,
         },
@@ -66,7 +68,10 @@ export async function fetchJson<T>(
     } catch (error) {
       lastError = error;
       if (attempt < retries) {
-        const delay = 500 * 2 ** attempt + Math.random() * 250;
+        const delay = Math.min(
+          10_000,
+          500 * 2 ** attempt + Math.random() * 250,
+        );
         await sleep(delay);
       }
     } finally {

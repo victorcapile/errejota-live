@@ -110,7 +110,7 @@ async function main() {
   try {
     const payload = await fetchJson<McPayload>(MC_URL, {
       timeoutMs: 20_000,
-      retries: 3,
+      retries: 5,
       validate: validatePayload,
     });
 
