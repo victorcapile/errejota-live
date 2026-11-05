@@ -289,3 +289,25 @@
 [data-theme="dark"] .map-popup-shell .maplibregl-popup-tip {
   border-top-color: #121d22;
 }
+
+/* Entrada do card de chuva no mobile. */
+@keyframes rain-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rain-card-enter {
+  animation: rain-card-in 240ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rain-card-enter {
+    animation: none;
+  }
+}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -15,7 +16,7 @@ import { formatDate } from "@/lib/format";
 export const metadata: Metadata = {
   title: "Sobre",
   description:
-    "O Errejota é uma ferramenta OSINT de mapeamento de fontes públicas do Rio de Janeiro.",
+    "O errejota.live é uma ferramenta OSINT de mapeamento de fontes públicas do Rio de Janeiro.",
 };
 
 const DATA = {
@@ -56,16 +57,17 @@ function Section({
 
 export default function AboutPage() {
   return (
-    <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:py-16">
+    <>
+      <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:py-16">
       <header className="max-w-3xl">
         <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
-          Sobre o Errejota
+          Sobre o errejota.live
         </p>
         <h1 className="mt-3 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
           Uma ferramenta OSINT de mapeamento de fontes públicas do Rio de Janeiro.
         </h1>
         <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
-          O Errejota é uma ferramenta de inteligência de fontes abertas (OSINT)
+          O errejota.live é uma ferramenta de inteligência de fontes abertas (OSINT)
           que mapeia câmeras e fontes públicas do Rio de Janeiro em um mapa
           interativo por região e bairro. Cada ponto leva à página oficial do
           provedor — sem vídeo embutido, gravação ou rastreamento.
@@ -73,7 +75,7 @@ export default function AboutPage() {
 
         <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted">
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
-            Versão 1.2
+            Versão 1.3
           </span>
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
             Rio de Janeiro · RJ
@@ -207,7 +209,7 @@ export default function AboutPage() {
           title="Independência e atribuição"
         >
           <p>
-            O Errejota é um projeto pessoal de estudo, sem vínculo com os
+            O errejota.live é um projeto pessoal de estudo, sem vínculo com os
             provedores citados. Marcas, páginas e conteúdos pertencem aos
             respectivos titulares. O catálogo apenas descreve e liga para as
             fontes oficiais.
@@ -243,6 +245,8 @@ export default function AboutPage() {
           GitHub
         </a>
       </p>
-    </article>
+      </article>
+      <SiteFooter />
+    </>
   );
 }

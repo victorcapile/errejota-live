@@ -7,15 +7,20 @@ import {
   pgTable,
   real,
   text,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import {
   AVAILABILITY_STATUS_VALUES,
   CATEGORY_VALUES,
+  CITY_STAGE_VALUES,
   LOCATION_PRECISION_VALUES,
   MEDIA_TYPE_VALUES,
   NEWS_KIND_VALUES,
   PERMISSION_STATUS_VALUES,
   PROVIDER_KIND_VALUES,
+  RAIN_METRIC_VALUES,
+  RISK_CLASS_VALUES,
+  RISK_KIND_VALUES,
   SCOPE_VALUES,
 } from "@/lib/constants";
 
@@ -236,3 +241,201 @@ export const presenceSessions = pgTable("presence_sessions", {
   sessionId: text("session_id").primaryKey(),
   lastSeen: bigint("last_seen", { mode: "number" }).notNull(),
 });
+
+/**
+ * Estações pluviométricas oficiais (Alerta Rio / Geo-Rio).
+ * O ponto é associado a um bairro por join espacial na ingestão.
+ */
+export const rainStations = pgTable(
+  "rain_stations",
+  {
+    id: text("id").primaryKey(),
+    externalId: text("external_id").notNull().unique(),
+    name: text("name").notNull(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "restrict" }),
+    latitude: real("latitude").notNull(),
+    longitude: real("longitude").notNull(),
+    address: text("address"),
+    neighborhoodId: text("neighborhood_id").references(
+      () => neighborhoods.id,
+      { onDelete: "set null" },
+    ),
+    neighborhoodSlug: text("neighborhood_slug"),
+    regionSlug: text("region_slug"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("rain_stations_neighborhood_idx").on(table.neighborhoodSlug),
+    index("rain_stations_region_idx").on(table.regionSlug),
+  ],
+);
+
+/**
+ * Leituras de chuva por estação e janela de acumulação.
+ * A chave única permite reprocessar o mesmo arquivo sem duplicar linhas.
+ */
+export const rainObservations = pgTable(
+  "rain_observations",
+  {
+    id: text("id").primaryKey(),
+    stationId: text("station_id")
+      .notNull()
+      .references(() => rainStations.id, { onDelete: "cascade" }),
+    neighborhoodSlug: text("neighborhood_slug"),
+    regionSlug: text("region_slug"),
+    metric: text("metric", { enum: [...RAIN_METRIC_VALUES] }).notNull(),
+    valueMm: real("value_mm").notNull(),
+    readingAt: text("reading_at").notNull(),
+    collectedAt: text("collected_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("rain_observations_unique_idx").on(
+      table.stationId,
+      table.metric,
+      table.readingAt,
+    ),
+    index("rain_observations_neighborhood_metric_reading_idx").on(
+      table.neighborhoodSlug,
+      table.metric,
+      table.readingAt,
+    ),
+    index("rain_observations_reading_idx").on(table.readingAt),
+  ],
+);
+
+/**
+ * Agregado diário por bairro usado na política de retenção: o detalhe
+ * (rain_observations) fica limitado a uma janela curta e o histórico
+ * permanente fica aqui.
+ */
+export const rainDaily = pgTable(
+  "rain_daily",
+  {
+    id: text("id").primaryKey(),
+    neighborhoodSlug: text("neighborhood_slug").notNull(),
+    regionSlug: text("region_slug"),
+    day: text("day").notNull(),
+    maxMm24h: real("max_mm_24h"),
+    avgMm24h: real("avg_mm_24h"),
+    stationCount: integer("station_count").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("rain_daily_unique_idx").on(table.neighborhoodSlug, table.day),
+    index("rain_daily_day_idx").on(table.day),
+  ],
+);
+
+/**
+ * Indicadores de risco por bairro, derivados do ISMFI (COPPE/UFRJ).
+ */
+export const riskIndicators = pgTable(
+  "risk_indicators",
+  {
+    id: text("id").primaryKey(),
+    neighborhoodSlug: text("neighborhood_slug").notNull(),
+    regionSlug: text("region_slug"),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "restrict" }),
+    kind: text("kind", { enum: [...RISK_KIND_VALUES] }).notNull(),
+    class: text("class", { enum: [...RISK_CLASS_VALUES] })
+      .notNull()
+      .default("nao_avaliado"),
+    score: real("score"),
+    coverage: real("coverage"),
+    computedAt: text("computed_at").notNull(),
+    sourceVersion: text("source_version"),
+  },
+  (table) => [
+    uniqueIndex("risk_indicators_unique_idx").on(
+      table.neighborhoodSlug,
+      table.sourceId,
+      table.kind,
+    ),
+    index("risk_indicators_neighborhood_idx").on(table.neighborhoodSlug),
+    index("risk_indicators_kind_idx").on(table.kind),
+  ],
+);
+
+/**
+ * Pontos de drenagem supervisionados (Geo-Rio). Avaliado, mas não usado
+ * no produto no momento; mantido para uso futuro.
+ */
+export const drainagePoints = pgTable(
+  "drainage_points",
+  {
+    id: text("id").primaryKey(),
+    externalId: text("external_id").notNull().unique(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "restrict" }),
+    neighborhoodSlug: text("neighborhood_slug"),
+    regionSlug: text("region_slug"),
+    basin: text("basin"),
+    subBasin: text("sub_basin"),
+    pointClass: text("point_class"),
+    description: text("description"),
+    correctiveMeasure: text("corrective_measure"),
+    latitude: real("latitude").notNull(),
+    longitude: real("longitude").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("drainage_points_neighborhood_idx").on(table.neighborhoodSlug),
+    index("drainage_points_latlon_idx").on(table.latitude, table.longitude),
+  ],
+);
+
+/**
+ * Estágio operacional da cidade, atualizado manualmente pelo admin.
+ * O registro mais recente por effectiveAt é o vigente.
+ */
+export const cityStages = pgTable(
+  "city_stages",
+  {
+    id: text("id").primaryKey(),
+    stage: text("stage", { enum: [...CITY_STAGE_VALUES] }).notNull(),
+    message: text("message"),
+    sourceLabel: text("source_label").notNull().default("Atualização manual"),
+    effectiveAt: text("effective_at").notNull(),
+    createdBy: text("created_by"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("city_stages_effective_idx").on(table.effectiveAt)],
+);
+
+/**
+ * Histórico de execuções de ingestão para exibir "última atualização"
+ * e detectar falhas sem depender apenas dos dados.
+ */
+export const ingestRuns = pgTable(
+  "ingest_runs",
+  {
+    id: text("id").primaryKey(),
+    job: text("job").notNull(),
+    status: text("status", {
+      enum: ["running", "success", "partial", "failed"],
+    }).notNull(),
+    startedAt: text("started_at").notNull(),
+    finishedAt: text("finished_at"),
+    itemsProcessed: integer("items_processed").notNull().default(0),
+    errorMessage: text("error_message"),
+    notes: text("notes"),
+  },
+  (table) => [
+    index("ingest_runs_job_started_idx").on(table.job, table.startedAt),
+  ],
+);
+
+export type RainStationRow = typeof rainStations.$inferSelect;
+export type RainObservationRow = typeof rainObservations.$inferSelect;
+export type RainDailyRow = typeof rainDaily.$inferSelect;
+export type RiskIndicatorRow = typeof riskIndicators.$inferSelect;
+export type DrainagePointRow = typeof drainagePoints.$inferSelect;
+export type CityStageRow = typeof cityStages.$inferSelect;
+export type IngestRunRow = typeof ingestRuns.$inferSelect;

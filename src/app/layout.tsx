@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
@@ -68,7 +67,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <main id="conteudo" className="flex-1">
               {children}
             </main>
-            <SiteFooter />
           </div>
           <Analytics />
         </ThemeProvider>

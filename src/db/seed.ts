@@ -4,7 +4,6 @@ import {
   neighborhoods,
   newsItems,
   regions,
-  sourceStatusChecks,
   sources,
   sourceTags,
   tags,
@@ -12,16 +11,10 @@ import {
 import { NEIGHBORHOOD_SEED } from "./seed-data/neighborhoods";
 import { CURATED_NEWS } from "./seed-data/news-curated";
 import { SOURCE_SEED } from "./seed-data/sources";
-import {
-  CATEGORY_META,
-  REGION_META,
-  REGION_VALUES,
-  TAG_LABELS,
-} from "@/lib/constants";
-import { buildSearchText } from "@/lib/text";
+import { REGION_META, REGION_VALUES, TAG_LABELS } from "@/lib/constants";
+import { seedSourceList } from "./seed-sources";
 
 const SEED_TIMESTAMP = "2026-10-31T12:00:00.000Z";
-const IMPORTED_AT = "2026-10-31";
 
 async function seedRegions() {
   for (const slug of REGION_VALUES) {
@@ -104,138 +97,6 @@ async function seedTags() {
   return slugs;
 }
 
-async function seedSources() {
-  const regionNames = new Map(
-    REGION_VALUES.map((slug) => [slug, REGION_META[slug].name]),
-  );
-  const neighborhoodNames = new Map(
-    NEIGHBORHOOD_SEED.map((neighborhood) => [
-      neighborhood.slug,
-      neighborhood.name,
-    ]),
-  );
-
-  for (const source of SOURCE_SEED) {
-    const sourceId = `source_${source.slug}`;
-    const neighborhoodName = source.neighborhoodSlug
-      ? neighborhoodNames.get(source.neighborhoodSlug)
-      : null;
-    const searchText = buildSearchText([
-      source.name,
-      source.shortDescription,
-      source.providerName,
-      CATEGORY_META[source.category].label,
-      regionNames.get(source.regionSlug),
-      neighborhoodName,
-      source.addressHint,
-      ...source.tags.map((tag) => TAG_LABELS[tag] ?? tag),
-    ]);
-
-    await db
-      .insert(sources)
-      .values({
-        id: sourceId,
-        slug: source.slug,
-        name: source.name,
-        shortDescription: source.shortDescription,
-        searchText,
-        category: source.category,
-        providerName: source.providerName,
-        providerKind: source.providerKind,
-        sourcePageUrl: source.sourcePageUrl,
-        embedUrl: null,
-        mediaType: source.mediaType,
-        permissionStatus: source.permissionStatus,
-        availabilityStatus: source.availabilityStatus,
-        statusNote: source.statusNote,
-        scope: source.scope,
-        city: source.city ?? null,
-        state: source.state ?? null,
-        regionId: `region_${source.regionSlug}`,
-        neighborhoodId: source.neighborhoodSlug
-          ? `neighborhood_${source.neighborhoodSlug}`
-          : null,
-        latitude: source.latitude ?? null,
-        longitude: source.longitude ?? null,
-        locationPrecision: source.locationPrecision,
-        addressHint: source.addressHint ?? null,
-        licenseNotes: source.licenseNotes,
-        termsUrl: source.termsUrl ?? null,
-        attribution: source.attribution,
-        lastCheckedAt: source.lastCheckedAt,
-        lastStatusChangeAt: source.lastCheckedAt,
-        isFeatured: source.isFeatured ?? false,
-        isDemo: false,
-        provenanceDataset: "docs/FONTES.md",
-        provenanceRecordId: source.slug,
-        importedAt: IMPORTED_AT,
-        createdAt: SEED_TIMESTAMP,
-        updatedAt: SEED_TIMESTAMP,
-      })
-      .onConflictDoUpdate({
-        target: sources.id,
-        set: {
-          slug: source.slug,
-          name: source.name,
-          shortDescription: source.shortDescription,
-          searchText,
-          category: source.category,
-          providerName: source.providerName,
-          providerKind: source.providerKind,
-          sourcePageUrl: source.sourcePageUrl,
-          embedUrl: null,
-          mediaType: source.mediaType,
-          permissionStatus: source.permissionStatus,
-          availabilityStatus: source.availabilityStatus,
-          statusNote: source.statusNote,
-          scope: source.scope,
-          city: source.city ?? null,
-          state: source.state ?? null,
-          regionId: `region_${source.regionSlug}`,
-          neighborhoodId: source.neighborhoodSlug
-            ? `neighborhood_${source.neighborhoodSlug}`
-            : null,
-          latitude: source.latitude ?? null,
-          longitude: source.longitude ?? null,
-          locationPrecision: source.locationPrecision,
-          addressHint: source.addressHint ?? null,
-          licenseNotes: source.licenseNotes,
-          termsUrl: source.termsUrl ?? null,
-          attribution: source.attribution,
-          lastCheckedAt: source.lastCheckedAt,
-          lastStatusChangeAt: source.lastCheckedAt,
-          isFeatured: source.isFeatured ?? false,
-          isDemo: false,
-          provenanceDataset: "docs/FONTES.md",
-          provenanceRecordId: source.slug,
-          importedAt: IMPORTED_AT,
-          updatedAt: SEED_TIMESTAMP,
-        },
-      });
-
-    await db
-      .insert(sourceStatusChecks)
-      .values({
-        id: `check_${source.slug}_2026-10-31`,
-        sourceId,
-        checkedAt: source.lastCheckedAt,
-        status: source.availabilityStatus,
-        httpStatus: source.httpStatus ?? null,
-        errorCode: null,
-        latencyMs: null,
-        notes: source.statusNote,
-      })
-      .onConflictDoUpdate({
-        target: sourceStatusChecks.id,
-        set: {
-          status: source.availabilityStatus,
-          httpStatus: source.httpStatus ?? null,
-          notes: source.statusNote,
-        },
-      });
-  }
-}
-
 async function seedSourceTags(tagSlugs: string[]) {
   const knownTags = new Set(tagSlugs);
   const sourceIds = SOURCE_SEED.map((source) => `source_${source.slug}`);
@@ -297,7 +158,7 @@ async function main() {
   await seedRegions();
   await seedNeighborhoods();
   const tagSlugs = await seedTags();
-  await seedSources();
+  await seedSourceList(SOURCE_SEED);
   await seedSourceTags(tagSlugs);
   await seedNews();
 

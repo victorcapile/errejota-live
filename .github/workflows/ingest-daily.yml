@@ -1,0 +1,28 @@
+name: Ingestão diária (risco)
+
+# Risco (ISMFI) é uma base estática; uma execução diária basta.
+on:
+  schedule:
+    # 09:10 UTC = 06:10 em America/Sao_Paulo.
+    - cron: "10 9 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ingest-daily
+  cancel-in-progress: true
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Ingerir risco (ISMFI)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:risk

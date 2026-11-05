@@ -18,7 +18,7 @@ export function SiteHeader() {
         <Link
           href="/"
           className="group flex shrink-0 items-center gap-2"
-          aria-label="Errejota — página inicial"
+          aria-label="errejota.live — página inicial"
         >
           <span className="grid size-8 place-items-center rounded-xl bg-brand text-white shadow-sm transition-colors group-hover:bg-brand-strong sm:size-9">
             <Eye aria-hidden className="size-4 sm:size-5" />
@@ -27,10 +27,10 @@ export function SiteHeader() {
             <span
               className={`${brandFont.className} block text-base font-bold tracking-tight text-foreground sm:text-lg`}
             >
-              errejota
+              errejota.live
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted lg:block">
-              Mapa de câmeras públicas do Rio · v1.2
+              Rio de Janeiro em tempo real · v1.3
             </span>
           </span>
         </Link>

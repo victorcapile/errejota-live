@@ -38,6 +38,8 @@ src/lib/catalog-params.ts        validação de parâmetros da API
 src/lib/camera-status.ts         checagem online/offline das câmeras
 src/lib/constants.ts             categorias, regiões, tags e rótulos
 scripts/check-camera-status.ts   CLI que dispara a checagem em lotes
+scripts/sync-rain.ts             ingestão de chuva (Alerta Rio)
+scripts/sync-risk.ts             indicadores de risco por bairro (CPRM/ISMFI)
 data/cameras.json                conjunto de câmeras usado na importação
 public/bairros.geojson            polígonos de bairros para o mapa/importador
 docs/                            proveniência, catálogo e guias de dados
@@ -70,6 +72,17 @@ docs/                            proveniência, catálogo e guias de dados
 | `GET /api/sources/<slug>` | Detalhe de uma fonte. |
 | `GET /api/neighborhoods?region=&q=` | Bairros filtrados por região e busca textual. |
 | `GET /api/meta` | Metadados e estatísticas do catálogo. |
+| `GET /api/rain` | Pluviômetros com a leitura mais recente (filtros `region`, `neighborhood`, `metric`, `limit`). |
+| `GET /api/conditions` | Condições por bairro: chuva e risco (ISMFI); inclui estágio manual. |
+| `GET /api/stage` | Estágio operacional atual (manual). |
+
+## Chuva e alagamentos
+
+Tabelas: `rain_stations`, `rain_observations` (detalhe com retenção de 90 dias), `rain_daily` (agregado diário permanente), `risk_indicators` (um indicador por bairro e fonte), `city_stages` (estágio operacional manual) e `ingest_runs` (monitoramento das ingestões).
+
+- `scripts/sync-rain.ts` (`npm run db:rain`): baixa `mc.json`, valida, grava estações/observações e atualiza o agregado diário.
+- `scripts/sync-risk.ts` (`npm run db:risk`): consulta o ISMFI via ArcGIS REST e grava o indicador por bairro (sem armazenar geometria). A camada da CPRM não entra no score por sobreposição de polígonos.
+- Agendamento por GitHub Actions (`.github/workflows/`), com `DATABASE_URL` em secrets; não usamos o cron da Vercel (limite do plano Hobby).
 
 Os endpoints retornam JSON. Parâmetros inválidos recebem `400`; item inexistente recebe `404`; falhas de consulta recebem `500`.
 

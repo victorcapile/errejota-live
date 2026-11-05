@@ -13,7 +13,7 @@ if (typeof window !== "undefined") {
 }
 
 import { REGION_COLORS } from "@/lib/constants";
-import type { Camera } from "@/lib/types";
+import type { Camera, RainStationLatest } from "@/lib/types";
 
 // Centro inicial sem GPS: Tijuca no mobile e Freguesia (Jacarepaguá) no desktop.
 const MOBILE_CENTER: [number, number] = [-43.236379, -22.938758];
@@ -34,6 +34,20 @@ const MAP_STYLES = {
 } as const;
 
 const CAMERA_SOURCE_PREFIX = "cameras-";
+const RAIN_FIELD_SOURCE = "rain-field";
+const RAIN_FIELD_LAYER = "rain-field";
+/** Retângulo geográfico coberto pela imagem do campo de chuva. */
+const RAIN_FIELD_BOUNDS = {
+  west: -43.83,
+  east: -43.08,
+  south: -23.1,
+  north: -22.72,
+};
+const RAIN_FIELD_WIDTH = 640;
+const RAIN_FIELD_HEIGHT = 320;
+const TRANSPARENT_PIXEL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
 const HIGHLIGHT_SOURCE = "camera-highlight";
 const HIGHLIGHT_HALO_LAYER = "camera-highlight-halo";
 const HIGHLIGHT_DOT_LAYER = "camera-highlight-dot";
@@ -144,7 +158,6 @@ function setHighlightData(
   }
 }
 
-
 type CameraFeatureCollection = {
   type: "FeatureCollection";
   features: Array<{
@@ -211,6 +224,210 @@ function createCameraPopupContent(
   return content;
 }
 
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+function hash2d(x: number, y: number): number {
+  const value = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+/** Ruído suave em 2D, usado para dar textura de nuvem ao campo de chuva. */
+function valueNoise(x: number, y: number): number {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = smoothstep(0, 1, x - xi);
+  const yf = smoothstep(0, 1, y - yi);
+  const a = hash2d(xi, yi);
+  const b = hash2d(xi + 1, yi);
+  const c = hash2d(xi, yi + 1);
+  const d = hash2d(xi + 1, yi + 1);
+  return (
+    a * (1 - xf) * (1 - yf) +
+    b * xf * (1 - yf) +
+    c * (1 - xf) * yf +
+    d * xf * yf
+  );
+}
+
+function fbm(x: number, y: number): number {
+  let value = 0;
+  let amplitude = 0.55;
+  let frequency = 1;
+  for (let octave = 0; octave < 3; octave += 1) {
+    value += amplitude * valueNoise(x * frequency, y * frequency);
+    frequency *= 2.1;
+    amplitude *= 0.5;
+  }
+  return value;
+}
+
+type RainFieldStation = {
+  longitude: number;
+  latitude: number;
+  mm: number;
+};
+
+/**
+ * Monta a imagem do campo de chuva por interpolação das estações e aplica
+ * ruído fractal, para o resultado lembrar uma massa de nuvens em vez de
+ * bolhas circulares isoladas.
+ */
+function renderRainField(
+  stations: RainStationLatest[],
+  theme: "light" | "dark",
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = RAIN_FIELD_WIDTH;
+  canvas.height = RAIN_FIELD_HEIGHT;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return canvas;
+  }
+
+  const points: RainFieldStation[] = stations
+    .filter(
+      (station) =>
+        Number.isFinite(station.latitude) &&
+        Number.isFinite(station.longitude),
+    )
+    .map((station) => ({
+      longitude: station.longitude,
+      latitude: station.latitude,
+      mm: station.metrics.mm_1h ?? 0,
+    }));
+
+  const image = context.createImageData(
+    RAIN_FIELD_WIDTH,
+    RAIN_FIELD_HEIGHT,
+  );
+  const data = image.data;
+  const spanLng = RAIN_FIELD_BOUNDS.east - RAIN_FIELD_BOUNDS.west;
+  const spanLat = RAIN_FIELD_BOUNDS.north - RAIN_FIELD_BOUNDS.south;
+  const isDark = theme === "dark";
+  // Nuvens claras no tema escuro e acinzentadas no tema claro.
+  const lowColor = isDark ? [118, 146, 178] : [108, 138, 168];
+  const highColor = isDark ? [236, 245, 255] : [28, 64, 100];
+  const maxAlpha = isDark ? 0.6 : 0.58;
+
+  for (let y = 0; y < RAIN_FIELD_HEIGHT; y += 1) {
+    const v = (y + 0.5) / RAIN_FIELD_HEIGHT;
+    const latitude = RAIN_FIELD_BOUNDS.north - v * spanLat;
+    for (let x = 0; x < RAIN_FIELD_WIDTH; x += 1) {
+      const u = (x + 0.5) / RAIN_FIELD_WIDTH;
+      const longitude = RAIN_FIELD_BOUNDS.west + u * spanLng;
+
+      let weighted = 0;
+      let totalWeight = 0;
+      let nearestKm = Infinity;
+      for (const point of points) {
+        const dx = (longitude - point.longitude) * 102;
+        const dy = (latitude - point.latitude) * 111;
+        const distanceKm = Math.sqrt(dx * dx + dy * dy);
+        if (distanceKm < nearestKm) {
+          nearestKm = distanceKm;
+        }
+        // Núcleo gaussiano suave, evita "olho de boi" em cada estação.
+        const weight = 1 / (1 + (distanceKm * distanceKm) / 5);
+        weighted += point.mm * weight;
+        totalWeight += weight;
+      }
+
+      const rain = totalWeight > 0 ? weighted / totalWeight : 0;
+      // Escala direta: garoa fica quase invisível e só a chuva forte forma nuvem.
+      const intensity = Math.pow(Math.min(1, Math.max(0, rain) / 45), 0.8);
+
+      // Fora do alcance das estações não inventamos chuva.
+      const support = 1 - smoothstep(2, 6, nearestKm);
+      const edge =
+        smoothstep(0, 0.05, u) *
+        smoothstep(0, 0.05, 1 - u) *
+        smoothstep(0, 0.05, v) *
+        smoothstep(0, 0.05, 1 - v);
+      if (support <= 0 || edge <= 0) {
+        continue;
+      }
+
+      // Duas escalas de ruído: uma desenha as bordas da nuvem, a outra
+      // abre clareiras para o campo não virar uma mancha única.
+      const smallNoise = fbm(longitude * 46, latitude * 46);
+      const largeNoise = fbm(longitude * 15 + 31, latitude * 15 + 17);
+      const shape =
+        intensity *
+        (0.55 + 1.15 * smallNoise) *
+        (0.5 + 0.75 * largeNoise);
+      const alpha = smoothstep(0.15, 0.7, shape) * support * edge;
+      if (alpha <= 0) {
+        continue;
+      }
+
+      const colorMix = smoothstep(0.15, 0.85, shape);
+      const offset = (y * RAIN_FIELD_WIDTH + x) * 4;
+      data[offset] = Math.round(
+        lowColor[0] + (highColor[0] - lowColor[0]) * colorMix,
+      );
+      data[offset + 1] = Math.round(
+        lowColor[1] + (highColor[1] - lowColor[1]) * colorMix,
+      );
+      data[offset + 2] = Math.round(
+        lowColor[2] + (highColor[2] - lowColor[2]) * colorMix,
+      );
+      data[offset + 3] = Math.round(alpha * maxAlpha * 255);
+    }
+  }
+
+  context.putImageData(image, 0, 0);
+  return canvas;
+}
+
+let rainFieldCache: { key: string; canvas: HTMLCanvasElement } | null = null;
+
+/** Atualiza o campo de chuva e a visibilidade da camada. */
+function syncRainLayers(
+  map: MapLibreMap,
+  stations: RainStationLatest[],
+  opacity: number,
+  theme: "light" | "dark",
+): void {
+  try {
+    const source = map.getSource(RAIN_FIELD_SOURCE) as
+      | maplibregl.ImageSource
+      | undefined;
+    if (source && stations.length > 0) {
+      const key = `${theme}|${stations
+        .map(
+          (station) =>
+            `${station.longitude},${station.latitude},${
+              station.metrics.mm_1h ?? 0
+            },${station.readingAt}`,
+        )
+        .join(";")}`;
+      if (!rainFieldCache || rainFieldCache.key !== key) {
+        rainFieldCache = { key, canvas: renderRainField(stations, theme) };
+      }
+      source.updateImage({
+        image: rainFieldCache.canvas,
+        coordinates: [
+          [RAIN_FIELD_BOUNDS.west, RAIN_FIELD_BOUNDS.north],
+          [RAIN_FIELD_BOUNDS.east, RAIN_FIELD_BOUNDS.north],
+          [RAIN_FIELD_BOUNDS.east, RAIN_FIELD_BOUNDS.south],
+          [RAIN_FIELD_BOUNDS.west, RAIN_FIELD_BOUNDS.south],
+        ],
+      });
+    }
+
+    if (map.getLayer(RAIN_FIELD_LAYER)) {
+      // A camada fica sempre montada: a transição de opacidade cuida do fade
+      // ao abrir/fechar o dossiê ou ligar/desligar a chuva.
+      map.setPaintProperty(RAIN_FIELD_LAYER, "raster-opacity", opacity);
+    }
+  } catch {
+    // Estilo ainda carregando.
+  }
+}
+
 function cameraCirclePaint(
   color: string,
 ): NonNullable<maplibregl.CircleLayerSpecification["paint"]> {
@@ -226,18 +443,13 @@ function cameraCirclePaint(
       17,
       7,
     ],
-    // Câmeras offline: cinza claro, 60% de opacidade e contorno escuro,
-    // mesmo tamanho das câmeras online.
+    // Câmeras offline: cinza claro e 60% de opacidade. Contorno mínimo
+    // apenas para dar leitura sobre o mapa, sem poluir.
     "circle-color": ["case", ["==", ["get", "online"], 0], "#b3aca3", color],
     "circle-opacity": ["case", ["==", ["get", "online"], 0], 0.6, 0.95],
-    "circle-stroke-color": [
-      "case",
-      ["==", ["get", "online"], 0],
-      "#3f3a36",
-      "#ffffff",
-    ],
-    "circle-stroke-width": 1.2,
-    "circle-stroke-opacity": ["case", ["==", ["get", "online"], 0], 0.9, 1],
+    "circle-stroke-color": "#000000",
+    "circle-stroke-width": 0.3,
+    "circle-stroke-opacity": ["case", ["==", ["get", "online"], 0], 0.8, 0.9],
   };
 }
 
@@ -374,10 +586,13 @@ export function MapCanvas({
   onSelectNeighborhood,
   showNeighborhoods,
   showCameras,
+  rainOpacity,
+  rainStations,
   highlightedCamera,
   focusPoint,
   focusKey,
   fitBoundsRequest,
+  resetViewRequest,
   locateRequest,
   theme,
 }: {
@@ -385,10 +600,14 @@ export function MapCanvas({
   onSelectNeighborhood: (slug: string) => void;
   showNeighborhoods: boolean;
   showCameras: boolean;
+  /** 0 = desligada, 0.5 = metade da opacidade com o dossiê aberto, 1 = normal. */
+  rainOpacity: number;
+  rainStations: RainStationLatest[];
   highlightedCamera: Camera | null;
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
   fitBoundsRequest: { points: [number, number][]; key: number } | null;
+  resetViewRequest: number;
   locateRequest: number;
   theme: "light" | "dark";
 }) {
@@ -405,6 +624,8 @@ export function MapCanvas({
     sync: () => void;
   } | null>(null);
   const showCamerasRef = useRef(showCameras);
+  const rainOpacityRef = useRef(rainOpacity);
+  const rainStationsRef = useRef<RainStationLatest[]>(rainStations);
   const onSelectNeighborhoodRef = useRef(onSelectNeighborhood);
   const themeRef = useRef(theme);
   const highlightedCameraRef = useRef<Camera | null>(highlightedCamera);
@@ -413,9 +634,18 @@ export function MapCanvas({
   useEffect(() => {
     camerasRef.current = cameras;
     showCamerasRef.current = showCameras;
+    rainOpacityRef.current = rainOpacity;
+    rainStationsRef.current = rainStations;
     onSelectNeighborhoodRef.current = onSelectNeighborhood;
     themeRef.current = theme;
-  }, [cameras, onSelectNeighborhood, showCameras, theme]);
+  }, [
+    cameras,
+    onSelectNeighborhood,
+    rainStations,
+    showCameras,
+    rainOpacity,
+    theme,
+  ]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) {
@@ -446,6 +676,56 @@ export function MapCanvas({
       topRightControls.style.top =
         "calc(env(safe-area-inset-top) + 3.125rem)";
     }
+
+    const ensureRainLayers = () => {
+      try {
+        if (!map.getSource(RAIN_FIELD_SOURCE)) {
+          map.addSource(RAIN_FIELD_SOURCE, {
+            type: "image",
+            url: TRANSPARENT_PIXEL,
+            coordinates: [
+              [RAIN_FIELD_BOUNDS.west, RAIN_FIELD_BOUNDS.north],
+              [RAIN_FIELD_BOUNDS.east, RAIN_FIELD_BOUNDS.north],
+              [RAIN_FIELD_BOUNDS.east, RAIN_FIELD_BOUNDS.south],
+              [RAIN_FIELD_BOUNDS.west, RAIN_FIELD_BOUNDS.south],
+            ],
+          });
+        }
+
+        if (!map.getLayer(RAIN_FIELD_LAYER)) {
+          const beforeId = (map.getStyle()?.layers ?? []).find((layer) =>
+            layer.id.startsWith(CAMERA_SOURCE_PREFIX),
+          )?.id;
+
+          map.addLayer(
+            {
+              id: RAIN_FIELD_LAYER,
+              type: "raster",
+              source: RAIN_FIELD_SOURCE,
+              paint: {
+                "raster-opacity": 0,
+                "raster-opacity-transition": {
+                  duration: 380,
+                  delay: 0,
+                },
+                "raster-fade-duration": 0,
+                "raster-resampling": "linear",
+              },
+            },
+            beforeId,
+          );
+        }
+
+        syncRainLayers(
+          map,
+          rainStationsRef.current,
+          rainOpacityRef.current,
+          themeRef.current,
+        );
+      } catch {
+        // Estilo ainda carregando.
+      }
+    };
 
     const loadBairros = () => {
       fetch("/bairros.geojson")
@@ -543,6 +823,9 @@ export function MapCanvas({
               },
             }, firstCameraLayer);
           }
+        })
+        .then(() => {
+          ensureRainLayers();
         })
         .catch(() => {
           // Sem polígonos, apenas os pontos de câmeras são exibidos.
@@ -723,6 +1006,15 @@ export function MapCanvas({
   }, [cameras, showCameras]);
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+    syncRainLayers(map, rainStations, rainOpacity, theme);
+  }, [rainStations, rainOpacity, theme]);
+
+
+  useEffect(() => {
     highlightedCameraRef.current = highlightedCamera;
     const map = mapRef.current;
 
@@ -892,6 +1184,23 @@ export function MapCanvas({
       locateUser(mapRef.current, userLocationMarkerRef);
     }
   }, [locateRequest]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || resetViewRequest <= 0) {
+      return;
+    }
+    try {
+      map.stop();
+      map.flyTo({
+        center: initialMapCenter(),
+        zoom: 11,
+        duration: 700,
+      });
+    } catch {
+      // Estilo ainda carregando.
+    }
+  }, [resetViewRequest]);
 
   return (
     <>

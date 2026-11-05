@@ -1,11 +1,14 @@
 import type {
   AvailabilityStatus,
+  CityStage,
   Category,
   LocationPrecision,
   MediaType,
   NewsKind,
   PermissionStatus,
   ProviderKind,
+  RainMetric,
+  RiskClass,
   Scope,
   SortOption,
 } from "./constants";
@@ -199,3 +202,49 @@ export type MapMeta = {
   regions: Array<Pick<RegionSummary, "slug" | "name">>;
   neighborhoods: NeighborhoodWithCount[];
 };
+
+/** Leituras atuais de uma estação pluviométrica. */
+export type RainStationLatest = {
+  id: string;
+  name: string;
+  neighborhoodSlug: string | null;
+  regionSlug: string | null;
+  latitude: number;
+  longitude: number;
+  metrics: Partial<Record<RainMetric, number>>;
+  readingAt: string | null;
+};
+
+export type RainReadingSummary = {
+  updatedAt: string | null;
+  items: RainStationLatest[];
+};
+
+/** Condição consolidada de um bairro (chuva + risco). */
+export type NeighborhoodCondition = {
+  neighborhoodSlug: string;
+  neighborhoodName: string;
+  regionSlug: string | null;
+  rainMaxMm: number | null;
+  rainStationCount: number;
+  rainReadingAt: string | null;
+  rainStationName: string | null;
+  rainDistanceKm: number | null;
+  riskClass: RiskClass | null;
+  riskScore: number | null;
+  riskSourceId: string | null;
+};
+
+export type CityStageView = {
+  stage: CityStage;
+  message: string | null;
+  sourceLabel: string;
+  effectiveAt: string;
+} | null;
+
+export type ConditionsSummary = {
+  stage: CityStageView;
+  updatedAt: string | null;
+  items: NeighborhoodCondition[];
+};
+

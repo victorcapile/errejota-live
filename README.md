@@ -12,6 +12,8 @@ O Errejota não transmite nem grava vídeo. O mapa armazena pontos e metadados; 
 
 - Mapa responsivo com câmeras cadastradas e limites dos bairros.
 - Dossiê de cada bairro com as câmeras disponíveis naquele local.
+- Camada de chuva ligável no mapa, com pluviômetros e coloração dos bairros pela chuva da última hora.
+- Dossiê do bairro com a chuva agora (quando a camada de chuva está ligada).
 - Catálogo pesquisável de fontes públicas, com categoria, abrangência e proveniência.
 - Links para as páginas originais dos provedores.
 - Interface em português, com suporte a tema claro e escuro.
@@ -75,10 +77,23 @@ PRODUCTION_DATABASE_URL="postgresql://..." npm run db:sync
 | `npm run db:seed` | Grava ou atualiza regiões, bairros, fontes, tags e notícias curadas. |
 | `npm run db:cameras` | Importa câmeras sem remover as existentes. |
 | `npm run db:cameras -- --replace` | Importa câmeras e remove as que não estão no arquivo de entrada. |
+| `npm run db:rain` | Baixa a chuva observada do Alerta Rio e grava estações/observações (idempotente). |
+| `npm run db:risk` | Calcula os indicadores de risco de inundação por bairro (CPRM + ISMFI). |
 | `npm run db:status` | Verifica no provedor quais câmeras estão online/offline e grava o estado. |
 | `npm run db:camera:set -- 004827 offline` | Marca uma câmera manualmente como `online`, `offline` ou `unknown`. Use `--search="nome"` para descobrir o ID. |
 | `npm run db:sync` | Espelha o banco de produção (Supabase) no banco local (PGlite). Requer `PRODUCTION_DATABASE_URL`. |
 | `npm run db:camera:set -- --all=online` | Marca todas as câmeras como online de uma vez. |
+
+## Chuva e alagamentos
+
+A camada de chuva usa os dados públicos do **Alerta Rio** (arquivo `mc.json` do mapa de chuvas) e as **estações pluviométricas** da Geo-Rio. O risco por bairro usa o **ISMFI (COPPE/UFRJ)**. Quando o bairro não tem estação, usamos a estação ativa mais próxima (até 5 km).
+
+- `npm run db:rain` — chuva agora (33 estações, atualização ~5 min).
+- `npm run db:risk` — indicador de risco por bairro via ISMFI (`risk_indicators`).
+
+A ingestão é agendada pelo **GitHub Actions** (`.github/workflows/`): chuva a cada 5 minutos e risco diariamente. É preciso configurar o secret `DATABASE_URL` no repositório; o cron da Vercel não é usado porque no plano Hobby roda no máximo uma vez por dia.
+
+As fontes, licenças e limitações estão em [docs/FONTES.md](docs/FONTES.md). O Errejota exibe apenas indicadores derivados, com atribuição e link para a origem.
 
 ## Estrutura do projeto
 
@@ -90,6 +105,8 @@ src/db/                  Conexão PostgreSQL, schema, seeds e notícias
 src/lib/                 Consultas, validações, formatos e tipos
 data/cameras.json        Dados de câmeras usados pelo importador
 public/bairros.geojson   Limites geográficos exibidos no mapa
+scripts/sync-rain.ts     Ingestão de chuva (Alerta Rio)
+scripts/sync-risk.ts     Indicadores de risco por bairro (CPRM/ISMFI)
 docs/                    Arquitetura, fontes, catálogo e dados de câmera
 ```
 
@@ -102,6 +119,9 @@ docs/                    Arquitetura, fontes, catálogo e dados de câmera
 - `GET /api/sources/<slug>` — detalhe de uma fonte.
 - `GET /api/neighborhoods?region=<slug>&q=<texto>` — bairros e contagem de fontes.
 - `GET /api/meta` — metadados do catálogo.
+- `GET /api/rain?region=&neighborhood=&metric=&limit=` — pluviômetros com a leitura mais recente.
+- `GET /api/conditions?region=&neighborhood=&metric=&limit=` — condições por bairro (chuva e risco) + estágio manual.
+- `GET /api/stage` — estágio operacional atual (atualização manual).
 
 ## Como contribuir
 

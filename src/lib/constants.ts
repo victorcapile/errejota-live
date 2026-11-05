@@ -473,7 +473,12 @@ export const TAG_LABELS: Record<string, string> = {
   mapa: "Mapa",
   cheias: "Cheias",
   chuvas: "Chuvas",
+  alagamentos: "Alagamentos",
+  pluviometros: "Pluviômetros",
   rios: "Rios",
+  drenagem: "Drenagem",
+  geotecnia: "Geotecnia",
+  risco: "Risco",
   ar: "Qualidade do ar",
   saude: "Saúde",
   deslizamentos: "Deslizamentos",
@@ -553,3 +558,64 @@ export function isSortOption(value: unknown): value is SortOption {
     SORT_OPTIONS.some((option) => option.value === value)
   );
 }
+
+/** Janelas de chuva expostas pela API do Alerta Rio (acumulados em mm). */
+export const RAIN_METRIC_VALUES = [
+  "mm_5m",
+  "mm_10m",
+  "mm_15m",
+  "mm_1h",
+  "mm_4h",
+  "mm_24h",
+  "mm_96h",
+  "mm_month",
+] as const;
+
+export type RainMetric = (typeof RAIN_METRIC_VALUES)[number];
+
+export const RAIN_METRIC_LABELS: Record<RainMetric, string> = {
+  mm_5m: "últimos 5 min",
+  mm_10m: "últimos 10 min",
+  mm_15m: "últimos 15 min",
+  mm_1h: "última hora",
+  mm_4h: "últimas 4 h",
+  mm_24h: "últimas 24 h",
+  mm_96h: "últimas 96 h",
+  mm_month: "no mês",
+};
+
+/** Camadas de risco derivadas de fontes oficiais. */
+export const RISK_KIND_VALUES = ["flood_ismfi"] as const;
+
+export type RiskKind = (typeof RISK_KIND_VALUES)[number];
+
+export const RISK_KIND_LABELS: Record<RiskKind, string> = {
+  flood_ismfi: "Índice de suscetibilidade a inundação (ISMFI)",
+};
+
+export const RISK_CLASS_VALUES = [
+  "nao_avaliado",
+  "baixa",
+  "media",
+  "alta",
+] as const;
+
+export type RiskClass = (typeof RISK_CLASS_VALUES)[number];
+
+/** Estágio operacional da cidade (atualizado manualmente no admin). */
+export const CITY_STAGE_VALUES = [
+  "normal",
+  "atencao",
+  "alerta",
+  "crise",
+] as const;
+
+export type CityStage = (typeof CITY_STAGE_VALUES)[number];
+
+export const CITY_STAGE_LABELS: Record<CityStage, string> = {
+  normal: "Normal",
+  atencao: "Atenção",
+  alerta: "Alerta",
+  crise: "Crise",
+};
+

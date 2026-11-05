@@ -6,7 +6,9 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   Camera as CameraIcon,
   ChevronLeft,
+  CloudRain,
   LocateFixed,
+  Map as MapIcon,
   Menu,
   Moon,
   Search,
@@ -14,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { CameraDossierPanel } from "@/components/map/CameraDossierPanel";
+import { RainConditionCard } from "@/components/map/RainConditionCard";
 import { PresenceBadge } from "@/components/presence/PresenceBadge";
 import {
   REGION_VALUES,
@@ -22,7 +25,15 @@ import {
 } from "@/lib/constants";
 import { normalizeText } from "@/lib/text";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import type { Camera, MapMeta } from "@/lib/types";
+import type {
+  Camera,
+  MapMeta,
+  NeighborhoodCondition,
+  RainStationLatest,
+} from "@/lib/types";
+
+/** Rebusca chuva/condições enquanto a aba estiver visível. */
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 const MapCanvas = dynamic(
   () => import("./MapCanvas").then((module) => module.MapCanvas),
@@ -122,6 +133,12 @@ export function MapExplorer({
   );
   const [showNeighborhoods, setShowNeighborhoods] = useState(true);
   const [showCameras, setShowCameras] = useState(true);
+  const [showRain, setShowRain] = useState(false);
+  const [rainStations, setRainStations] = useState<RainStationLatest[]>([]);
+  const [conditions, setConditions] = useState<NeighborhoodCondition[]>([]);
+  const [conditionsStatus, setConditionsStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
   const [hoveredCamera, setHoveredCamera] = useState<Camera | null>(null);
   const isDesktop = useSyncExternalStore(
     subscribeToDesktopBreakpoint,
@@ -140,6 +157,7 @@ export function MapExplorer({
     points: [number, number][];
     key: number;
   } | null>(null);
+  const [resetViewRequest, setResetViewRequest] = useState(0);
   const selectedNeighborhood = meta.neighborhoods.find(
     (candidate) => candidate.slug === neighborhood,
   );
@@ -191,6 +209,107 @@ export function MapExplorer({
 
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    let controller = new AbortController();
+    let hasLoaded = false;
+
+    const load = () => {
+      controller.abort();
+      controller = new AbortController();
+      const current = controller;
+
+      fetch("/api/conditions?limit=500", {
+        signal: current.signal,
+        cache: "no-store",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return (await response.json()) as {
+            items?: NeighborhoodCondition[];
+          };
+        })
+        .then((payload) => {
+          if (current.signal.aborted) {
+            return;
+          }
+          hasLoaded = true;
+          setConditions(payload.items ?? []);
+          setConditionsStatus("ready");
+        })
+        .catch(() => {
+          if (!current.signal.aborted && !hasLoaded) {
+            setConditionsStatus("error");
+          }
+        });
+    };
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    };
+
+    load();
+    const timer = window.setInterval(refreshIfVisible, REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showRain) {
+      return;
+    }
+    let controller = new AbortController();
+
+    const load = () => {
+      controller.abort();
+      controller = new AbortController();
+      const current = controller;
+
+      fetch("/api/rain?limit=200", {
+        signal: current.signal,
+        cache: "no-store",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            return { items: [] as RainStationLatest[] };
+          }
+          return (await response.json()) as { items?: RainStationLatest[] };
+        })
+        .then((payload) => {
+          if (!current.signal.aborted) {
+            setRainStations(payload.items ?? []);
+          }
+        })
+        .catch(() => {
+          // Mantém a última leitura válida em caso de falha pontual.
+        });
+    };
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    };
+
+    load();
+    const timer = window.setInterval(refreshIfVisible, REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      controller.abort();
+    };
+  }, [showRain]);
 
   const cameraSearchIndex = useMemo(
     () =>
@@ -423,6 +542,14 @@ export function MapExplorer({
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   }, [cameras, dossierNeighborhood, statusFilter]);
 
+  const selectedCondition = useMemo(
+    () =>
+      conditions.find(
+        (condition) => condition.neighborhoodSlug === neighborhood,
+      ) ?? null,
+    [conditions, neighborhood],
+  );
+
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-background lg:relative lg:inset-auto lg:z-auto lg:h-[calc(100dvh-4rem)]">
       <div className="relative h-full w-full overflow-hidden">
@@ -615,15 +742,30 @@ export function MapExplorer({
               </section>
             </div>
 
-            <div className="hidden p-3 lg:block">
-              <ShowNeighborhoodsToggle
-                show={showNeighborhoods}
-                onToggle={() => setShowNeighborhoods((v) => !v)}
+            <div className="px-3 pb-2 pt-2">
+              <ShowToggle
+                show={showRain}
+                onToggle={setShowRain}
+                icon={CloudRain}
+                labelOn="Ocultar chuva"
+                labelOff="Mostrar chuva"
               />
-              <ShowCamerasToggle
-                show={showCameras}
-                onToggle={() => setShowCameras((v) => !v)}
-              />
+              <div className="hidden lg:block">
+                <ShowToggle
+                  show={showNeighborhoods}
+                  onToggle={setShowNeighborhoods}
+                  icon={MapIcon}
+                  labelOn="Ocultar bairros"
+                  labelOff="Mostrar bairros"
+                />
+                <ShowToggle
+                  show={showCameras}
+                  onToggle={setShowCameras}
+                  icon={CameraIcon}
+                  labelOn="Ocultar câmeras"
+                  labelOff="Mostrar câmeras"
+                />
+              </div>
             </div>
             </div>
 
@@ -660,17 +802,24 @@ export function MapExplorer({
               onSelectNeighborhood={handleNeighborhoodChange}
               showNeighborhoods={showNeighborhoods}
               showCameras={showCameras}
+              rainOpacity={showRain ? (dossierOpen ? 0.5 : 1) : 0}
+              rainStations={rainStations}
               highlightedCamera={hoveredCamera}
               focusPoint={focusPoint}
               focusKey={focusKey}
               fitBoundsRequest={searchBounds}
+              resetViewRequest={resetViewRequest}
               locateRequest={locateRequest}
               theme={theme}
             />
 
-            {!dossierOpen ? (
-              <div className="absolute right-4 top-[calc(max(1rem,env(safe-area-inset-top))+44px)] z-10 lg:hidden">
-                <PresenceBadge variant="floating" />
+            <div className="absolute right-4 top-[calc(max(1rem,env(safe-area-inset-top))+44px)] z-10 lg:hidden">
+              <PresenceBadge variant="floating" />
+            </div>
+
+            {dossierOpen && selectedCondition ? (
+              <div className="absolute inset-x-3 bottom-[calc(min(max(38dvh,14rem),22rem)+0.75rem)] z-20 lg:hidden">
+                <RainConditionCard condition={selectedCondition} />
               </div>
             ) : null}
 
@@ -726,10 +875,15 @@ export function MapExplorer({
                 open={dossierOpen}
                 onClose={() => {
                   setHoveredCamera(null);
-                  setDismissedDossierNeighborhood(neighborhood || null);
+                  setNeighborhood("");
+                  setRegion("");
+                  setDismissedDossierNeighborhood(null);
+                  setResetViewRequest((value) => value + 1);
                 }}
                 onStatusChange={handleCameraStatusChange}
                 onHoverCamera={setHoveredCamera}
+                condition={selectedCondition}
+                conditionStatus={conditionsStatus}
                 updatingCameraId={updatingCameraId}
               />
             ) : null}
@@ -749,40 +903,34 @@ export function MapExplorer({
   );
 }
 
-function ShowNeighborhoodsToggle({
+function ShowToggle({
   show,
   onToggle,
+  icon: Icon,
+  labelOn,
+  labelOff,
 }: {
   show: boolean;
   onToggle: (value: boolean) => void;
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  labelOn: string;
+  labelOff: string;
 }) {
   return (
     <button
       type="button"
       onClick={() => onToggle(!show)}
-      className="w-full rounded-lg border border-line bg-background px-3 py-2 text-[10px] font-medium text-muted transition-colors hover:text-brand mb-2"
       aria-pressed={show}
+      className="mb-2 flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-background px-3 py-2 text-[10px] font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand"
     >
-      {show ? "Ocultar bairros" : "Mostrar bairros"}
-    </button>
-  );
-}
-
-function ShowCamerasToggle({
-  show,
-  onToggle,
-}: {
-  show: boolean;
-  onToggle: (value: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(!show)}
-      className="w-full rounded-lg border border-line bg-background px-3 py-2 text-[10px] font-medium text-muted transition-colors hover:text-brand mb-2"
-      aria-pressed={show}
-    >
-      {show ? "Ocultar câmeras" : "Mostrar câmeras"}
+      <span className="flex items-center gap-2">
+        <Icon aria-hidden className="size-3.5" />
+        {show ? labelOn : labelOff}
+      </span>
+      <span
+        aria-hidden
+        className={`size-2 rounded-full ${show ? "bg-brand" : "bg-line"}`}
+      />
     </button>
   );
 }

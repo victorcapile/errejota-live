@@ -19,6 +19,10 @@ export const localDatabasePath =
   process.env.LOCAL_DATABASE_PATH ??
   path.join(process.cwd(), "data", "pglite");
 
+// Referências aos clientes para permitir fechamento explícito em scripts.
+let localClient: PGlite | null = null;
+let remoteClient: ReturnType<typeof postgres> | null = null;
+
 function createPostgresDatabase(connectionString: string): Database {
   const client = postgres(connectionString, {
     prepare: false,
@@ -28,6 +32,7 @@ function createPostgresDatabase(connectionString: string): Database {
     max_lifetime: 60 * 5,
     connect_timeout: 10,
   });
+  remoteClient = client;
 
   return drizzlePostgres(client, { schema });
 }
@@ -88,4 +93,30 @@ export const db = globalForDb.__appDb ?? createDatabase();
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb.__appDb = db;
+}
+
+/**
+ * Fecha as conexões abertas. Use em scripts (CLI) para liberar o PGlite antes
+ * de o processo terminar; no servidor Next.js isso não é necessário.
+ */
+export async function closeDb(): Promise<void> {
+  const local = localClient;
+  localClient = null;
+  if (local) {
+    try {
+      await local.close();
+    } catch {
+      // Ignora falhas de fechamento em encerramento.
+    }
+  }
+
+  const remote = remoteClient;
+  remoteClient = null;
+  if (remote) {
+    try {
+      await remote.end({ timeout: 5 });
+    } catch {
+      // Ignora falhas de fechamento em encerramento.
+    }
+  }
 }

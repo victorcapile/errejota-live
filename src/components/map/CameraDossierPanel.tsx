@@ -1,7 +1,40 @@
 "use client";
 
-import { Camera as CameraIcon, Loader2, Power, PowerOff, X } from "lucide-react";
-import type { Camera, NeighborhoodWithCount } from "@/lib/types";
+import { useState } from "react";
+import {
+  Camera as CameraIcon,
+  Loader2,
+  Power,
+  PowerOff,
+  X,
+} from "lucide-react";
+import { RainIcon } from "./RainConditionCard";
+import type {
+  Camera,
+  NeighborhoodCondition,
+  NeighborhoodWithCount,
+} from "@/lib/types";
+
+
+function rainHeadline(mm: number | null): string {
+  if (mm === null) return "Sem dados de chuva";
+  if (mm === 0) return "Sem chuva na estação";
+  if (mm < 2) return "Chuva fraca";
+  if (mm < 5) return "Chuva moderada";
+  return "Chuva forte";
+}
+
+function rainStationLine(condition: NeighborhoodCondition): string {
+  if (condition.rainMaxMm === null) {
+    return "Sem estação com leitura recente por perto";
+  }
+  const station = condition.rainStationName ?? "estação";
+  const distance =
+    condition.rainDistanceKm && condition.rainDistanceKm > 0
+      ? ` (${condition.rainDistanceKm.toFixed(1)} km)`
+      : "";
+  return `${station}${distance}`;
+}
 
 type CameraDossierPanelProps = {
   neighborhood: NeighborhoodWithCount;
@@ -10,6 +43,8 @@ type CameraDossierPanelProps = {
   onClose: () => void;
   onStatusChange: (camera: Camera, status: "online" | "offline") => void;
   onHoverCamera?: (camera: Camera | null) => void;
+  condition?: NeighborhoodCondition | null;
+  conditionStatus?: "loading" | "ready" | "error";
   updatingCameraId?: string | null;
 };
 
@@ -20,8 +55,20 @@ export function CameraDossierPanel({
   onClose,
   onStatusChange,
   onHoverCamera,
+  condition,
+  conditionStatus,
   updatingCameraId,
 }: CameraDossierPanelProps) {
+  // O player do COR-Rio usa WebRTC com codecs que o Firefox desktop no macOS
+  // não decodifica ("codecs not supported by client"). Como o Errejota só
+  // abre o link oficial, avisamos o usuário do Firefox desktop.
+  const [showFirefoxHint] = useState(() => {
+    if (typeof navigator === "undefined") return false;
+    const ua = navigator.userAgent;
+    const isFirefox = /Firefox\//.test(ua);
+    const isMobile = /Mobile|Android|iPhone|iPad/.test(ua);
+    return isFirefox && !isMobile;
+  });
   const onlineCount = neighborhoodCameras.filter(
     (camera) => camera.isOnline === true,
   ).length;
@@ -61,6 +108,57 @@ export function CameraDossierPanel({
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {condition ? (
+          <div className="mb-3 hidden items-center gap-2.5 rounded-lg border border-line bg-card/60 px-2.5 py-2 lg:flex">
+            <RainIcon mm={condition.rainMaxMm} />
+            <div className="min-w-0 flex-1">
+              <p className="flex items-baseline gap-1.5 text-[11px] font-semibold leading-snug text-foreground">
+                <span className="truncate">
+                  {rainHeadline(condition.rainMaxMm)}
+                </span>
+                {condition.rainMaxMm !== null ? (
+                  <span className="shrink-0 text-[10px] font-normal text-muted">
+                    {condition.rainMaxMm.toLocaleString("pt-BR")} mm
+                  </span>
+                ) : null}
+              </p>
+              <p className="truncate text-[9px] leading-tight text-muted">
+                {rainStationLine(condition)} ·{" "}
+                <a
+                  href="https://alertario.rio.rj.gov.br/mapa-de-chuvas/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  Alerta Rio
+                </a>
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p
+                className="text-[9px] tabular-nums text-muted"
+                title="Horário da leitura na estação (fonte Alerta Rio). A coleta no Errejota ocorre poucos minutos depois."
+              >
+                {condition.rainReadingAt
+                  ? `atualizado ${new Date(
+                      condition.rainReadingAt,
+                    ).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`
+                  : "sem leitura"}
+              </p>
+            </div>
+          </div>
+        ) : conditionStatus === "loading" ? (
+          <p className="mb-3 rounded-lg border border-line bg-card/60 px-2.5 py-1.5 text-[10px] text-muted">
+            Carregando chuva…
+          </p>
+        ) : conditionStatus === "error" ? (
+          <p className="mb-3 rounded-lg border border-line bg-card/60 px-2.5 py-1.5 text-[10px] text-muted">
+            Sem dados de chuva no momento.
+          </p>
+        ) : null}
         <section>
           <div className="flex items-baseline justify-between gap-2">
             <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
@@ -160,6 +258,13 @@ export function CameraDossierPanel({
               Nenhuma câmera com os filtros atuais neste bairro.
             </p>
           )}
+          {showFirefoxHint ? (
+            <p className="mt-4 rounded-lg border border-line bg-card/60 p-2.5 text-[10px] leading-relaxed text-muted">
+              No Firefox desktop, algumas câmeras do COR-Rio podem não abrir por
+              falta de codec de vídeo (“codecs not supported by client”). Se isso
+              acontecer, abra o link no Chrome ou no Safari.
+            </p>
+          ) : null}
         </section>
       </div>
     </div>
