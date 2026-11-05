@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
+  Building2,
   Camera as CameraIcon,
   ChevronLeft,
   CloudRain,
@@ -134,6 +135,7 @@ export function MapExplorer({
   const [showNeighborhoods, setShowNeighborhoods] = useState(true);
   const [showCameras, setShowCameras] = useState(true);
   const [showRain, setShowRain] = useState(false);
+  const [show3d, setShow3d] = useState(false);
   const [rainStations, setRainStations] = useState<RainStationLatest[]>([]);
   const [conditions, setConditions] = useState<NeighborhoodCondition[]>([]);
   const [conditionsStatus, setConditionsStatus] = useState<
@@ -375,15 +377,6 @@ export function MapExplorer({
         : camera.isOnline === false,
     );
   }, [scopedCameras, statusFilter]);
-
-  const offlineCount = useMemo(
-    () => filteredCameras.filter((camera) => camera.isOnline === false).length,
-    [filteredCameras],
-  );
-  const onlineCount = useMemo(
-    () => filteredCameras.filter((camera) => camera.isOnline === true).length,
-    [filteredCameras],
-  );
 
   // Base dos contadores geográficos: respeita o filtro de situação para que os
   // números de região/bairro batam com o que aparece no mapa.
@@ -750,6 +743,13 @@ export function MapExplorer({
                 labelOn="Ocultar chuva"
                 labelOff="Mostrar chuva"
               />
+              <ShowToggle
+                show={show3d}
+                onToggle={setShow3d}
+                icon={Building2}
+                labelOn="Ocultar 3D"
+                labelOff="Mostrar 3D"
+              />
               <div className="hidden lg:block">
                 <ShowToggle
                   show={showNeighborhoods}
@@ -804,6 +804,7 @@ export function MapExplorer({
               showCameras={showCameras}
               rainOpacity={showRain ? (dossierOpen ? 0.5 : 1) : 0}
               rainStations={rainStations}
+              show3d={show3d}
               highlightedCamera={hoveredCamera}
               focusPoint={focusPoint}
               focusKey={focusKey}
@@ -854,14 +855,14 @@ export function MapExplorer({
                         aria-hidden
                         className="size-3.5 shrink-0 text-muted"
                       />
-                      {onlineCount} online
+                      {statusCounts.online} online
                     </span>
                     <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-muted">
                       <span
                         aria-hidden
                         className="size-1.5 rounded-full bg-foreground opacity-30"
                       />
-                      {offlineCount} offline
+                      {statusCounts.offline} offline
                     </span>
                   </>
                 )}
@@ -885,6 +886,7 @@ export function MapExplorer({
                 condition={selectedCondition}
                 conditionStatus={conditionsStatus}
                 updatingCameraId={updatingCameraId}
+                statusFilter={statusFilter}
               />
             ) : null}
 

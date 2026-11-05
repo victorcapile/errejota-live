@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type {
+  ExpressionSpecification,
   Map as MapLibreMap,
   Marker as MapLibreMarker,
 } from "maplibre-gl";
@@ -36,6 +37,7 @@ const MAP_STYLES = {
 const CAMERA_SOURCE_PREFIX = "cameras-";
 const RAIN_FIELD_SOURCE = "rain-field";
 const RAIN_FIELD_LAYER = "rain-field";
+const BUILDING_3D_LAYER = "buildings-3d";
 /** Retângulo geográfico coberto pela imagem do campo de chuva. */
 const RAIN_FIELD_BOUNDS = {
   west: -43.83,
@@ -586,6 +588,7 @@ function locateUser(
   );
 }
 
+
 export function MapCanvas({
   cameras,
   onSelectNeighborhood,
@@ -593,6 +596,7 @@ export function MapCanvas({
   showCameras,
   rainOpacity,
   rainStations,
+  show3d,
   highlightedCamera,
   focusPoint,
   focusKey,
@@ -608,6 +612,7 @@ export function MapCanvas({
   /** 0 = desligada, 0.5 = metade da opacidade com o dossiê aberto, 1 = normal. */
   rainOpacity: number;
   rainStations: RainStationLatest[];
+  show3d: boolean;
   highlightedCamera: Camera | null;
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
@@ -620,6 +625,7 @@ export function MapCanvas({
   const [hoveredNeighborhoodName, setHoveredNeighborhoodName] = useState<
     string | null
   >(null);
+  const [show3dHint, setShow3dHint] = useState(false);
   const mapRef = useRef<MapLibreMap | null>(null);
   const userLocationMarkerRef = useRef<MapLibreMarker | null>(null);
   const cameraPopupRef = useRef<maplibregl.Popup | null>(null);
@@ -631,6 +637,7 @@ export function MapCanvas({
   const showCamerasRef = useRef(showCameras);
   const rainOpacityRef = useRef(rainOpacity);
   const rainStationsRef = useRef<RainStationLatest[]>(rainStations);
+  const show3dRef = useRef(show3d);
   const onSelectNeighborhoodRef = useRef(onSelectNeighborhood);
   const themeRef = useRef(theme);
   const highlightedCameraRef = useRef<Camera | null>(highlightedCamera);
@@ -641,12 +648,14 @@ export function MapCanvas({
     showCamerasRef.current = showCameras;
     rainOpacityRef.current = rainOpacity;
     rainStationsRef.current = rainStations;
+    show3dRef.current = show3d;
     onSelectNeighborhoodRef.current = onSelectNeighborhood;
     themeRef.current = theme;
   }, [
     cameras,
     onSelectNeighborhood,
     rainStations,
+    show3d,
     showCameras,
     rainOpacity,
     theme,
@@ -726,6 +735,101 @@ export function MapCanvas({
           rainStationsRef.current,
           rainOpacityRef.current,
           themeRef.current,
+        );
+      } catch {
+        // Estilo ainda carregando.
+      }
+    };
+
+    const ensureBuilding3d = () => {
+      try {
+        if (map.getLayer(BUILDING_3D_LAYER)) {
+          map.setLayoutProperty(
+            BUILDING_3D_LAYER,
+            "visibility",
+            show3dRef.current ? "visible" : "none",
+          );
+          return;
+        }
+
+        const styleLayers = map.getStyle()?.layers ?? [];
+        const beforeId =
+          styleLayers.find((layer) => layer.id === RAIN_FIELD_LAYER)?.id ??
+          styleLayers.find((layer) =>
+            layer.id.startsWith(CAMERA_SOURCE_PREFIX),
+          )?.id;
+
+        const isDark = themeRef.current === "dark";
+        const color = (isDark
+          ? [
+              "interpolate",
+              ["linear"],
+              ["coalesce", ["get", "render_height"], 8],
+              0,
+              "#34373c",
+              25,
+              "#41464e",
+              70,
+              "#535963",
+              150,
+              "#666d78",
+            ]
+          : [
+              "interpolate",
+              ["linear"],
+              ["coalesce", ["get", "render_height"], 8],
+              0,
+              "#eae6df",
+              25,
+              "#d9d4cb",
+              70,
+              "#c0b9ae",
+              150,
+              "#a49b8e",
+            ]) as ExpressionSpecification;
+
+        map.addLayer(
+          {
+            id: BUILDING_3D_LAYER,
+            type: "fill-extrusion",
+            source: "openmaptiles",
+            "source-layer": "building",
+            minzoom: 14,
+            layout: {
+              visibility: show3dRef.current ? "visible" : "none",
+            },
+            paint: {
+              "fill-extrusion-color": color,
+              // Cresce e aparece suavemente conforme o zoom chega a 14.2.
+              "fill-extrusion-height": [
+                "case",
+                ["==", ["get", "hide_3d"], true],
+                0,
+                [
+                  "case",
+                  [">", ["coalesce", ["get", "render_height"], 0], 0],
+                  ["get", "render_height"],
+                  6,
+                ],
+              ],
+              "fill-extrusion-base": [
+                "coalesce",
+                ["get", "render_min_height"],
+                0,
+              ],
+              "fill-extrusion-opacity": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                14,
+                0,
+                15,
+                0.9,
+              ],
+              "fill-extrusion-vertical-gradient": true,
+            },
+          },
+          beforeId,
         );
       } catch {
         // Estilo ainda carregando.
@@ -848,6 +952,7 @@ export function MapCanvas({
       };
       cameraSyncRef.current = { map, sync };
       sync();
+      ensureBuilding3d();
     };
 
     map.on("style.load", loadCameras);
@@ -1017,6 +1122,46 @@ export function MapCanvas({
     }
     syncRainLayers(map, rainStations, rainOpacity, theme);
   }, [rainStations, rainOpacity, theme]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+    try {
+      if (map.getLayer(BUILDING_3D_LAYER)) {
+        map.setLayoutProperty(
+          BUILDING_3D_LAYER,
+          "visibility",
+          show3d ? "visible" : "none",
+        );
+      }
+      map.stop();
+      const needsZoom = show3d && map.getZoom() < 15;
+      map.easeTo({
+        pitch: show3d ? 50 : 0,
+        ...(needsZoom ? { zoom: 15.2 } : {}),
+        duration: 800,
+      });
+    } catch {
+      // Estilo ainda carregando.
+    }
+  }, [show3d]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+    const updateHint = () => {
+      setShow3dHint(show3d && map.getZoom() < 15);
+    };
+    updateHint();
+    map.on("zoom", updateHint);
+    return () => {
+      map.off("zoom", updateHint);
+    };
+  }, [show3d]);
 
 
   useEffect(() => {
@@ -1213,6 +1358,11 @@ export function MapCanvas({
       {showNeighborhoods && hoveredNeighborhoodName ? (
         <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_4rem)] z-10 max-w-[calc(100%_-_8rem)] -translate-x-1/2 truncate rounded-lg border border-line bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-md backdrop-blur">
           {hoveredNeighborhoodName}
+        </div>
+      ) : null}
+      {show3dHint ? (
+        <div className="pointer-events-none absolute bottom-16 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border border-line bg-card/95 px-3 py-1.5 text-[11px] text-muted shadow-md backdrop-blur">
+          Aproxime para ver os prédios em 3D
         </div>
       ) : null}
       <div className="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2">

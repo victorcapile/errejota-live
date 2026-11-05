@@ -75,7 +75,7 @@ export default function AboutPage() {
 
         <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted">
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
-            Versão 1.3
+            Versão 1.4
           </span>
           <span className="rounded-full border border-line bg-card px-3 py-1.5">
             Rio de Janeiro · RJ

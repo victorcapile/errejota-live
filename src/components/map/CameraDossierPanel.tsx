@@ -38,6 +38,7 @@ type CameraDossierPanelProps = {
   condition?: NeighborhoodCondition | null;
   conditionStatus?: "loading" | "ready" | "error";
   updatingCameraId?: string | null;
+  statusFilter: "all" | "online" | "offline";
 };
 
 export function CameraDossierPanel({
@@ -50,6 +51,7 @@ export function CameraDossierPanel({
   condition,
   conditionStatus,
   updatingCameraId,
+  statusFilter,
 }: CameraDossierPanelProps) {
   // O player do COR-Rio usa WebRTC com codecs que o Firefox desktop no macOS
   // não decodifica ("codecs not supported by client"). Como o Errejota só
@@ -165,9 +167,17 @@ export function CameraDossierPanel({
             </h4>
             {onlineCount + offlineCount > 0 ? (
               <p className="shrink-0 text-[10px] tabular-nums text-muted">
-                {onlineCount} online
-                {offlineCount > 0 ? ` · ${offlineCount} offline` : ""}
-                {unknownCount > 0 ? ` · ${unknownCount} sem status` : ""}
+                {statusFilter === "online" ? (
+                  <>{onlineCount} online</>
+                ) : statusFilter === "offline" ? (
+                  <>{offlineCount} offline</>
+                ) : (
+                  <>
+                    {onlineCount} online
+                    {offlineCount > 0 ? ` · ${offlineCount} offline` : ""}
+                    {unknownCount > 0 ? ` · ${unknownCount} sem status` : ""}
+                  </>
+                )}
               </p>
             ) : null}
           </div>
