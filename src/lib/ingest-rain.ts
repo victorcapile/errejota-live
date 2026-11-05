@@ -297,6 +297,18 @@ export async function ensureFreshRain(): Promise<void> {
       return;
     }
 
+    // Evita que várias instâncias disparem a mesma ingestão em sequência.
+    const [lastRun] = await db
+      .select({ startedAt: max(ingestRuns.startedAt) })
+      .from(ingestRuns)
+      .where(eq(ingestRuns.job, "rain"));
+    const lastRunAt = lastRun?.startedAt
+      ? new Date(lastRun.startedAt).getTime()
+      : 0;
+    if (Number.isFinite(lastRunAt) && now - lastRunAt < 150_000) {
+      return;
+    }
+
     inFlight = ingestRain();
     await inFlight;
   } catch (error) {
