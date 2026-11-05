@@ -23,12 +23,23 @@ export const localDatabasePath =
 let localClient: PGlite | null = null;
 let remoteClient: ReturnType<typeof postgres> | null = null;
 
-function createPostgresDatabase(connectionString: string): Database {
+type RemoteBundle = {
+  db: Database;
+  client: ReturnType<typeof postgres>;
+  createdAt: number;
+};
+
+// Em serverless o processo fica congelado entre requisições e o pooler pode
+// derrubar a conexão ociosa. Renovar o cliente periodicamente evita reutilizar
+// um socket morto (que travaria a query para sempre).
+const REMOTE_TTL_MS = 5_000;
+let remoteBundle: RemoteBundle | null = null;
+let remoteConn: string | null = null;
+
+function createRemoteBundle(connectionString: string): RemoteBundle {
   const client = postgres(connectionString, {
     prepare: false,
     max: 1,
-    // Em serverless, conexões ociosas ficam presas e esgotam o pool do Supabase.
-    // Um tempo curto evita reutilizar sockets que morreram após pausa/restart.
     idle_timeout: 5,
     max_lifetime: 60,
     connect_timeout: 10,
@@ -36,7 +47,29 @@ function createPostgresDatabase(connectionString: string): Database {
   });
   remoteClient = client;
 
-  return drizzlePostgres(client, { schema });
+  return {
+    db: drizzlePostgres(client, { schema }),
+    client,
+    createdAt: Date.now(),
+  };
+}
+
+function getRemoteDb(connectionString: string): Database {
+  const now = Date.now();
+  if (
+    !remoteBundle ||
+    remoteConn !== connectionString ||
+    now - remoteBundle.createdAt > REMOTE_TTL_MS
+  ) {
+    const previous = remoteBundle?.client;
+    remoteBundle = createRemoteBundle(connectionString);
+    remoteConn = connectionString;
+    if (previous) {
+      void previous.end({ timeout: 2 }).catch(() => {});
+    }
+  }
+
+  return remoteBundle.db;
 }
 
 /**
@@ -77,7 +110,18 @@ function createDatabase(): Database {
     process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 
   if (connectionString) {
-    return createPostgresDatabase(connectionString);
+    if (process.env.NODE_ENV === "production") {
+      // Proxy para que cada acesso use o cliente mais recente. Necessário no
+      // runtime serverless, onde a instância é reaproveitada entre requisições.
+      return new Proxy({} as Database, {
+        get(_target, property, receiver) {
+          const instance = getRemoteDb(connectionString);
+          const value = Reflect.get(instance, property, receiver);
+          return typeof value === "function" ? value.bind(instance) : value;
+        },
+      });
+    }
+    return createRemoteBundle(connectionString).db;
   }
 
   // O `next build` roda vários workers em paralelo. O PGlite só aceita um
@@ -112,6 +156,8 @@ export async function closeDb(): Promise<void> {
     }
   }
 
+  remoteBundle = null;
+  remoteConn = null;
   const remote = remoteClient;
   remoteClient = null;
   if (remote) {
