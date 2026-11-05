@@ -297,7 +297,13 @@ export async function ensureFreshRain(): Promise<void> {
       .where(eq(rainObservations.metric, "mm_1h"));
 
     const latest = row?.latest ? new Date(row.latest).getTime() : 0;
+    console.log("[rain-check]", {
+      latest: row?.latest,
+      sinceLatestMin: Math.round((now - latest) / 60000),
+      sinceCheckSec: Math.round((now - lastCheckedAt) / 1000),
+    });
     if (Number.isFinite(latest) && now - latest < FRESH_WINDOW_MS) {
+      console.log("[rain-check] fresh, skip");
       return;
     }
 
@@ -309,10 +315,13 @@ export async function ensureFreshRain(): Promise<void> {
     const lastRunAt = lastRun?.startedAt
       ? new Date(lastRun.startedAt).getTime()
       : 0;
+    console.log("[rain-check] lastRun", lastRun?.startedAt);
     if (Number.isFinite(lastRunAt) && now - lastRunAt < 60_000) {
+      console.log("[rain-check] recent run, skip");
       return;
     }
 
+    console.log("[rain-check] ingesting");
     inFlight = ingestRain();
     await inFlight;
   } catch (error) {
