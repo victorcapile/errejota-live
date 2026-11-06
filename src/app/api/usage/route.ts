@@ -56,6 +56,14 @@ export async function POST(request: Request) {
         .update(`${rawIp}:${process.env.IP_HASH_SALT ?? "errejota-local-ip"}`)
         .digest("hex")
     : null;
+  const userAgent = request.headers.get("user-agent") ?? "";
+  const visitorHash = rawIp
+    ? createHash("sha256")
+        .update(
+          `${rawIp}|${userAgent}:${process.env.IP_HASH_SALT ?? "errejota-local-ip"}`,
+        )
+        .digest("hex")
+    : null;
   const device = detectDevice(request.headers.get("user-agent"));
 
   try {
@@ -67,6 +75,7 @@ export async function POST(request: Request) {
       // Em produção guardamos apenas o hash pseudônimo; o IP cru fica local.
       ip: process.env.NODE_ENV === "production" ? null : rawIp,
       ipHash,
+      visitorHash,
       neighborhoodSlug: clean(body.neighborhoodSlug, 80),
       cameraId: clean(body.cameraId, 120),
       cameraName: clean(body.cameraName, 160),

@@ -14,6 +14,7 @@ async function main() {
       "session_id" text,
       "ip" text,
       "ip_hash" text,
+      "visitor_hash" text,
       "neighborhood_slug" text,
       "camera_id" text,
       "camera_name" text,
@@ -78,6 +79,11 @@ async function main() {
 
   // Garante as colunas caso alguma tabela já exista em uma versão anterior.
   await db.execute(sql`alter table "usage_events" add column if not exists "device" text`);
+  await db.execute(sql`alter table "usage_events" add column if not exists "visitor_hash" text`);
+  await db.execute(sql`
+    create index if not exists "usage_events_visitor_hash_idx"
+    on "usage_events" ("visitor_hash")
+  `);
   await db.execute(sql`alter table "visitor_locations" add column if not exists "device" text`);
   await db.execute(sql`alter table "visitor_locations" add column if not exists "street" text`);
   await db.execute(sql`alter table "visitor_locations" add column if not exists "neighborhood" text`);

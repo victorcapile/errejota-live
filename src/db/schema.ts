@@ -449,6 +449,7 @@ export const usageEvents = pgTable(
     sessionId: text("session_id"),
     ip: text("ip"),
     ipHash: text("ip_hash"),
+    visitorHash: text("visitor_hash"),
     neighborhoodSlug: text("neighborhood_slug"),
     cameraId: text("camera_id"),
     cameraName: text("camera_name"),
@@ -460,6 +461,7 @@ export const usageEvents = pgTable(
     index("usage_events_neighborhood_idx").on(table.neighborhoodSlug),
     index("usage_events_camera_idx").on(table.cameraId),
     index("usage_events_ip_hash_idx").on(table.ipHash),
+    index("usage_events_visitor_hash_idx").on(table.visitorHash),
   ],
 );
 

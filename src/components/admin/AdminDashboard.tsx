@@ -84,21 +84,6 @@ function DeviceIcon({ device }: { device: DeviceType }) {
   );
 }
 
-function DeviceIcons({ devices }: { devices: DeviceType[] }) {
-  const unique = Array.from(new Set(devices)).sort();
-  if (unique.length === 0) {
-    return <span className="text-[10px] text-muted">—</span>;
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 text-muted">
-      {unique.map((device) => (
-        <DeviceIcon key={device} device={device} />
-      ))}
-    </span>
-  );
-}
-
 function formatPlace(point: VisitorLocationPoint | null): string {
   if (!point) {
     return "Local não identificado";
@@ -177,8 +162,14 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
     ...stats.neighborhoods.map((item) => item.count),
   );
   const maxRegion = Math.max(1, ...stats.regions.map((item) => item.count));
-  const maxDaily = Math.max(1, ...stats.daily.map((item) => item.count));
-  const maxHourly = Math.max(1, ...stats.hourly.map((item) => item.count));
+  const maxDaily = Math.max(1, ...stats.daily.map((item) => item.visitors));
+  const maxHourly = Math.max(1, ...stats.hourly.map((item) => item.visitors));
+  const maxDevice = Math.max(1, ...stats.devices.map((item) => item.visitors));
+  const todayKey = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  });
+  const todayVisitors =
+    stats.daily.find((item) => item.day === todayKey)?.visitors ?? 0;
 
   const totalEvents =
     stats.totals.pageViews +
@@ -217,6 +208,11 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
             voluntariamente no botão de localização. Em produção, o IP cru não
             é exibido.
           </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted">
+            Visitantes = hash anônimo de IP + navegador, com reset diário.
+            Navegadores únicos no período:{" "}
+            {formatNumber(stats.totals.sessions)}.
+          </p>
         </div>
         <form action="/api/admin/logout" method="post">
           <button
@@ -235,9 +231,9 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
           hint="Aberturas da página inicial"
         />
         <StatCard
-          label="Sessões únicas"
-          value={stats.totals.sessions}
-          hint="Navegadores anônimos distintos"
+          label="Visitantes hoje"
+          value={todayVisitors}
+          hint="IP + navegador, reset diário"
         />
         <StatCard
           label="Bairros abertos"
@@ -399,14 +395,14 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <section className="rounded-2xl border border-line bg-card p-5 shadow-sm">
               <div className="flex items-baseline justify-between gap-2">
-                <h2 className="text-sm font-semibold">Visitas por dia</h2>
+                <h2 className="text-sm font-semibold">Visitantes por dia</h2>
                 <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
                   últimos 14 dias
                 </span>
               </div>
               {stats.daily.length === 0 ? (
                 <p className="mt-4 text-sm text-muted">
-                  Sem visitas registradas nos últimos 14 dias.
+                  Sem visitantes registrados nos últimos 14 dias.
                 </p>
               ) : (
                 <div className="mt-5 flex h-36 items-end gap-2">
@@ -414,10 +410,10 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                     <div
                       key={item.day}
                       className="group flex h-full w-full max-w-12 flex-1 flex-col items-center justify-end gap-1"
-                      title={`${item.day}: ${formatNumber(item.count)} visita(s)`}
+                      title={`${item.day}: ${formatNumber(item.visitors)} visitante(s) · ${formatNumber(item.count)} visita(s)`}
                     >
                       <span className="text-[9px] tabular-nums text-muted">
-                        {formatNumber(item.count)}
+                        {formatNumber(item.visitors)}
                       </span>
                       <div className="flex w-full flex-1 items-end">
                         <div
@@ -425,7 +421,7 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                           style={{
                             height: `${Math.max(
                               4,
-                              (item.count / maxDaily) * 100,
+                              (item.visitors / maxDaily) * 100,
                             )}%`,
                           }}
                         />
@@ -441,14 +437,14 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
 
             <section className="rounded-2xl border border-line bg-card p-5 shadow-sm">
               <div className="flex items-baseline justify-between gap-2">
-                <h2 className="text-sm font-semibold">Atividade por hora</h2>
+                <h2 className="text-sm font-semibold">Visitantes por hora</h2>
                 <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
                   últimas 24h
                 </span>
               </div>
               {stats.hourly.length === 0 ? (
                 <p className="mt-4 text-sm text-muted">
-                  Sem visitas nas últimas 24 horas.
+                  Sem visitantes nas últimas 24 horas.
                 </p>
               ) : (
                 <div className="mt-5 flex h-36 items-end gap-1">
@@ -456,10 +452,10 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                     <div
                       key={item.hour}
                       className="group flex h-full w-full max-w-12 min-w-0 flex-1 flex-col items-center justify-end gap-1"
-                      title={`${item.hour}h: ${formatNumber(item.count)} visita(s)`}
+                      title={`${item.hour}h: ${formatNumber(item.visitors)} visitante(s) · ${formatNumber(item.count)} visita(s)`}
                     >
                       <span className="text-[8px] tabular-nums text-muted">
-                        {formatNumber(item.count)}
+                        {formatNumber(item.visitors)}
                       </span>
                       <div className="flex w-full flex-1 items-end">
                         <div
@@ -467,7 +463,7 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                           style={{
                             height: `${Math.max(
                               4,
-                              (item.count / maxHourly) * 100,
+                              (item.visitors / maxHourly) * 100,
                             )}%`,
                           }}
                         />
@@ -530,80 +526,30 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
               </div>
             )}
             <p className="mt-3 text-[10px] leading-relaxed text-muted">
-              Visitantes = sessões anônimas; Redes = hashes de IP distintos.
-              Localizações detalhadas ficam 30 dias; os eventos agregados ficam
-              12 meses.
+              Visitantes = hash de IP + User-Agent por dia (reset diário);
+              Redes = IPs distintos. Localizações detalhadas ficam 30 dias; os
+              eventos agregados ficam 12 meses.
             </p>
           </section>
 
           <section className="mt-4 rounded-2xl border border-line bg-card p-5 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-sm font-semibold">Visitantes por sessão</h2>
+              <h2 className="text-sm font-semibold">Visitantes por dispositivo</h2>
               <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
-                {stats.visitors.length} no topo
+                últimos 30 dias
               </span>
             </div>
-            {stats.visitors.length === 0 ? (
-              <p className="mt-4 text-sm text-muted">
-                Sem visitantes registrados ainda.
-              </p>
-            ) : (
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[42rem] text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-line/60 text-[10px] uppercase tracking-[0.12em] text-muted">
-                      <th className="pb-2 pr-3 font-medium">Visitante</th>
-                      <th className="pb-2 pr-3 font-medium">Apelido</th>
-                      <th className="pb-2 pr-3 font-medium">Rede</th>
-                      <th className="pb-2 pr-3 font-medium">Dispositivo</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Eventos</th>
-                      <th className="pb-2 text-right font-medium">Último acesso</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line/60">
-                    {stats.visitors.map((visitor) => (
-                      <tr key={visitor.key}>
-                        <td className="py-2.5 pr-3">
-                          <span
-                            className="font-mono text-[10px] text-muted"
-                            title={visitor.key}
-                          >
-                            {visitorLabel(visitor.key)}
-                          </span>
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <VisitorLabelEditor
-                            visitorKey={visitor.key}
-                            nickname={visitor.nickname}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <span
-                            className="font-mono text-[10px] text-muted"
-                            title="Hash do IP (rede); pode mudar ao trocar Wi-Fi/5G"
-                          >
-                            {networkLabel(visitor.ip, visitor.ipHash)}
-                          </span>
-                        </td>
-                        <td className="py-2.5 pr-3">
-                          <DeviceIcons devices={visitor.devices} />
-                        </td>
-                        <td className="py-2.5 pr-3 text-right tabular-nums">
-                          {formatNumber(visitor.events)}
-                        </td>
-                        <td className="py-2.5 text-right tabular-nums text-muted">
-                          {formatDateTime(visitor.lastSeen)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <Bars
+              items={stats.devices.map((item) => ({
+                label: DEVICE_LABELS[item.device],
+                count: item.visitors,
+              }))}
+              max={maxDevice}
+              colorClass="bg-brand"
+            />
             <p className="mt-3 text-[10px] leading-relaxed text-muted">
-              Identidade pela sessão anônima do navegador. O hash do IP aparece
-              em “Rede” e pode mudar ao trocar Wi-Fi/5G. No ambiente local o IP
-              cru aparece; em produção só o hash.
+              Visitantes únicos por dia (IP + User-Agent) por tipo de
+              dispositivo.
             </p>
           </section>
 
@@ -655,6 +601,15 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                       ) : null}
                     </summary>
                     <div className="border-t border-line/60 px-3 py-2">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                          Apelido
+                        </span>
+                        <VisitorLabelEditor
+                          visitorKey={visitor.key}
+                          nickname={visitor.nickname}
+                        />
+                      </div>
                       <ul className="space-y-1.5">
                         {visitor.history.map((point, index) => (
                           <li

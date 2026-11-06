@@ -25,6 +25,7 @@ export type CameraUsage = {
 
 export type DailyUsage = {
   day: string;
+  visitors: number;
   count: number;
 };
 
@@ -35,20 +36,13 @@ export type RegionUsage = {
 
 export type HourlyUsage = {
   hour: string;
+  visitors: number;
   count: number;
 };
 
-export type VisitorUsage = {
-  key: string;
-  ip: string | null;
-  ipHash: string | null;
-  nickname: string | null;
-  events: number;
-  lastSeen: string;
-  pageViews: number;
-  neighborhoodViews: number;
-  cameraClicks: number;
-  devices: DeviceType[];
+export type DeviceVisitors = {
+  device: DeviceType;
+  visitors: number;
 };
 
 export type VisitorLocationPoint = {
@@ -92,7 +86,7 @@ export type UsageStats = {
   regions: RegionUsage[];
   hourly: HourlyUsage[];
   monthly: MonthlyUsage[];
-  visitors: VisitorUsage[];
+  devices: DeviceVisitors[];
   locations: VisitorLocationUsage[];
 };
 
@@ -108,7 +102,7 @@ const EMPTY_STATS: UsageStats = {
   regions: [],
   hourly: [],
   monthly: [],
-  visitors: [],
+  devices: [],
   locations: [],
 };
 
@@ -230,7 +224,7 @@ export async function getUsageStats(): Promise<UsageStats> {
     const localDay = sql<string>`to_char((${usageEvents.createdAt})::timestamptz at time zone 'America/Sao_Paulo', 'YYYY-MM-DD')`;
     const localHour = sql<string>`to_char((${usageEvents.createdAt})::timestamptz at time zone 'America/Sao_Paulo', 'HH24')`;
     const localMonth = sql<string>`to_char((${usageEvents.createdAt})::timestamptz at time zone 'America/Sao_Paulo', 'YYYY-MM')`;
-    const usageVisitorKey = sql<string>`coalesce(nullif(${usageEvents.sessionId}, ''), ${usageEvents.ipHash})`;
+    const visitorKey = sql<string>`coalesce(nullif(${usageEvents.visitorHash}, ''), nullif(${usageEvents.ipHash}, ''), nullif(${usageEvents.sessionId}, ''))`;
 
     const [totals] = await db
       .select({
@@ -293,6 +287,7 @@ export async function getUsageStats(): Promise<UsageStats> {
     const dailyRows = await db
       .select({
         day: localDay,
+        visitors: sql<number>`count(distinct ${visitorKey})::int`,
         count: sql<number>`count(*)::int`,
       })
       .from(usageEvents)
@@ -321,29 +316,6 @@ export async function getUsageStats(): Promise<UsageStats> {
       .orderBy(desc(sql`count(*)`))
       .limit(8);
 
-    const visitorRows = await db
-      .select({
-        key: usageVisitorKey,
-        ip: sql<string | null>`max(${usageEvents.ip})`,
-        ipHash: sql<string | null>`max(${usageEvents.ipHash})`,
-        nickname: visitorLabels.nickname,
-        events: sql<number>`count(*)::int`,
-        lastSeen: sql<string>`max(${usageEvents.createdAt})`,
-        pageViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'page_view')::int`,
-        neighborhoodViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'neighborhood_view')::int`,
-        cameraClicks: sql<number>`count(*) filter (where ${usageEvents.type} = 'camera_click')::int`,
-        devices: sql<string | null>`string_agg(distinct ${usageEvents.device}, ',')`,
-      })
-      .from(usageEvents)
-      .leftJoin(
-        visitorLabels,
-        eq(visitorLabels.visitorKey, usageVisitorKey),
-      )
-      .where(sql`${usageVisitorKey} is not null`)
-      .groupBy(usageVisitorKey, visitorLabels.nickname)
-      .orderBy(desc(sql`count(*)`))
-      .limit(20);
-
     const monthlySince = new Date();
     monthlySince.setUTCMonth(
       monthlySince.getUTCMonth() - (MONTHLY_HISTORY_MONTHS - 1),
@@ -354,19 +326,36 @@ export async function getUsageStats(): Promise<UsageStats> {
     const monthlyRows = await db
       .select({
         month: localMonth,
-        visitors: sql<number>`count(distinct ${usageVisitorKey})::int`,
+        visitors: sql<number>`count(distinct concat(${visitorKey}, '|', ${localDay}))::int`,
         networks: sql<number>`count(distinct ${usageEvents.ipHash})::int`,
         pageViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'page_view')::int`,
       })
       .from(usageEvents)
       .where(
         and(
-          sql`${usageVisitorKey} is not null`,
+          sql`${visitorKey} is not null`,
           gte(usageEvents.createdAt, monthlySince.toISOString()),
         ),
       )
       .groupBy(localMonth)
       .orderBy(desc(localMonth));
+
+    const deviceSince = new Date(
+      Date.now() - 30 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const deviceRows = await db
+      .select({
+        device: usageEvents.device,
+        visitors: sql<number>`count(distinct concat(${visitorKey}, '|', ${localDay}))::int`,
+      })
+      .from(usageEvents)
+      .where(
+        and(
+          sql`${visitorKey} is not null`,
+          gte(usageEvents.createdAt, deviceSince),
+        ),
+      )
+      .groupBy(usageEvents.device);
 
     const locations = await loadVisitorLocations();
 
@@ -376,6 +365,7 @@ export async function getUsageStats(): Promise<UsageStats> {
     const hourlyRows = await db
       .select({
         hour: localHour,
+        visitors: sql<number>`count(distinct ${visitorKey})::int`,
         count: sql<number>`count(*)::int`,
       })
       .from(usageEvents)
@@ -409,6 +399,7 @@ export async function getUsageStats(): Promise<UsageStats> {
       })),
       daily: dailyRows.map((row) => ({
         day: row.day,
+        visitors: Number(row.visitors ?? 0),
         count: Number(row.count ?? 0),
       })),
       regions: regionRows.map((row) => ({
@@ -417,6 +408,7 @@ export async function getUsageStats(): Promise<UsageStats> {
       })),
       hourly: hourlyRows.map((row) => ({
         hour: row.hour,
+        visitors: Number(row.visitors ?? 0),
         count: Number(row.count ?? 0),
       })),
       monthly: monthlyRows.map((row) => ({
@@ -425,20 +417,13 @@ export async function getUsageStats(): Promise<UsageStats> {
         networks: Number(row.networks ?? 0),
         pageViews: Number(row.pageViews ?? 0),
       })),
-      visitors: visitorRows.map((row) => ({
-        key: row.key ?? "",
-        ip: row.ip ?? null,
-        ipHash: row.ipHash ?? null,
-        nickname: row.nickname ?? null,
-        events: Number(row.events ?? 0),
-        lastSeen: row.lastSeen ?? "",
-        pageViews: Number(row.pageViews ?? 0),
-        neighborhoodViews: Number(row.neighborhoodViews ?? 0),
-        cameraClicks: Number(row.cameraClicks ?? 0),
-        devices: (row.devices ?? "")
-          .split(",")
-          .filter(Boolean) as DeviceType[],
-      })),
+      devices: deviceRows
+        .map((row) => ({
+          device: (row.device ?? "unknown") as DeviceType,
+          visitors: Number(row.visitors ?? 0),
+        }))
+        .filter((item) => item.visitors > 0)
+        .sort((a, b) => b.visitors - a.visitors),
       locations,
     };
   } catch (error) {
