@@ -1,0 +1,24 @@
+name: Resetar dados de uso (manual)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: reset-usage
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apagar eventos, apelidos e localizações
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:reset-usage
