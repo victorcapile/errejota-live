@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   Camera as CameraIcon,
   Loader2,
@@ -60,103 +60,8 @@ export function CameraDossierPanel({
   const unknownCount =
     neighborhoodCameras.length - onlineCount - offlineCount;
 
-  const panelRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef<{
-    startY: number;
-    startTime: number;
-    delta: number;
-  } | null>(null);
-  const closeTimeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (open && panelRef.current) {
-      panelRef.current.style.transform = "";
-      panelRef.current.style.transition = "";
-    }
-    if (!open && closeTimeoutRef.current !== null) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-  }, [open]);
-
-  function handleDragStart(event: React.PointerEvent<HTMLDivElement>) {
-    if (!open) {
-      return;
-    }
-    event.preventDefault();
-    if (closeTimeoutRef.current !== null) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // Captura indisponível (ex.: evento sintético de teste).
-    }
-    dragState.current = {
-      startY: event.clientY,
-      startTime: Date.now(),
-      delta: 0,
-    };
-    if (panelRef.current) {
-      panelRef.current.style.transition = "none";
-    }
-  }
-
-  function handleDragMove(event: React.PointerEvent<HTMLDivElement>) {
-    const state = dragState.current;
-    if (!state) {
-      return;
-    }
-    const delta = Math.max(0, event.clientY - state.startY);
-    state.delta = delta;
-    if (panelRef.current) {
-      panelRef.current.style.transform = `translateY(${delta}px)`;
-    }
-  }
-
-  function handleDragEnd() {
-    const state = dragState.current;
-    if (!state) {
-      return;
-    }
-    dragState.current = null;
-
-    const elapsed = Math.max(1, Date.now() - state.startTime);
-    const velocity = state.delta / elapsed;
-    const shouldClose = state.delta > 90 || (state.delta > 40 && velocity > 0.5);
-    const panel = panelRef.current;
-
-    if (!panel) {
-      if (shouldClose) {
-        onClose();
-      }
-      return;
-    }
-
-    if (shouldClose) {
-      panel.style.transition = "transform 220ms ease-out";
-      panel.style.transform = "translateY(calc(100% + 1rem))";
-      closeTimeoutRef.current = window.setTimeout(() => {
-        closeTimeoutRef.current = null;
-        onClose();
-      }, 200);
-      return;
-    }
-
-    panel.style.transition = "transform 200ms ease-out";
-    panel.style.transform = "translateY(0)";
-    window.setTimeout(() => {
-      if (panelRef.current) {
-        panelRef.current.style.transform = "";
-        panelRef.current.style.transition = "";
-      }
-    }, 200);
-  }
-
   return (
     <div
-      ref={panelRef}
       aria-hidden={!open}
       inert={!open}
       className={`absolute inset-x-0 bottom-0 z-20 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[24rem] lg:rounded-2xl lg:border ${
@@ -166,26 +71,7 @@ export function CameraDossierPanel({
       }`}
       data-testid="camera-dossier-panel"
     >
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Arraste para baixo para fechar o dossiê"
-        title="Arraste para baixo para fechar"
-        className="flex shrink-0 touch-none cursor-grab justify-center py-2 active:cursor-grabbing lg:hidden"
-        onPointerDown={handleDragStart}
-        onPointerMove={handleDragMove}
-        onPointerUp={handleDragEnd}
-        onPointerCancel={handleDragEnd}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onClose();
-          }
-        }}
-      >
-        <span aria-hidden className="h-1 w-10 rounded-full bg-line" />
-      </div>
-      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-4 pt-2 pb-2 lg:pt-4">
+      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-4 pt-4 pb-2">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold leading-snug text-foreground">
             {neighborhood.name}
@@ -198,7 +84,7 @@ export function CameraDossierPanel({
           type="button"
           onClick={onClose}
           aria-label="Fechar dossiê"
-          className="hidden size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:text-brand lg:grid"
+          className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:text-brand"
         >
           <X className="size-4" />
         </button>
