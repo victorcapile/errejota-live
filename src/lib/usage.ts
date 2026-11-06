@@ -221,6 +221,10 @@ async function loadVisitorLocations(): Promise<VisitorLocationUsage[]> {
 
 export async function getUsageStats(): Promise<UsageStats> {
   try {
+    const localDay = sql<string>`to_char((${usageEvents.createdAt})::timestamptz at time zone 'America/Sao_Paulo', 'YYYY-MM-DD')`;
+    const localHour = sql<string>`to_char((${usageEvents.createdAt})::timestamptz at time zone 'America/Sao_Paulo', 'HH24')`;
+    const localMonth = sql<string>`to_char((${usageEvents.createdAt})::timestamptz at time zone 'America/Sao_Paulo', 'YYYY-MM')`;
+
     const [totals] = await db
       .select({
         pageViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'page_view')::int`,
@@ -281,7 +285,7 @@ export async function getUsageStats(): Promise<UsageStats> {
     const since = new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString();
     const dailyRows = await db
       .select({
-        day: sql<string>`substr(${usageEvents.createdAt}, 1, 10)`,
+        day: localDay,
         count: sql<number>`count(*)::int`,
       })
       .from(usageEvents)
@@ -291,8 +295,8 @@ export async function getUsageStats(): Promise<UsageStats> {
           gte(usageEvents.createdAt, since),
         ),
       )
-      .groupBy(sql`substr(${usageEvents.createdAt}, 1, 10)`)
-      .orderBy(sql`substr(${usageEvents.createdAt}, 1, 10)`);
+      .groupBy(localDay)
+      .orderBy(localDay);
 
     const regionRows = await db
       .select({
@@ -334,13 +338,15 @@ export async function getUsageStats(): Promise<UsageStats> {
       .limit(20);
 
     const monthlySince = new Date();
-    monthlySince.setMonth(monthlySince.getMonth() - (MONTHLY_HISTORY_MONTHS - 1));
-    monthlySince.setDate(1);
-    monthlySince.setHours(0, 0, 0, 0);
+    monthlySince.setUTCMonth(
+      monthlySince.getUTCMonth() - (MONTHLY_HISTORY_MONTHS - 1),
+    );
+    monthlySince.setUTCDate(1);
+    monthlySince.setUTCHours(3, 0, 0, 0);
 
     const monthlyRows = await db
       .select({
-        month: sql<string>`substr(${usageEvents.createdAt}, 1, 7)`,
+        month: localMonth,
         visitors: sql<number>`count(distinct ${usageEvents.ipHash})::int`,
         sessions: sql<number>`count(distinct ${usageEvents.sessionId})::int`,
         pageViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'page_view')::int`,
@@ -352,8 +358,8 @@ export async function getUsageStats(): Promise<UsageStats> {
           gte(usageEvents.createdAt, monthlySince.toISOString()),
         ),
       )
-      .groupBy(sql`substr(${usageEvents.createdAt}, 1, 7)`)
-      .orderBy(desc(sql`substr(${usageEvents.createdAt}, 1, 7)`));
+      .groupBy(localMonth)
+      .orderBy(desc(localMonth));
 
     const locations = await loadVisitorLocations();
 
@@ -362,7 +368,7 @@ export async function getUsageStats(): Promise<UsageStats> {
     ).toISOString();
     const hourlyRows = await db
       .select({
-        hour: sql<string>`substr(${usageEvents.createdAt}, 12, 2)`,
+        hour: localHour,
         count: sql<number>`count(*)::int`,
       })
       .from(usageEvents)
@@ -372,8 +378,8 @@ export async function getUsageStats(): Promise<UsageStats> {
           gte(usageEvents.createdAt, since24h),
         ),
       )
-      .groupBy(sql`substr(${usageEvents.createdAt}, 12, 2)`)
-      .orderBy(sql`substr(${usageEvents.createdAt}, 12, 2)`);
+      .groupBy(localHour)
+      .orderBy(localHour);
 
     return {
       totals: {

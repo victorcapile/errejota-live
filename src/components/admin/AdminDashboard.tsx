@@ -27,18 +27,20 @@ function formatDateTime(iso: string): string {
     month: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
 }
 
 function formatMonth(value: string): string {
   const [year, month] = value.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, 1, 12));
   if (Number.isNaN(date.getTime())) {
     return value;
   }
   return date.toLocaleDateString("pt-BR", {
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
