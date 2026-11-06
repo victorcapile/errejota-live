@@ -71,7 +71,7 @@ export function CameraDossierPanel({
       }`}
       data-testid="camera-dossier-panel"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-4 pt-4 pb-2">
+      <div className="flex items-center justify-between gap-3 border-b border-line/70 px-4 pt-4 pb-2">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold leading-snug text-foreground">
             {neighborhood.name}
