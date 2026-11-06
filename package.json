@@ -20,7 +20,8 @@
     "db:sync": "tsx scripts/sync-db-from-production.ts",
     "db:local": "tsx scripts/setup-local-db.ts && npm run db:seed && npm run db:cameras -- --replace",
     "db:setup": "npm run db:push && npm run db:seed && npm run db:cameras -- --replace",
-    "db:prune": "tsx scripts/prune-usage.ts"
+    "db:prune": "tsx scripts/prune-usage.ts",
+    "db:migrate-usage": "tsx scripts/migrate-usage-tables.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.14",

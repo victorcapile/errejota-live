@@ -1,0 +1,24 @@
+name: Aplicar schema de uso (manual)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: migrate-usage
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Criar tabelas de uso/localização
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run db:migrate-usage
