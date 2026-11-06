@@ -83,6 +83,27 @@ async function main() {
   await db.execute(sql`alter table "visitor_locations" add column if not exists "neighborhood" text`);
   await db.execute(sql`alter table "visitor_locations" add column if not exists "place_key" text`);
 
+  // Migra apelidos antigos (chaveados por hash de IP) para a sessão mais
+  // recente daquele IP. Depois da primeira execução, as chaves já são sessões
+  // e não batem mais com ip_hash; a operação é idempotente.
+  await db.execute(sql`
+    update "visitor_labels" vl
+    set "visitor_key" = sub."session_id"
+    from (
+      select distinct on ("ip_hash") "ip_hash", "session_id"
+      from "usage_events"
+      where "session_id" is not null
+        and "ip_hash" is not null
+      order by "ip_hash", "created_at" desc
+    ) sub
+    where vl."visitor_key" = sub."ip_hash"
+      and not exists (
+        select 1
+        from "visitor_labels" existing
+        where existing."visitor_key" = sub."session_id"
+      )
+  `);
+
   await closeDb();
   console.log("Tabelas de uso/localização garantidas.");
 }

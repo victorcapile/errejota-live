@@ -44,6 +44,19 @@ function formatMonth(value: string): string {
   });
 }
 
+function visitorLabel(key: string): string {
+  return /^[a-f0-9]{64}$/.test(key)
+    ? `anon-${key.slice(0, 10)}`
+    : `sess-${key.slice(0, 8)}`;
+}
+
+function networkLabel(ip: string | null, ipHash: string | null): string {
+  if (ip) {
+    return ip;
+  }
+  return ipHash ? `anon-${ipHash.slice(0, 10)}` : "—";
+}
+
 function DeviceIcon({ device }: { device: DeviceType }) {
   const label = DEVICE_LABELS[device];
   const className = "size-3.5";
@@ -490,7 +503,7 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                         Visitantes
                       </th>
                       <th className="pb-2 pr-3 text-right font-medium">
-                        Sessões
+                        Redes
                       </th>
                       <th className="pb-2 text-right font-medium">Visitas</th>
                     </tr>
@@ -505,7 +518,7 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                           {formatNumber(item.visitors)}
                         </td>
                         <td className="py-2 pr-3 text-right tabular-nums text-muted">
-                          {formatNumber(item.sessions)}
+                          {formatNumber(item.networks)}
                         </td>
                         <td className="py-2 text-right tabular-nums text-muted">
                           {formatNumber(item.pageViews)}
@@ -517,32 +530,33 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
               </div>
             )}
             <p className="mt-3 text-[10px] leading-relaxed text-muted">
-              Visitantes únicos por hash de IP. Localizações detalhadas ficam 30
-              dias; os eventos agregados ficam 12 meses.
+              Visitantes = sessões anônimas; Redes = hashes de IP distintos.
+              Localizações detalhadas ficam 30 dias; os eventos agregados ficam
+              12 meses.
             </p>
           </section>
 
           <section className="mt-4 rounded-2xl border border-line bg-card p-5 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-sm font-semibold">Visitantes por IP</h2>
+              <h2 className="text-sm font-semibold">Visitantes por sessão</h2>
               <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
                 {stats.visitors.length} no topo
               </span>
             </div>
             {stats.visitors.length === 0 ? (
               <p className="mt-4 text-sm text-muted">
-                Sem visitantes com IP registrado ainda.
+                Sem visitantes registrados ainda.
               </p>
             ) : (
               <div className="mt-3 overflow-x-auto">
-                <table className="w-full min-w-[40rem] text-left text-xs">
+                <table className="w-full min-w-[42rem] text-left text-xs">
                   <thead>
                     <tr className="border-b border-line/60 text-[10px] uppercase tracking-[0.12em] text-muted">
                       <th className="pb-2 pr-3 font-medium">Visitante</th>
                       <th className="pb-2 pr-3 font-medium">Apelido</th>
+                      <th className="pb-2 pr-3 font-medium">Rede</th>
                       <th className="pb-2 pr-3 font-medium">Dispositivo</th>
                       <th className="pb-2 pr-3 text-right font-medium">Eventos</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Sessões</th>
                       <th className="pb-2 text-right font-medium">Último acesso</th>
                     </tr>
                   </thead>
@@ -550,8 +564,11 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                     {stats.visitors.map((visitor) => (
                       <tr key={visitor.key}>
                         <td className="py-2.5 pr-3">
-                          <span className="font-mono text-[10px] text-muted">
-                            {visitor.ip ?? `anon-${visitor.key.slice(0, 10)}`}
+                          <span
+                            className="font-mono text-[10px] text-muted"
+                            title={visitor.key}
+                          >
+                            {visitorLabel(visitor.key)}
                           </span>
                         </td>
                         <td className="py-2.5 pr-3">
@@ -561,13 +578,18 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                           />
                         </td>
                         <td className="py-2.5 pr-3">
+                          <span
+                            className="font-mono text-[10px] text-muted"
+                            title="Hash do IP (rede); pode mudar ao trocar Wi-Fi/5G"
+                          >
+                            {networkLabel(visitor.ip, visitor.ipHash)}
+                          </span>
+                        </td>
+                        <td className="py-2.5 pr-3">
                           <DeviceIcons devices={visitor.devices} />
                         </td>
                         <td className="py-2.5 pr-3 text-right tabular-nums">
                           {formatNumber(visitor.events)}
-                        </td>
-                        <td className="py-2.5 pr-3 text-right tabular-nums text-muted">
-                          {formatNumber(visitor.sessions)}
                         </td>
                         <td className="py-2.5 text-right tabular-nums text-muted">
                           {formatDateTime(visitor.lastSeen)}
@@ -579,14 +601,15 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
               </div>
             )}
             <p className="mt-3 text-[10px] leading-relaxed text-muted">
-              No ambiente local o IP cru aparece para facilitar o apelido. Em
-              produção só o hash pseudônimo é gravado.
+              Identidade pela sessão anônima do navegador. O hash do IP aparece
+              em “Rede” e pode mudar ao trocar Wi-Fi/5G. No ambiente local o IP
+              cru aparece; em produção só o hash.
             </p>
           </section>
 
           <section className="mt-4 rounded-2xl border border-line bg-card p-5 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-sm font-semibold">Localizações por IP</h2>
+              <h2 className="text-sm font-semibold">Localizações por visitante</h2>
               <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
                 últimos 30 dias
               </span>
@@ -606,9 +629,7 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                     <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2.5">
                       <div className="min-w-0">
                         <p className="truncate text-xs font-medium">
-                          {visitor.nickname ??
-                            visitor.ip ??
-                            `anon-${visitor.key.slice(0, 10)}`}
+                          {visitor.nickname ?? visitorLabel(visitor.key)}
                         </p>
                         <p className="truncate text-[10px] text-muted">
                           {formatPlace(visitor.latest)} ·{" "}
@@ -618,6 +639,12 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
                       </div>
                       {visitor.latest ? (
                         <span className="flex shrink-0 items-center gap-1.5 text-muted">
+                          <span
+                            className="rounded-full border border-line px-1.5 py-0.5 font-mono text-[9px]"
+                            title="Hash do IP (rede); pode mudar ao trocar Wi-Fi/5G"
+                          >
+                            {networkLabel(visitor.ip, visitor.ipHash)}
+                          </span>
                           <DeviceIcon device={visitor.latest.device} />
                           {visitor.latest.accuracy !== null ? (
                             <span className="text-[10px]">
@@ -677,8 +704,8 @@ export function AdminDashboard({ stats }: { stats: UsageStats }) {
               A coordenada é registrada apenas quando o visitante clica em
               “Centralizar minha localização” e autoriza o GPS. Rua e bairro vêm
               do Nominatim/OpenStreetMap; se a consulta falhar, mostramos as
-              coordenadas. Em produção fica associada ao hash do IP, não ao IP
-              cru.
+              coordenadas. O histórico é agrupado pela sessão anônima; o hash do
+              IP aparece como “Rede” e pode mudar ao trocar Wi-Fi/5G.
             </p>
           </section>
         </>

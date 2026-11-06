@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { visitorLabels } from "@/db/schema";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 
-const VISITOR_KEY_PATTERN = /^[a-f0-9]{64}$/;
+const VISITOR_KEY_PATTERN = /^[a-zA-Z0-9-]{8,64}$/;
 
 export async function POST(request: Request) {
   if (!(await isAdminAuthenticated())) {
