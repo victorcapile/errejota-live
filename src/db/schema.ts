@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  doublePrecision,
   index,
   integer,
   primaryKey,
@@ -13,6 +14,7 @@ import {
   AVAILABILITY_STATUS_VALUES,
   CATEGORY_VALUES,
   CITY_STAGE_VALUES,
+  DEVICE_VALUES,
   LOCATION_PRECISION_VALUES,
   MEDIA_TYPE_VALUES,
   NEWS_KIND_VALUES,
@@ -429,6 +431,73 @@ export const ingestRuns = pgTable(
   },
   (table) => [
     index("ingest_runs_job_started_idx").on(table.job, table.startedAt),
+  ],
+);
+
+/**
+ * Eventos anônimos de uso para o painel admin local: visualizações de página,
+ * abertura de bairros e cliques em câmeras. Em produção guarda só o hash do IP.
+ */
+export const usageEvents = pgTable(
+  "usage_events",
+  {
+    id: text("id").primaryKey(),
+    type: text("type", {
+      enum: ["page_view", "neighborhood_view", "camera_click"],
+    }).notNull(),
+    device: text("device", { enum: [...DEVICE_VALUES] }),
+    sessionId: text("session_id"),
+    ip: text("ip"),
+    ipHash: text("ip_hash"),
+    neighborhoodSlug: text("neighborhood_slug"),
+    cameraId: text("camera_id"),
+    cameraName: text("camera_name"),
+    path: text("path"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("usage_events_type_created_idx").on(table.type, table.createdAt),
+    index("usage_events_neighborhood_idx").on(table.neighborhoodSlug),
+    index("usage_events_camera_idx").on(table.cameraId),
+    index("usage_events_ip_hash_idx").on(table.ipHash),
+  ],
+);
+
+/** Apelidos dados pelo admin para um visitante pseudônimo (hash do IP). */
+export const visitorLabels = pgTable("visitor_labels", {
+  visitorKey: text("visitor_key").primaryKey(),
+  nickname: text("nickname").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/**
+ * Coordenadas compartilhadas voluntariamente quando o visitante usa o botão
+ * de localização. Em produção guarda só o hash do IP, como usage_events.
+ */
+export const visitorLocations = pgTable(
+  "visitor_locations",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id"),
+    device: text("device", { enum: [...DEVICE_VALUES] }),
+    ip: text("ip"),
+    ipHash: text("ip_hash"),
+    latitude: doublePrecision("latitude").notNull(),
+    longitude: doublePrecision("longitude").notNull(),
+    accuracy: real("accuracy"),
+    street: text("street"),
+    neighborhood: text("neighborhood"),
+    placeKey: text("place_key"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("visitor_locations_ip_hash_created_idx").on(
+      table.ipHash,
+      table.createdAt,
+    ),
+    index("visitor_locations_created_idx").on(table.createdAt),
+    index("visitor_locations_place_key_idx").on(table.placeKey),
   ],
 );
 

@@ -2,14 +2,19 @@
 
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   Building2,
   Camera as CameraIcon,
   ChevronLeft,
   CloudRain,
   LocateFixed,
-  Map as MapIcon,
   Menu,
   Moon,
   Search,
@@ -17,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { CameraDossierPanel } from "@/components/map/CameraDossierPanel";
+import { trackUsage } from "@/lib/usage-client";
 import { RainConditionCard } from "@/components/map/RainConditionCard";
 import { PresenceBadge } from "@/components/presence/PresenceBadge";
 import {
@@ -24,6 +30,8 @@ import {
   REGION_COLORS,
   type RegionSlug,
 } from "@/lib/constants";
+import { assessFloodRisk, type AssessedFloodRiskLevel } from "@/lib/flood-risk";
+import { rainFreshness } from "@/lib/rain-labels";
 import { normalizeText } from "@/lib/text";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import type {
@@ -35,6 +43,9 @@ import type {
 
 /** Rebusca chuva/condições enquanto a aba estiver visível. */
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+// Evita page_view duplicado no StrictMode e em remontagens do mapa.
+let pageViewTracked = false;
 
 const MapCanvas = dynamic(
   () => import("./MapCanvas").then((module) => module.MapCanvas),
@@ -118,6 +129,7 @@ export function MapExplorer({
 
   const initialRegion = searchParams.get("region");
   const initialNeighborhood = searchParams.get("neighborhood");
+  const initialCameraId = searchParams.get("camera") ?? "";
 
   const [region, setRegion] = useState<RegionSlug | "">(
     isRegionSlug(initialRegion) ? initialRegion : "",
@@ -128,11 +140,11 @@ export function MapExplorer({
       : "",
   );
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [selectedCameraId, setSelectedCameraId] = useState(initialCameraId);
   const initialStatus = searchParams.get("status");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     isStatusFilter(initialStatus) ? initialStatus : "all",
   );
-  const [showNeighborhoods, setShowNeighborhoods] = useState(true);
   const [showCameras, setShowCameras] = useState(true);
   const [showRain, setShowRain] = useState(false);
   const [show3d, setShow3d] = useState(false);
@@ -148,7 +160,15 @@ export function MapExplorer({
     () => false,
   );
   const [sidebarOpenPreference, setSidebarOpenPreference] = useState<boolean | null>(null);
-  const sidebarOpen = sidebarOpenPreference ?? isDesktop;
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const sidebarOpen = mounted
+    ? (sidebarOpenPreference ?? isDesktop)
+    : false;
+
   const [locateRequest, setLocateRequest] = useState(0);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [camerasLoading, setCamerasLoading] = useState(true);
@@ -172,6 +192,31 @@ export function MapExplorer({
   const dossierOpen = Boolean(
     selectedNeighborhood && dismissedDossierNeighborhood !== neighborhood,
   );
+  const trackedNeighborhoodRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (pageViewTracked) {
+      return;
+    }
+    pageViewTracked = true;
+    trackUsage({ type: "page_view", path: window.location.pathname });
+  }, []);
+
+  useEffect(() => {
+    if (!dossierOpen || !neighborhood) {
+      trackedNeighborhoodRef.current = null;
+      return;
+    }
+    if (trackedNeighborhoodRef.current === neighborhood) {
+      return;
+    }
+    trackedNeighborhoodRef.current = neighborhood;
+    trackUsage({
+      type: "neighborhood_view",
+      neighborhoodSlug: neighborhood,
+      path: window.location.pathname,
+    });
+  }, [dossierOpen, neighborhood]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -179,10 +224,11 @@ export function MapExplorer({
     if (neighborhood) params.set("neighborhood", neighborhood);
     if (query.trim()) params.set("q", query.trim());
     if (statusFilter !== "all") params.set("status", statusFilter);
+    if (selectedCameraId) params.set("camera", selectedCameraId);
 
     const search = params.toString();
     window.history.replaceState(null, "", search ? `/?${search}` : "/");
-  }, [region, neighborhood, query, statusFilter]);
+  }, [region, neighborhood, query, statusFilter, selectedCameraId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -431,9 +477,14 @@ export function MapExplorer({
     [selectedNeighborhood],
   );
   const focusKey = neighborhood || region || "all";
+  const focusedCamera = useMemo(
+    () => cameras.find((camera) => camera.id === selectedCameraId) ?? null,
+    [cameras, selectedCameraId],
+  );
 
   function handleRegionChange(next: RegionSlug | "") {
     setHoveredCamera(null);
+    setSelectedCameraId("");
     setRegion(next);
     setNeighborhood("");
     setDismissedDossierNeighborhood(neighborhood || null);
@@ -441,6 +492,7 @@ export function MapExplorer({
 
   function handleNeighborhoodChange(next: string) {
     setHoveredCamera(null);
+    setSelectedCameraId("");
     setNeighborhood(next);
     setDismissedDossierNeighborhood(next ? null : neighborhood || null);
     if (window.matchMedia("(max-width: 1023px)").matches) {
@@ -451,6 +503,15 @@ export function MapExplorer({
       if (found) {
         setRegion(found.regionSlug as RegionSlug);
       }
+    }
+  }
+
+  function handleSearchSubmit() {
+    const points = filteredCameras.map(
+      (camera) => [camera.longitude, camera.latitude] as [number, number],
+    );
+    if (points.length > 0) {
+      setSearchBounds({ points, key: Date.now() });
     }
   }
 
@@ -543,6 +604,34 @@ export function MapExplorer({
     [conditions, neighborhood],
   );
 
+  // O risco é contextual e local: cruza a chuva da estação mais próxima
+  // com o ISMFI do bairro. Bairro seco não recebe selo nem preenchimento.
+  const floodRisk = useMemo(
+    () =>
+      assessFloodRisk(
+        selectedCondition?.rainMaxMm ?? null,
+        selectedCondition?.riskClass ?? null,
+      ),
+    [selectedCondition],
+  );
+
+  const isRainingHere =
+    floodRisk.rain !== "sem_chuva" &&
+    !rainFreshness(selectedCondition?.rainReadingAt ?? null).stale;
+
+  const riskOverlay = useMemo<{
+    slug: string;
+    level: AssessedFloodRiskLevel;
+  } | null>(() => {
+    if (!dossierOpen || !neighborhood || !isRainingHere) {
+      return null;
+    }
+    if (floodRisk.level === "nao_avaliado") {
+      return null;
+    }
+    return { slug: neighborhood, level: floodRisk.level };
+  }, [dossierOpen, neighborhood, isRainingHere, floodRisk.level]);
+
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-background lg:relative lg:inset-auto lg:z-auto lg:h-[calc(100dvh-4rem)]">
       <div className="relative h-full w-full overflow-hidden">
@@ -587,40 +676,44 @@ export function MapExplorer({
               </button>
             </div>
 
-            <div className="px-4 pb-3 pt-4">
-              <div className="relative">
-                <Search
-                  aria-hidden
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-                />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      const points = filteredCameras.map(
-                        (camera) => [camera.longitude, camera.latitude] as [number, number],
-                      );
-                      if (points.length > 0) {
-                        setSearchBounds({ points, key: Date.now() });
+            <div className="px-4 pb-4 pt-4">
+              <div className="overflow-hidden rounded-2xl border border-line/80 bg-gradient-to-br from-background to-card/80 shadow-sm transition-all focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/10">
+                <div className="flex items-center gap-2.5 px-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+                    <Search aria-hidden className="size-4" />
+                  </span>
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        handleSearchSubmit();
                       }
-                    }
-                  }}
-                  placeholder="Buscar…"
-                  aria-label="Buscar câmeras no mapa"
-                  className="w-full rounded-xl border border-line bg-background pl-9 pr-9 text-sm outline-none transition-colors placeholder:text-muted/70 focus:border-brand/80"
-                />
-                {query ? (
-                  <button
-                    type="button"
-                    onClick={() => setQuery("")}
-                    aria-label="Limpar busca"
-                    className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-muted transition-colors hover:bg-brand/5 hover:text-brand"
-                  >
-                    <X aria-hidden className="size-3.5" />
-                  </button>
-                ) : null}
+                    }}
+                    placeholder="Buscar câmera, bairro ou região…"
+                    aria-label="Buscar câmeras no mapa"
+                    className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/70 [&::-webkit-search-cancel-button]:hidden"
+                  />
+                  {query ? (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      aria-label="Limpar busca"
+                      className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-brand/10 hover:text-brand"
+                    >
+                      <X aria-hidden className="size-4" />
+                    </button>
+                  ) : (
+                    <kbd
+                      aria-hidden
+                      className="hidden shrink-0 items-center rounded-md border border-line bg-card px-1.5 py-0.5 text-[9px] font-medium text-muted lg:inline-flex"
+                    >
+                      Enter
+                    </kbd>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -752,13 +845,6 @@ export function MapExplorer({
               />
               <div className="hidden lg:block">
                 <ShowToggle
-                  show={showNeighborhoods}
-                  onToggle={setShowNeighborhoods}
-                  icon={MapIcon}
-                  labelOn="Ocultar bairros"
-                  labelOff="Mostrar bairros"
-                />
-                <ShowToggle
                   show={showCameras}
                   onToggle={setShowCameras}
                   icon={CameraIcon}
@@ -800,14 +886,15 @@ export function MapExplorer({
             <MapCanvas
               cameras={filteredCameras}
               onSelectNeighborhood={handleNeighborhoodChange}
-              showNeighborhoods={showNeighborhoods}
               showCameras={showCameras}
               rainOpacity={showRain ? (dossierOpen ? 0.5 : 1) : 0}
               rainStations={rainStations}
               show3d={show3d}
-              highlightedCamera={hoveredCamera}
+              highlightedCamera={hoveredCamera ?? focusedCamera}
+              focusedCamera={focusedCamera}
               focusPoint={focusPoint}
               focusKey={focusKey}
+              riskOverlay={riskOverlay}
               fitBoundsRequest={searchBounds}
               resetViewRequest={resetViewRequest}
               locateRequest={locateRequest}
@@ -836,7 +923,7 @@ export function MapExplorer({
 
             <div
               className={`pointer-events-none absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 max-w-[calc(100vw-2rem)] ${
-                dossierOpen ? "lg:right-[23.5rem]" : "lg:right-[10px]"
+                dossierOpen ? "lg:right-[25.5rem]" : "lg:right-[10px]"
               }`}
             >
               <div className="pointer-events-auto flex h-[32px] max-w-full items-center gap-3 rounded-xl border border-line bg-card/95 px-3 shadow-sm backdrop-blur">

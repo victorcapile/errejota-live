@@ -602,6 +602,30 @@ export const RISK_CLASS_VALUES = [
 
 export type RiskClass = (typeof RISK_CLASS_VALUES)[number];
 
+export const RISK_CLASS_LABELS: Record<RiskClass, string> = {
+  nao_avaliado: "Não avaliado",
+  baixa: "Baixo",
+  media: "Médio",
+  alta: "Alto",
+};
+
+/** Tipo de dispositivo inferido pelo User-Agent (sem guardar o UA). */
+export const DEVICE_VALUES = [
+  "mobile",
+  "tablet",
+  "desktop",
+  "unknown",
+] as const;
+
+export type DeviceType = (typeof DEVICE_VALUES)[number];
+
+export const DEVICE_LABELS: Record<DeviceType, string> = {
+  mobile: "Celular",
+  tablet: "Tablet",
+  desktop: "Desktop",
+  unknown: "Desconhecido",
+};
+
 /** Estágio operacional da cidade (atualizado manualmente no admin). */
 export const CITY_STAGE_VALUES = [
   "normal",

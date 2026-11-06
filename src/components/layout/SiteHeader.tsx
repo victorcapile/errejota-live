@@ -13,15 +13,15 @@ const brandFont = Bricolage_Grotesque({
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-50 border-b border-line/70 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-6 sm:px-6">
+    <header className="sticky top-0 z-50 border-b border-line/60 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-3 sm:gap-6 sm:px-6">
         <Link
           href="/"
-          className="group flex shrink-0 items-center gap-2"
+          className="group flex shrink-0 items-center gap-2.5"
           aria-label="errejota.live — página inicial"
         >
-          <span className="grid size-8 place-items-center rounded-xl bg-brand text-white shadow-sm transition-colors group-hover:bg-brand-strong sm:size-9">
-            <Eye aria-hidden className="size-4 sm:size-5" />
+          <span className="relative grid size-9 place-items-center rounded-2xl bg-brand text-white shadow-sm ring-1 ring-brand/20 transition-colors group-hover:bg-brand-strong">
+            <Eye aria-hidden className="size-[18px]" />
           </span>
           <span className="leading-tight max-[359px]:hidden">
             <span
@@ -30,7 +30,7 @@ export function SiteHeader() {
               errejota.live
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted lg:block">
-              Rio de Janeiro em tempo real · v1.4
+              Rio de Janeiro em tempo real · v1.3.2
             </span>
           </span>
         </Link>

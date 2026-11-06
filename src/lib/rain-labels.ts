@@ -30,6 +30,7 @@ export function rainFreshness(readingAt: string | null): RainFreshness {
     time: date.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
     }),
     stale: ageMinutes > 30,
     ageMinutes,

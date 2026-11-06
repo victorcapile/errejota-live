@@ -1,0 +1,467 @@
+import { and, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  neighborhoods,
+  regions,
+  usageEvents,
+  visitorLabels,
+  visitorLocations,
+} from "@/db/schema";
+import type { DeviceType } from "./constants";
+
+export type NeighborhoodUsage = {
+  slug: string;
+  name: string;
+  count: number;
+};
+
+export type CameraUsage = {
+  cameraId: string;
+  name: string;
+  neighborhoodSlug: string | null;
+  neighborhoodName: string | null;
+  count: number;
+};
+
+export type DailyUsage = {
+  day: string;
+  count: number;
+};
+
+export type RegionUsage = {
+  name: string;
+  count: number;
+};
+
+export type HourlyUsage = {
+  hour: string;
+  count: number;
+};
+
+export type VisitorUsage = {
+  key: string;
+  ip: string | null;
+  nickname: string | null;
+  events: number;
+  sessions: number;
+  lastSeen: string;
+  pageViews: number;
+  neighborhoodViews: number;
+  cameraClicks: number;
+  devices: DeviceType[];
+};
+
+export type VisitorLocationPoint = {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  street: string | null;
+  neighborhood: string | null;
+  device: DeviceType;
+  createdAt: string;
+};
+
+export type VisitorLocationUsage = {
+  key: string;
+  ip: string | null;
+  nickname: string | null;
+  points: number;
+  lastSeen: string;
+  latest: VisitorLocationPoint | null;
+  history: VisitorLocationPoint[];
+};
+
+export type MonthlyUsage = {
+  month: string;
+  visitors: number;
+  sessions: number;
+  pageViews: number;
+};
+
+export type UsageStats = {
+  totals: {
+    pageViews: number;
+    neighborhoodViews: number;
+    cameraClicks: number;
+    sessions: number;
+  };
+  neighborhoods: NeighborhoodUsage[];
+  cameras: CameraUsage[];
+  daily: DailyUsage[];
+  regions: RegionUsage[];
+  hourly: HourlyUsage[];
+  monthly: MonthlyUsage[];
+  visitors: VisitorUsage[];
+  locations: VisitorLocationUsage[];
+};
+
+export const LOCATION_RETENTION_DAYS = 30;
+export const EVENT_RETENTION_DAYS = 365;
+const MONTHLY_HISTORY_MONTHS = 12;
+
+const EMPTY_STATS: UsageStats = {
+  totals: { pageViews: 0, neighborhoodViews: 0, cameraClicks: 0, sessions: 0 },
+  neighborhoods: [],
+  cameras: [],
+  daily: [],
+  regions: [],
+  hourly: [],
+  monthly: [],
+  visitors: [],
+  locations: [],
+};
+
+/**
+ * Coordenadas compartilhadas voluntariamente no botão de localização.
+ * Fica isolada em try/catch para que uma tabela ausente em produção não
+ * derrube o restante do painel.
+ */
+async function loadVisitorLocations(): Promise<VisitorLocationUsage[]> {
+  try {
+    const locationSince = new Date(
+      Date.now() - LOCATION_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    const locationCountRows = await db
+      .select({
+        key: visitorLocations.ipHash,
+        points: sql<number>`count(*)::int`,
+        lastSeen: sql<string>`max(${visitorLocations.createdAt})`,
+      })
+      .from(visitorLocations)
+      .where(
+        and(
+          isNotNull(visitorLocations.ipHash),
+          gte(visitorLocations.createdAt, locationSince),
+        ),
+      )
+      .groupBy(visitorLocations.ipHash)
+      .orderBy(desc(sql`max(${visitorLocations.createdAt})`))
+      .limit(50);
+
+    const locationRows = await db
+      .select({
+        key: visitorLocations.ipHash,
+        ip: visitorLocations.ip,
+        nickname: visitorLabels.nickname,
+        latitude: visitorLocations.latitude,
+        longitude: visitorLocations.longitude,
+        accuracy: visitorLocations.accuracy,
+        street: visitorLocations.street,
+        neighborhood: visitorLocations.neighborhood,
+        device: visitorLocations.device,
+        createdAt: visitorLocations.createdAt,
+      })
+      .from(visitorLocations)
+      .leftJoin(
+        visitorLabels,
+        eq(visitorLabels.visitorKey, visitorLocations.ipHash),
+      )
+      .where(
+        and(
+          isNotNull(visitorLocations.ipHash),
+          gte(visitorLocations.createdAt, locationSince),
+        ),
+      )
+      .orderBy(desc(visitorLocations.createdAt))
+      .limit(500);
+
+    const locationPoints = new Map<string, VisitorLocationUsage>();
+    for (const row of locationRows) {
+      const key = row.key;
+      if (!key) continue;
+      const point: VisitorLocationPoint = {
+        latitude: Number(row.latitude),
+        longitude: Number(row.longitude),
+        accuracy: row.accuracy === null ? null : Number(row.accuracy),
+        street: row.street ?? null,
+        neighborhood: row.neighborhood ?? null,
+        device: row.device ?? "unknown",
+        createdAt: row.createdAt,
+      };
+      const entry = locationPoints.get(key);
+      if (!entry) {
+        locationPoints.set(key, {
+          key,
+          ip: row.ip ?? null,
+          nickname: row.nickname ?? null,
+          points: 1,
+          lastSeen: row.createdAt,
+          latest: point,
+          history: [point],
+        });
+      } else {
+        entry.points += 1;
+        if (entry.history.length < 10) {
+          entry.history.push(point);
+        }
+      }
+    }
+
+    return locationCountRows
+      .map((row) => {
+        const key = row.key ?? "";
+        const entry = locationPoints.get(key);
+        return {
+          key,
+          ip: entry?.ip ?? null,
+          nickname: entry?.nickname ?? null,
+          points: Number(row.points ?? 0),
+          lastSeen: row.lastSeen ?? "",
+          latest: entry?.latest ?? null,
+          history: entry?.history ?? [],
+        };
+      })
+      .filter((item) => item.key);
+  } catch (error) {
+    console.error("Falha ao carregar localizações:", error);
+    return [];
+  }
+}
+
+export async function getUsageStats(): Promise<UsageStats> {
+  try {
+    const [totals] = await db
+      .select({
+        pageViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'page_view')::int`,
+        neighborhoodViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'neighborhood_view')::int`,
+        cameraClicks: sql<number>`count(*) filter (where ${usageEvents.type} = 'camera_click')::int`,
+        sessions: sql<number>`count(distinct ${usageEvents.sessionId})::int`,
+      })
+      .from(usageEvents);
+
+    const neighborhoodRows = await db
+      .select({
+        slug: usageEvents.neighborhoodSlug,
+        name: neighborhoods.name,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(usageEvents)
+      .leftJoin(
+        neighborhoods,
+        eq(neighborhoods.slug, usageEvents.neighborhoodSlug),
+      )
+      .where(
+        and(
+          eq(usageEvents.type, "neighborhood_view"),
+          isNotNull(usageEvents.neighborhoodSlug),
+        ),
+      )
+      .groupBy(usageEvents.neighborhoodSlug, neighborhoods.name)
+      .orderBy(desc(sql`count(*)`))
+      .limit(12);
+
+    const cameraRows = await db
+      .select({
+        cameraId: usageEvents.cameraId,
+        name: sql<string>`max(${usageEvents.cameraName})`,
+        neighborhoodSlug: usageEvents.neighborhoodSlug,
+        neighborhoodName: neighborhoods.name,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(usageEvents)
+      .leftJoin(
+        neighborhoods,
+        eq(neighborhoods.slug, usageEvents.neighborhoodSlug),
+      )
+      .where(
+        and(
+          eq(usageEvents.type, "camera_click"),
+          isNotNull(usageEvents.cameraId),
+        ),
+      )
+      .groupBy(
+        usageEvents.cameraId,
+        usageEvents.neighborhoodSlug,
+        neighborhoods.name,
+      )
+      .orderBy(desc(sql`count(*)`))
+      .limit(15);
+
+    const since = new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString();
+    const dailyRows = await db
+      .select({
+        day: sql<string>`substr(${usageEvents.createdAt}, 1, 10)`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(usageEvents)
+      .where(
+        and(
+          eq(usageEvents.type, "page_view"),
+          gte(usageEvents.createdAt, since),
+        ),
+      )
+      .groupBy(sql`substr(${usageEvents.createdAt}, 1, 10)`)
+      .orderBy(sql`substr(${usageEvents.createdAt}, 1, 10)`);
+
+    const regionRows = await db
+      .select({
+        name: regions.name,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(usageEvents)
+      .innerJoin(
+        neighborhoods,
+        eq(neighborhoods.slug, usageEvents.neighborhoodSlug),
+      )
+      .innerJoin(regions, eq(regions.id, neighborhoods.regionId))
+      .where(eq(usageEvents.type, "neighborhood_view"))
+      .groupBy(regions.name)
+      .orderBy(desc(sql`count(*)`))
+      .limit(8);
+
+    const visitorRows = await db
+      .select({
+        key: usageEvents.ipHash,
+        ip: sql<string | null>`max(${usageEvents.ip})`,
+        nickname: visitorLabels.nickname,
+        events: sql<number>`count(*)::int`,
+        sessions: sql<number>`count(distinct ${usageEvents.sessionId})::int`,
+        lastSeen: sql<string>`max(${usageEvents.createdAt})`,
+        pageViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'page_view')::int`,
+        neighborhoodViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'neighborhood_view')::int`,
+        cameraClicks: sql<number>`count(*) filter (where ${usageEvents.type} = 'camera_click')::int`,
+        devices: sql<string | null>`string_agg(distinct ${usageEvents.device}, ',')`,
+      })
+      .from(usageEvents)
+      .leftJoin(
+        visitorLabels,
+        eq(visitorLabels.visitorKey, usageEvents.ipHash),
+      )
+      .where(isNotNull(usageEvents.ipHash))
+      .groupBy(usageEvents.ipHash, visitorLabels.nickname)
+      .orderBy(desc(sql`count(*)`))
+      .limit(20);
+
+    const monthlySince = new Date();
+    monthlySince.setMonth(monthlySince.getMonth() - (MONTHLY_HISTORY_MONTHS - 1));
+    monthlySince.setDate(1);
+    monthlySince.setHours(0, 0, 0, 0);
+
+    const monthlyRows = await db
+      .select({
+        month: sql<string>`substr(${usageEvents.createdAt}, 1, 7)`,
+        visitors: sql<number>`count(distinct ${usageEvents.ipHash})::int`,
+        sessions: sql<number>`count(distinct ${usageEvents.sessionId})::int`,
+        pageViews: sql<number>`count(*) filter (where ${usageEvents.type} = 'page_view')::int`,
+      })
+      .from(usageEvents)
+      .where(
+        and(
+          isNotNull(usageEvents.ipHash),
+          gte(usageEvents.createdAt, monthlySince.toISOString()),
+        ),
+      )
+      .groupBy(sql`substr(${usageEvents.createdAt}, 1, 7)`)
+      .orderBy(desc(sql`substr(${usageEvents.createdAt}, 1, 7)`));
+
+    const locations = await loadVisitorLocations();
+
+    const since24h = new Date(
+      Date.now() - 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const hourlyRows = await db
+      .select({
+        hour: sql<string>`substr(${usageEvents.createdAt}, 12, 2)`,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(usageEvents)
+      .where(
+        and(
+          eq(usageEvents.type, "page_view"),
+          gte(usageEvents.createdAt, since24h),
+        ),
+      )
+      .groupBy(sql`substr(${usageEvents.createdAt}, 12, 2)`)
+      .orderBy(sql`substr(${usageEvents.createdAt}, 12, 2)`);
+
+    return {
+      totals: {
+        pageViews: Number(totals?.pageViews ?? 0),
+        neighborhoodViews: Number(totals?.neighborhoodViews ?? 0),
+        cameraClicks: Number(totals?.cameraClicks ?? 0),
+        sessions: Number(totals?.sessions ?? 0),
+      },
+      neighborhoods: neighborhoodRows.map((row) => ({
+        slug: row.slug ?? "",
+        name: row.name ?? row.slug ?? "Sem bairro",
+        count: Number(row.count ?? 0),
+      })),
+      cameras: cameraRows.map((row) => ({
+        cameraId: row.cameraId ?? "",
+        name: row.name ?? "Câmera",
+        neighborhoodSlug: row.neighborhoodSlug ?? null,
+        neighborhoodName: row.neighborhoodName ?? null,
+        count: Number(row.count ?? 0),
+      })),
+      daily: dailyRows.map((row) => ({
+        day: row.day,
+        count: Number(row.count ?? 0),
+      })),
+      regions: regionRows.map((row) => ({
+        name: row.name,
+        count: Number(row.count ?? 0),
+      })),
+      hourly: hourlyRows.map((row) => ({
+        hour: row.hour,
+        count: Number(row.count ?? 0),
+      })),
+      monthly: monthlyRows.map((row) => ({
+        month: row.month,
+        visitors: Number(row.visitors ?? 0),
+        sessions: Number(row.sessions ?? 0),
+        pageViews: Number(row.pageViews ?? 0),
+      })),
+      visitors: visitorRows.map((row) => ({
+        key: row.key ?? "",
+        ip: row.ip ?? null,
+        nickname: row.nickname ?? null,
+        events: Number(row.events ?? 0),
+        sessions: Number(row.sessions ?? 0),
+        lastSeen: row.lastSeen ?? "",
+        pageViews: Number(row.pageViews ?? 0),
+        neighborhoodViews: Number(row.neighborhoodViews ?? 0),
+        cameraClicks: Number(row.cameraClicks ?? 0),
+        devices: (row.devices ?? "")
+          .split(",")
+          .filter(Boolean) as DeviceType[],
+      })),
+      locations,
+    };
+  } catch (error) {
+    console.error("Falha ao carregar estatísticas de uso:", error);
+    return EMPTY_STATS;
+  }
+}
+
+/**
+ * Remove localizações detalhadas antigas (30 dias) e eventos antigos
+ * (12 meses). O comparativo mensal usa apenas os eventos agregados.
+ */
+export async function pruneUsageData(): Promise<{
+  locations: number;
+  events: number;
+}> {
+  const now = Date.now();
+  const locationCutoff = new Date(
+    now - LOCATION_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const eventCutoff = new Date(
+    now - EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const deletedLocations = await db
+    .delete(visitorLocations)
+    .where(lt(visitorLocations.createdAt, locationCutoff))
+    .returning({ id: visitorLocations.id });
+
+  const deletedEvents = await db
+    .delete(usageEvents)
+    .where(lt(usageEvents.createdAt, eventCutoff))
+    .returning({ id: usageEvents.id });
+
+  return {
+    locations: deletedLocations.length,
+    events: deletedEvents.length,
+  };
+}

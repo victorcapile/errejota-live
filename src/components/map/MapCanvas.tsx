@@ -14,6 +14,11 @@ if (typeof window !== "undefined") {
 }
 
 import { REGION_COLORS } from "@/lib/constants";
+import {
+  FLOOD_RISK_LEVEL_COLORS,
+  type AssessedFloodRiskLevel,
+} from "@/lib/flood-risk";
+import { trackLocation, trackUsage } from "@/lib/usage-client";
 import type { Camera, RainStationLatest } from "@/lib/types";
 
 // Centro inicial sem GPS: Tijuca no mobile e Freguesia (Jacarepaguá) no desktop.
@@ -53,6 +58,43 @@ const TRANSPARENT_PIXEL =
 const HIGHLIGHT_SOURCE = "camera-highlight";
 const HIGHLIGHT_HALO_LAYER = "camera-highlight-halo";
 const HIGHLIGHT_DOT_LAYER = "camera-highlight-dot";
+
+type RiskOverlay = { slug: string; level: AssessedFloodRiskLevel };
+
+/** Pinta o polígono do bairro selecionado com o risco do ISMFI. */
+function applyRiskState(
+  map: MapLibreMap,
+  overlay: RiskOverlay | null,
+  previousSlugRef: { current: string | null },
+): void {
+  if (!map.getSource("bairros")) {
+    return;
+  }
+
+  const previous = previousSlugRef.current;
+  if (previous && previous !== overlay?.slug) {
+    try {
+      map.removeFeatureState({ source: "bairros", id: previous }, "risk");
+    } catch {
+      // Fonte recarregando.
+    }
+    previousSlugRef.current = null;
+  }
+
+  if (!overlay) {
+    return;
+  }
+
+  try {
+    map.setFeatureState(
+      { source: "bairros", id: overlay.slug },
+      { risk: overlay.level },
+    );
+    previousSlugRef.current = overlay.slug;
+  } catch {
+    // Fonte recarregando.
+  }
+}
 
 function ensureHighlightLayers(map: MapLibreMap): void {
   if (!map.getSource(HIGHLIGHT_SOURCE)) {
@@ -171,6 +213,7 @@ type CameraFeatureCollection = {
       url: string;
       provider: string;
       neighborhood: string;
+      neighborhoodSlug: string;
       region: string;
       online: number;
     };
@@ -192,6 +235,7 @@ function buildCameraGeoJson(cameras: Camera[]): CameraFeatureCollection {
         url: camera.pageUrl,
         provider: camera.providerName,
         neighborhood: camera.neighborhoodName ?? "",
+        neighborhoodSlug: camera.neighborhoodSlug ?? "",
         region: camera.regionSlug ?? "",
         online: camera.isOnline === false ? 0 : 1,
       },
@@ -566,7 +610,8 @@ function locateUser(
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      const { latitude, longitude } = position.coords;
+      const { latitude, longitude, accuracy } = position.coords;
+      trackLocation({ latitude, longitude, accuracy });
       const element = document.createElement("div");
       element.className = "map-user-location";
       markerRef.current?.remove();
@@ -592,14 +637,15 @@ function locateUser(
 export function MapCanvas({
   cameras,
   onSelectNeighborhood,
-  showNeighborhoods,
   showCameras,
   rainOpacity,
   rainStations,
   show3d,
   highlightedCamera,
+  focusedCamera,
   focusPoint,
   focusKey,
+  riskOverlay,
   fitBoundsRequest,
   resetViewRequest,
   locateRequest,
@@ -607,15 +653,16 @@ export function MapCanvas({
 }: {
   cameras: Camera[];
   onSelectNeighborhood: (slug: string) => void;
-  showNeighborhoods: boolean;
   showCameras: boolean;
   /** 0 = desligada, 0.5 = metade da opacidade com o dossiê aberto, 1 = normal. */
   rainOpacity: number;
   rainStations: RainStationLatest[];
   show3d: boolean;
   highlightedCamera: Camera | null;
+  focusedCamera: Camera | null;
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
+  riskOverlay: RiskOverlay | null;
   fitBoundsRequest: { points: [number, number][]; key: number } | null;
   resetViewRequest: number;
   locateRequest: number;
@@ -641,6 +688,10 @@ export function MapCanvas({
   const onSelectNeighborhoodRef = useRef(onSelectNeighborhood);
   const themeRef = useRef(theme);
   const highlightedCameraRef = useRef<Camera | null>(highlightedCamera);
+  const focusedCameraRef = useRef<Camera | null>(focusedCamera);
+  const focusedCameraId = focusedCamera?.id ?? null;
+  const riskOverlayRef = useRef<RiskOverlay | null>(riskOverlay);
+  const riskFeatureSlugRef = useRef<string | null>(null);
   const highlightFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -651,6 +702,7 @@ export function MapCanvas({
     show3dRef.current = show3d;
     onSelectNeighborhoodRef.current = onSelectNeighborhood;
     themeRef.current = theme;
+    riskOverlayRef.current = riskOverlay;
   }, [
     cameras,
     onSelectNeighborhood,
@@ -659,6 +711,7 @@ export function MapCanvas({
     showCameras,
     rainOpacity,
     theme,
+    riskOverlay,
   ]);
 
   useEffect(() => {
@@ -893,6 +946,40 @@ export function MapCanvas({
             }, firstCameraLayer);
           }
 
+          // Preenchimento do bairro selecionado conforme o ISMFI.
+          // Fica abaixo do contorno e das câmeras, com opacidade baixa.
+          if (!map.getLayer("bairros-risk")) {
+            map.addLayer(
+              {
+                id: "bairros-risk",
+                type: "fill",
+                source: "bairros",
+                paint: {
+                  "fill-color": [
+                    "match",
+                    ["feature-state", "risk"],
+                    "baixo",
+                    FLOOD_RISK_LEVEL_COLORS.baixo,
+                    "moderado",
+                    FLOOD_RISK_LEVEL_COLORS.moderado,
+                    "alto",
+                    FLOOD_RISK_LEVEL_COLORS.alto,
+                    "rgba(0,0,0,0)",
+                  ],
+                  "fill-opacity": [
+                    "case",
+                    ["boolean", ["feature-state", "risk"], false],
+                    0.4,
+                    0,
+                  ],
+                },
+              },
+              map.getLayer("bairros-outline")
+                ? "bairros-outline"
+                : firstCameraLayer,
+            );
+          }
+
           if (!map.getLayer("bairros-outline")) {
             map.addLayer({
               id: "bairros-outline",
@@ -932,8 +1019,42 @@ export function MapCanvas({
               },
             }, firstCameraLayer);
           }
+
+          // Contorno na cor do risco de alagamento para destacar o bairro
+          // selecionado mesmo com o preenchimento suave.
+          if (!map.getLayer("bairros-risk-outline")) {
+            map.addLayer(
+              {
+                id: "bairros-risk-outline",
+                type: "line",
+                source: "bairros",
+                paint: {
+                  "line-color": [
+                    "match",
+                    ["feature-state", "risk"],
+                    "baixo",
+                    FLOOD_RISK_LEVEL_COLORS.baixo,
+                    "moderado",
+                    FLOOD_RISK_LEVEL_COLORS.moderado,
+                    "alto",
+                    FLOOD_RISK_LEVEL_COLORS.alto,
+                    "rgba(0,0,0,0)",
+                  ],
+                  "line-width": [
+                    "case",
+                    ["boolean", ["feature-state", "risk"], false],
+                    2.5,
+                    0,
+                  ],
+                  "line-opacity": 0.9,
+                },
+              },
+              firstCameraLayer,
+            );
+          }
         })
         .then(() => {
+          applyRiskState(map, riskOverlayRef.current, riskFeatureSlugRef);
           ensureRainLayers();
         })
         .catch(() => {
@@ -1070,8 +1191,22 @@ export function MapCanvas({
         layers: pointLayers,
       });
       const feature = features[0];
-      const url = feature?.properties?.url;
+      const properties = feature?.properties ?? {};
+      const url = properties.url;
       if (typeof url === "string" && url.length > 0) {
+        const cameraId = properties.id;
+        const cameraName = properties.name;
+        if (typeof cameraId === "string" && typeof cameraName === "string") {
+          trackUsage({
+            type: "camera_click",
+            cameraId,
+            cameraName,
+            neighborhoodSlug:
+              typeof properties.neighborhoodSlug === "string"
+                ? properties.neighborhoodSlug
+                : null,
+          });
+        }
         window.open(url, "_blank", "noopener,noreferrer");
       }
     });
@@ -1222,6 +1357,28 @@ export function MapCanvas({
   }, [highlightedCamera]);
 
   useEffect(() => {
+    focusedCameraRef.current = focusedCamera;
+  }, [focusedCamera]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const camera = focusedCameraRef.current;
+    if (!map || !camera) {
+      return;
+    }
+    try {
+      map.stop();
+      // jumpTo garante o foco mesmo se a animação estiver pausada.
+      map.jumpTo({
+        center: [camera.longitude, camera.latitude],
+        zoom: 16,
+      });
+    } catch {
+      // Estilo ainda carregando.
+    }
+  }, [focusedCameraId]);
+
+  useEffect(() => {
     const run = async () => {
     const map = mapRef.current;
     if (!map) {
@@ -1269,7 +1426,7 @@ export function MapCanvas({
                   map.fitBounds(bounds, {
                     padding: isMobile
                       ? { top: 40, bottom: 220, left: 40, right: 40 }
-                      : { top: 40, bottom: 40, left: 40, right: 380 },
+                      : { top: 40, bottom: 40, left: 40, right: 412 },
                     duration: 700,
                     maxZoom: 15,
                   });
@@ -1304,17 +1461,8 @@ export function MapCanvas({
     if (!map) {
       return;
     }
-    for (const layerId of ["bairros-fill", "bairros-outline"]) {
-      const layer = map.getLayer(layerId);
-      if (layer) {
-        map.setLayoutProperty(
-          layerId,
-          "visibility",
-          showNeighborhoods ? "visible" : "none",
-        );
-      }
-    }
-  }, [showNeighborhoods]);
+    applyRiskState(map, riskOverlay, riskFeatureSlugRef);
+  }, [riskOverlay]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1355,7 +1503,7 @@ export function MapCanvas({
   return (
     <>
       <div ref={containerRef} className="size-full" />
-      {showNeighborhoods && hoveredNeighborhoodName ? (
+      {hoveredNeighborhoodName ? (
         <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_4rem)] z-10 max-w-[calc(100%_-_8rem)] -translate-x-1/2 truncate rounded-lg border border-line bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-md backdrop-blur">
           {hoveredNeighborhoodName}
         </div>

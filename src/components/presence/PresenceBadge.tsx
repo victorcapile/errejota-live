@@ -2,26 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
+import { getClientSessionId } from "@/lib/client-session";
 
-const STORAGE_KEY = "errejota-presence";
 const PING_INTERVAL_MS = 30_000;
-
-function readSessionId(): string {
-  try {
-    const existing = window.localStorage.getItem(STORAGE_KEY);
-    if (existing && /^[a-zA-Z0-9-]{8,64}$/.test(existing)) {
-      return existing;
-    }
-    const created =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-    window.localStorage.setItem(STORAGE_KEY, created);
-    return created;
-  } catch {
-    return `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  }
-}
 
 type Props = {
   /**
@@ -41,7 +24,7 @@ export function PresenceBadge({ variant = "header", className = "" }: Props) {
   const displayCount = Math.max(1, online ?? 1);
 
   useEffect(() => {
-    const sessionId = readSessionId();
+    const sessionId = getClientSessionId();
     let cancelled = false;
 
     const ping = async () => {
