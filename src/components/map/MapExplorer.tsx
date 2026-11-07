@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   useEffect,
@@ -33,6 +34,7 @@ import {
   type SafetyFacilityKind,
 } from "@/lib/constants";
 import type { CriticalModeView } from "@/lib/critical-mode";
+import { fetchCriticalMode } from "@/lib/critical-mode-client";
 import { assessFloodRisk, type AssessedFloodRiskLevel } from "@/lib/flood-risk";
 import { normalizeText } from "@/lib/text";
 import type { SafetyFacility } from "@/lib/safety";
@@ -365,51 +367,52 @@ export function MapExplorer({
   }, [showRain, refreshInterval]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
 
-    const load = () => {
-      fetch("/api/critical-mode", {
-        signal: controller.signal,
-        cache: "no-store",
-      })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((payload: CriticalModeView | null) => {
-          if (!payload || controller.signal.aborted) return;
-          setCriticalMode(payload);
+    const load = (force = false) => {
+      void fetchCriticalMode(force).then((payload) => {
+        if (!payload || cancelled) return;
+        setCriticalMode(payload);
 
-          const active = Boolean(payload.active);
-          if (active === criticalActiveRef.current) return;
-          criticalActiveRef.current = active;
+        const active = Boolean(payload.active);
+        if (active === criticalActiveRef.current) return;
+        criticalActiveRef.current = active;
 
-          if (active) {
-            criticalPrevRef.current = {
-              showCameras,
-              showRain,
-              showSafety,
-            };
-            setShowCameras(false);
-            setShowRain(true);
-            setShowSafety(true);
-            setSafetyStatus("loading");
-          } else if (criticalPrevRef.current) {
-            const previous = criticalPrevRef.current;
-            setShowCameras(previous.showCameras);
-            setShowRain(previous.showRain);
-            setShowSafety(previous.showSafety);
-            criticalPrevRef.current = null;
-          }
-        })
-        .catch(() => {
-          // Mantém o último estado conhecido.
-        });
+        if (active) {
+          criticalPrevRef.current = {
+            showCameras,
+            showRain,
+            showSafety,
+          };
+          setShowCameras(false);
+          setShowRain(true);
+          setShowSafety(true);
+          setSafetyStatus("loading");
+          setSelectedSafetyId(null);
+        } else if (criticalPrevRef.current) {
+          const previous = criticalPrevRef.current;
+          setShowCameras(previous.showCameras);
+          setShowRain(previous.showRain);
+          setShowSafety(previous.showSafety);
+          setSelectedSafetyId(null);
+          setHoveredCamera(null);
+          setNeighborhood("");
+          setDismissedDossierNeighborhood(null);
+          setRegion("");
+          criticalPrevRef.current = null;
+        }
+      });
     };
 
     load();
-    const timer = window.setInterval(load, 60_000);
+    const timer = window.setInterval(() => load(), 60_000);
+    const onStageUpdated = () => load(true);
+    window.addEventListener("errejota:stage-updated", onStageUpdated);
 
     return () => {
-      controller.abort();
+      cancelled = true;
       window.clearInterval(timer);
+      window.removeEventListener("errejota:stage-updated", onStageUpdated);
     };
   }, [showCameras, showRain, showSafety]);
 
@@ -525,6 +528,7 @@ export function MapExplorer({
         setShowCameras(safetyPrevCamerasRef.current);
       }
       safetyCamerasTouchedRef.current = false;
+      setRegion("");
     }
   }
 
@@ -814,11 +818,11 @@ export function MapExplorer({
               </button>
             </div>
 
-            <div className="px-4 pb-4 pt-4">
-              <div className="overflow-hidden rounded-2xl border border-line/80 bg-gradient-to-br from-background to-card/80 shadow-sm transition-all focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/10">
-                <div className="flex items-center gap-2.5 px-3">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-                    <Search aria-hidden className="size-4" />
+            <div className="px-3 pb-3 pt-3">
+              <div className="overflow-hidden rounded-xl border border-line/80 bg-gradient-to-br from-background to-card/80 shadow-sm transition-all focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/10">
+                <div className="flex items-center gap-2 px-2.5">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
+                    <Search aria-hidden className="size-3.5" />
                   </span>
                   <input
                     type="search"
@@ -832,16 +836,16 @@ export function MapExplorer({
                     }}
                     placeholder="Buscar câmera, bairro ou região…"
                     aria-label="Buscar câmeras no mapa"
-                    className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/70 [&::-webkit-search-cancel-button]:hidden"
+                    className="h-10 min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted/70 [&::-webkit-search-cancel-button]:hidden"
                   />
                   {query ? (
                     <button
                       type="button"
                       onClick={() => setQuery("")}
                       aria-label="Limpar busca"
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-brand/10 hover:text-brand"
+                      className="grid size-7 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-brand/10 hover:text-brand"
                     >
-                      <X aria-hidden className="size-4" />
+                      <X aria-hidden className="size-3.5" />
                     </button>
                   ) : (
                     <kbd
@@ -1005,17 +1009,25 @@ export function MapExplorer({
             </div>
 
             <div className="shrink-0 border-t border-line/70 px-4 py-3">
-              <p className="text-[11px] leading-relaxed text-muted">
-                Desenvolvido por Victor Capilé ·{" "}
-                <a
-                  href="https://github.com/victorcapile/errejota-live"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-brand hover:underline"
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] leading-relaxed text-muted">
+                  Desenvolvido por Victor Capilé ·{" "}
+                  <a
+                    href="https://github.com/victorcapile/errejota-live"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-brand hover:underline"
+                  >
+                    GitHub
+                  </a>
+                </p>
+                <Link
+                  href="/sobre"
+                  className="shrink-0 text-[10px] font-medium text-muted transition-colors hover:text-brand lg:hidden"
                 >
-                  GitHub
-                </a>
-              </p>
+                  Sobre
+                </Link>
+              </div>
             </div>
           </aside>
 
@@ -1150,7 +1162,7 @@ export function MapExplorer({
             ) : null}
 
             {selectedSafetyFacility ? (
-              <div className="absolute inset-x-0 bottom-0 z-30 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[24rem] lg:rounded-2xl lg:border">
+              <div className="panel-enter absolute inset-x-0 bottom-0 z-30 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[24rem] lg:rounded-2xl lg:border">
                 <SafetyFacilityCard
                   facility={selectedSafetyFacility}
                   neighborhoodName={selectedSafetyNeighborhoodName}

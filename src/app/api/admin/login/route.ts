@@ -11,8 +11,16 @@ import {
   isValidAdminCredentials,
   registerFailedLogin,
 } from "@/lib/admin-auth";
+import { isSameOriginRequest } from "@/lib/request-origin";
 
 export async function POST(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json(
+      { error: "Origem inválida." },
+      { status: 403, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   if (!(await isAdminHostAllowed())) {
     return NextResponse.json({ error: "Não encontrado." }, { status: 404 });
   }

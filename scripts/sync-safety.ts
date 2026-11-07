@@ -31,7 +31,7 @@ const DATA_RIO_UNIDADES_URL =
   "https://services1.arcgis.com/OlP4dGNtIcnD3RYf/arcgis/rest/services/OSA2/FeatureServer/0/query";
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const NOMINATIM_USER_AGENT =
-  "errejota-live/1.4.1 (+https://github.com/victorcapile/errejota-live)";
+  "errejota-live/1.4.2 (+https://github.com/victorcapile/errejota-live)";
 /** left,top,right,bottom (lon/lat) da cidade do Rio de Janeiro. */
 const RIO_VIEWBOX = "-43.85,-22.70,-43.05,-23.12";
 /** Acima disso, a coordenada do CNES é considerada divergente. */
@@ -69,6 +69,7 @@ type CnesEstablishment = {
   latitude_estabelecimento_decimo_grau?: number | null;
   longitude_estabelecimento_decimo_grau?: number | null;
   numero_telefone_estabelecimento?: string | null;
+  descricao_turno_atendimento?: string | null;
   descricao_natureza_juridica_estabelecimento?: string | null;
 };
 
@@ -529,6 +530,9 @@ async function hospitalRows(
                 naturezaJuridica: natureza,
                 coordinateSource,
                 phone: text(item.numero_telefone_estabelecimento),
+                turnoAtendimento: text(
+                  item.descricao_turno_atendimento,
+                ),
               }),
               isActive: true,
             },

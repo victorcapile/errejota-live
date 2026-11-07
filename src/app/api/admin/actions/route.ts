@@ -10,6 +10,7 @@ import {
   type ManualCameraStatus,
 } from "@/lib/camera-status";
 import { normalizeCityStage, type CityStage } from "@/lib/constants";
+import { isSameOriginRequest } from "@/lib/request-origin";
 import {
   logAdminAction,
   moderateReport,
@@ -41,6 +42,21 @@ function isManualStatus(value: unknown): value is ManualCameraStatus {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json(
+      { error: "Origem inválida." },
+      { status: 403, headers: NO_STORE },
+    );
+  }
+
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > 50_000) {
+    return NextResponse.json(
+      { error: "Requisição muito grande." },
+      { status: 413, headers: NO_STORE },
+    );
+  }
+
   if (!(await isAdminAuthenticated())) {
     return NextResponse.json(
       { error: "Não autorizado." },

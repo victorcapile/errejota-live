@@ -6,53 +6,49 @@ import {
   CITY_STAGE_SHORT_LABELS,
   normalizeCityStage,
 } from "@/lib/constants";
-import type { CityStageStatus, CityStageView } from "@/lib/types";
-
-type StageResponse = {
-  stage: CityStageView;
-  status: CityStageStatus;
-  fetchedAt: string;
-};
+import { fetchCriticalMode } from "@/lib/critical-mode-client";
+import type { CriticalModeView } from "@/lib/critical-mode";
 
 const REFRESH_MS = 60_000;
+
+const EMPTY: CriticalModeView = {
+  active: false,
+  since: null,
+  stage: null,
+  stageStatus: "unavailable",
+  manualOverride: null,
+  manualOverrideUntil: null,
+  evaluatedAt: null,
+  reason: "error",
+};
 
 /**
  * Faixa do estágio operacional dentro do header. A cor é sempre a oficial do
  * COR-Rio; o modo avançado do mapa é derivado do estágio, não da faixa.
  */
 export function StageBanner() {
-  const [data, setData] = useState<StageResponse | null>(null);
+  const [data, setData] = useState<CriticalModeView | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    const load = () => {
-      fetch("/api/stage", { cache: "no-store" })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((payload: StageResponse | null) => {
-          if (!cancelled) {
-            setData(payload);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setData({
-              stage: null,
-              status: "unavailable",
-              fetchedAt: new Date().toISOString(),
-            });
-          }
-        });
+    const load = (force = false) => {
+      void fetchCriticalMode(force).then((payload) => {
+        if (!cancelled) {
+          setData(payload ?? EMPTY);
+        }
+      });
     };
 
     load();
-    const timer = window.setInterval(load, REFRESH_MS);
-    window.addEventListener("errejota:stage-updated", load);
+    const timer = window.setInterval(() => load(), REFRESH_MS);
+    const onStageUpdated = () => load(true);
+    window.addEventListener("errejota:stage-updated", onStageUpdated);
 
     return () => {
       cancelled = true;
       window.clearInterval(timer);
-      window.removeEventListener("errejota:stage-updated", load);
+      window.removeEventListener("errejota:stage-updated", onStageUpdated);
     };
   }, []);
 
@@ -82,7 +78,7 @@ export function StageBanner() {
     ? CITY_STAGE_SHORT_LABELS[normalized]
     : "Dados indisponíveis";
   const description = normalized ? CITY_STAGE_DESCRIPTIONS[normalized] : "";
-  const isManual = data?.status === "fallback";
+  const isManual = data?.stageStatus === "fallback";
   const darkText = normalized === "2" || normalized === "3";
   const foreground = darkText ? "#1f2937" : "#ffffff";
   const color = stage.color;

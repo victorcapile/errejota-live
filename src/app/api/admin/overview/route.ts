@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 import { listCameras, listManualStages } from "@/lib/admin-data";
 import { getCameraStatusSummary } from "@/lib/camera-status";
-import { getCityStage } from "@/lib/city-stage";
 import { getCriticalMode } from "@/lib/critical-mode";
 import {
   CAMERA_REPORT_REASON_VALUES,
@@ -49,20 +48,33 @@ export async function GET(request: Request) {
       : "all";
 
   try {
-    const reports = await listReports({ status, reason, query, limit: 120 });
-    const counts = await getReportCounts();
-    const cameraSummary = await getCameraStatusSummary();
-    const cameraList = await listCameras({
-      query,
-      status: cameraStatus,
-      limit: 120,
-    });
-    const stage = await getCityStage();
-    const criticalMode = await getCriticalMode();
-    const manualStages = await listManualStages();
-    const rain = await listRainReadings({ limit: 120 });
-    const lastRainRun = await getLastIngestRun("rain");
-    const audit = await listAudit(20);
+    const [
+      reports,
+      counts,
+      cameraSummary,
+      cameraList,
+      criticalMode,
+      manualStages,
+      rain,
+      lastRainRun,
+      audit,
+    ] = await Promise.all([
+      listReports({ status, reason, query, limit: 120 }),
+      getReportCounts(),
+      getCameraStatusSummary(),
+      listCameras({ query, status: cameraStatus, limit: 120 }),
+      getCriticalMode(),
+      listManualStages(),
+      listRainReadings({ limit: 120 }),
+      getLastIngestRun("rain"),
+      listAudit(20),
+    ]);
+
+    const stage = {
+      stage: criticalMode.stage,
+      status: criticalMode.stageStatus,
+      fetchedAt: criticalMode.evaluatedAt ?? new Date().toISOString(),
+    };
 
     return NextResponse.json(
       {

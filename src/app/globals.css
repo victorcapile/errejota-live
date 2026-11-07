@@ -191,6 +191,45 @@
   animation: user-location-ping 2s ease-out infinite;
 }
 
+@keyframes panel-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(2rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes panel-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(2.5rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.panel-enter {
+  animation: panel-in-up 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+@media (min-width: 1024px) {
+  .panel-enter {
+    animation-name: panel-in-right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-enter {
+    animation: none;
+  }
+}
+
 @keyframes user-location-ping {
   0% {
     box-shadow: 0 0 0 0 rgba(10, 53, 64, 0.45);

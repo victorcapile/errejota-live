@@ -67,7 +67,7 @@ export function SafetyFacilityListPanel({
   neighborhoodNameBySlug,
 }: SafetyFacilityListPanelProps) {
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[24rem] lg:rounded-2xl lg:border">
+    <div className="panel-enter absolute inset-x-0 bottom-0 z-20 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[24rem] lg:rounded-2xl lg:border">
       <div className="flex items-start justify-between gap-3 border-b border-line/70 px-4 pt-4 pb-2">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold leading-snug text-foreground">

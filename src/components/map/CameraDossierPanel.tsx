@@ -4,63 +4,11 @@ import { useState } from "react";
 import { Camera as CameraIcon, X } from "lucide-react";
 import { RainConditionSummary } from "./RainConditionCard";
 import { CameraReportButton } from "./CameraReportButton";
-import {
-  FLOOD_RISK_LEVEL_COLORS,
-  FLOOD_RISK_LEVEL_LABELS,
-  assessFloodRisk,
-  floodRiskTitle,
-} from "@/lib/flood-risk";
 import type {
   Camera,
   NeighborhoodCondition,
   NeighborhoodWithCount,
 } from "@/lib/types";
-
-function RainRiskBadge({
-  condition,
-  status,
-}: {
-  condition?: NeighborhoodCondition | null;
-  status?: "loading" | "ready" | "error";
-}) {
-  const assessment = condition
-    ? assessFloodRisk(
-        {
-          mm1h: condition.rain1hMm,
-          mm24h: condition.rain24hMm,
-          mm96h: condition.rain96hMm,
-        },
-        condition.riskClass,
-      )
-    : null;
-  const label =
-    status === "loading" && !condition
-      ? "carregando…"
-      : assessment
-        ? FLOOD_RISK_LEVEL_LABELS[assessment.level]
-        : "dados indisponíveis";
-  const color = assessment
-    ? FLOOD_RISK_LEVEL_COLORS[assessment.level]
-    : "#94a3b8";
-  const title = assessment
-    ? floodRiskTitle(assessment)
-    : "Dados de chuva indisponíveis. Não é possível avaliar o risco de alagamento agora.";
-
-  return (
-    <span
-      className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-line bg-card/60 px-2 py-0.5 text-[9px] font-medium text-muted"
-      title={title}
-    >
-      <span
-        aria-hidden
-        className="size-1.5 shrink-0 rounded-full"
-        style={{ background: color }}
-      />
-      Risco de alagamento:{" "}
-      <strong className="font-semibold text-foreground">{label}</strong>
-    </span>
-  );
-}
 
 type CameraDossierPanelProps = {
   neighborhood: NeighborhoodWithCount;
@@ -121,7 +69,6 @@ export function CameraDossierPanel({
               · {neighborhood.regionName}
             </span>
           </h3>
-          <RainRiskBadge condition={condition} status={conditionStatus} />
         </div>
         <button
           type="button"

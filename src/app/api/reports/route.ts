@@ -8,6 +8,7 @@ import {
   type CameraReportReason,
 } from "@/lib/constants";
 import { getClientIp } from "@/lib/request-ip";
+import { isSameOriginRequest } from "@/lib/request-origin";
 import {
   countRecentReportsByHash,
   findRecentDuplicate,
@@ -17,6 +18,7 @@ import {
 export const maxDuration = 30;
 
 const MAX_NOTE = 500;
+const MAX_BODY_BYTES = 10_000;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const HOURLY_LIMIT = 5;
@@ -37,6 +39,21 @@ function hash(value: string, salt: string): string {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json(
+      { error: "Origem inválida." },
+      { status: 403, headers: NO_STORE },
+    );
+  }
+
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json(
+      { error: "Requisição muito grande." },
+      { status: 413, headers: NO_STORE },
+    );
+  }
+
   const body = (await request.json().catch(() => ({}))) as {
     cameraId?: unknown;
     reason?: unknown;
@@ -87,8 +104,14 @@ export async function POST(request: Request) {
   const secret =
     process.env.REPORT_HASH_SALT ??
     process.env.IP_HASH_SALT ??
-    "errejota-local-report";
-  const salt = `${secret}:${saltVersion}`;
+    process.env.ADMIN_SESSION_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Relatos temporariamente indisponíveis." },
+      { status: 503, headers: NO_STORE },
+    );
+  }
+  const salt = `${secret ?? "errejota-local-report"}:${saltVersion}`;
   const ipHash = rawIp ? hash(rawIp, salt) : null;
   const dedupeKey = ipHash
     ? hash(`${camera.id}|${reason}|${ipHash}`, salt)

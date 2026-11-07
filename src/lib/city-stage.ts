@@ -66,8 +66,11 @@ function stageMessage(payload: CorStagePayload): string | null {
 }
 
 function parseCorStage(payload: CorStagePayload): CityStageView {
+  // O campo `estagio` é o rótulo oficial ("Estágio 1".."5"). O `id` do
+  // payload pode ser um identificador interno e não acompanhar o nível
+  // (ex.: id 1 com "Estágio 2"). Por isso o rótulo tem prioridade.
   const stage =
-    normalizeCityStage(payload.id) ?? normalizeCityStage(payload.estagio);
+    normalizeCityStage(payload.estagio) ?? normalizeCityStage(payload.id);
 
   if (!stage) {
     return null;

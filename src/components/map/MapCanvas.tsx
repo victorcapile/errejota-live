@@ -63,7 +63,16 @@ function patchShieldFilter(expression: unknown): unknown {
   ) {
     return ["<=", ["coalesce", expression[1], 999], ...expression.slice(2)];
   }
-  return expression.map(patchShieldFilter);
+
+  let changed = false;
+  const next = expression.map((item) => {
+    const patched = patchShieldFilter(item);
+    if (patched !== item) {
+      changed = true;
+    }
+    return patched;
+  });
+  return changed ? next : expression;
 }
 
 function transformOpenFreeMapStyle(
@@ -76,19 +85,18 @@ function transformOpenFreeMapStyle(
 
   let changed = false;
   const layers = next.layers.map((layer) => {
-    if (
-      (layer.id === "highway-shield-non-us" ||
-        layer.id === "highway-shield-us-interstate") &&
-      "filter" in layer &&
-      layer.filter
-    ) {
-      changed = true;
-      return {
-        ...layer,
-        filter: patchShieldFilter(layer.filter) as FilterSpecification,
-      };
+    if (!("filter" in layer) || !layer.filter) {
+      return layer;
     }
-    return layer;
+    const patched = patchShieldFilter(layer.filter);
+    if (patched === layer.filter) {
+      return layer;
+    }
+    changed = true;
+    return {
+      ...layer,
+      filter: patched as FilterSpecification,
+    };
   });
 
   return changed ? { ...next, layers } : next;
@@ -733,6 +741,7 @@ function syncSafetyLayers(
         minzoom: 13,
         layout: {
           "text-field": ["get", "name"],
+          "text-font": ["Noto Sans Regular"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9, 16, 12],
           "text-offset": [0, 1.2],
           "text-anchor": "top",
@@ -1071,6 +1080,19 @@ export function MapCanvas({
       zoom: 11,
       attributionControl: false,
       transformStyle: transformOpenFreeMapStyle,
+    });
+
+    // O estilo do OpenFreeMap referencia um padrão "wood-pattern" que não
+    // existe no sprite atual. Um fallback transparente evita o warning sem
+    // alterar a leitura do mapa.
+    map.setMissingStyleImageResolver((id) => {
+      if (id === "wood-pattern" && !map.hasImage(id)) {
+        map.addImage(id, {
+          width: 1,
+          height: 1,
+          data: new Uint8ClampedArray([0, 0, 0, 0]),
+        });
+      }
     });
 
     // O banner de estágio (e outros elementos) pode mudar a altura do

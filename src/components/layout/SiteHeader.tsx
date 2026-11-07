@@ -40,7 +40,7 @@ export function SiteHeader() {
               errejota.live
             </span>
             <span className="hidden text-[10px] font-medium uppercase tracking-[0.16em] text-muted lg:block">
-              Rio de Janeiro em tempo real · v1.4.1
+              Rio de Janeiro em tempo real · v1.4.2
             </span>
           </span>
         </Link>

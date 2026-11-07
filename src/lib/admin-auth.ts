@@ -7,8 +7,17 @@ const SESSION_MS = 8 * 60 * 60 * 1000;
 
 const ADMIN_USER = process.env.ADMIN_USER ?? "";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
-const SECRET =
-  process.env.ADMIN_SESSION_SECRET ?? "errejota-local-admin-session";
+
+function getSessionSecret(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (secret) {
+    return secret;
+  }
+  if (process.env.NODE_ENV !== "production") {
+    return "errejota-local-admin-session";
+  }
+  throw new Error("ADMIN_SESSION_SECRET não configurado.");
+}
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_ATTEMPTS = 5;
@@ -18,7 +27,7 @@ export const ADMIN_MAX_AGE_SECONDS = Math.floor(SESSION_MS / 1000);
 export const ADMIN_RATE_LIMIT_MAX_ATTEMPTS = RATE_LIMIT_MAX_ATTEMPTS;
 
 function sign(payload: string): string {
-  return createHmac("sha256", SECRET).update(payload).digest("hex");
+  return createHmac("sha256", getSessionSecret()).update(payload).digest("hex");
 }
 
 function safeEqual(a: string, b: string): boolean {

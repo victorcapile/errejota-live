@@ -597,27 +597,30 @@ export async function getCatalogStats(): Promise<CatalogStats> {
 }
 
 export async function getCatalogMeta(): Promise<CatalogMeta> {
-  const stats = await getCatalogStats();
-  const categoryRows = await db
-    .select({ value: sources.category, count: count() })
-    .from(sources)
-    .groupBy(sources.category);
-  const regionRows = await db
-    .select({ region: regions, sourceCount: count(sources.id) })
-    .from(regions)
-    .leftJoin(sources, eq(sources.regionId, regions.id))
-    .groupBy(regions.id)
-    .orderBy(asc(regions.sortOrder));
-  const tagRows = await db
-    .select({
-      tag: tags,
-      sourceCount: count(sourceTags.sourceId),
-    })
-    .from(tags)
-    .leftJoin(sourceTags, eq(sourceTags.tagId, tags.id))
-    .groupBy(tags.id)
-    .orderBy(asc(tags.label));
-  const neighborhoodRows = await listNeighborhoods();
+  const [stats, categoryRows, regionRows, tagRows, neighborhoodRows] =
+    await Promise.all([
+      getCatalogStats(),
+      db
+        .select({ value: sources.category, count: count() })
+        .from(sources)
+        .groupBy(sources.category),
+      db
+        .select({ region: regions, sourceCount: count(sources.id) })
+        .from(regions)
+        .leftJoin(sources, eq(sources.regionId, regions.id))
+        .groupBy(regions.id)
+        .orderBy(asc(regions.sortOrder)),
+      db
+        .select({
+          tag: tags,
+          sourceCount: count(sourceTags.sourceId),
+        })
+        .from(tags)
+        .leftJoin(sourceTags, eq(sourceTags.tagId, tags.id))
+        .groupBy(tags.id)
+        .orderBy(asc(tags.label)),
+      listNeighborhoods(),
+    ]);
 
   const categoryCounts = new Map(
     categoryRows.map((row) => [row.value as Category, Number(row.count)]),

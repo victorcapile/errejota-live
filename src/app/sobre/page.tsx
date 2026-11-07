@@ -9,13 +9,13 @@ import {
   Clock3,
   CloudRain,
   Database,
-  Dumbbell,
   ExternalLink,
-  GraduationCap,
+  Flag,
+  HeartHandshake,
   Hospital,
+  House,
   Layers,
   Map,
-  School,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -26,7 +26,7 @@ import { formatDate } from "@/lib/format";
 export const metadata: Metadata = {
   title: "Sobre",
   description:
-    "O errejota.live reúne câmeras públicas, chuva observada, risco estrutural e uma leitura 3D do Rio de Janeiro em um mapa por região e bairro.",
+    "O errejota.live reúne câmeras públicas, chuva observada, risco de alagamento, equipamentos públicos e uma leitura 3D do Rio de Janeiro em um mapa por região e bairro.",
 };
 
 const DATA = {
@@ -36,7 +36,13 @@ const DATA = {
   sources: 23,
   rainStations: 33,
   riskNeighborhoods: 158,
+  helpPoints: 189,
+  shelters: 12,
+  hospitals: 76,
+  publicEquipment: 277,
 } as const;
+
+const VERSION = "1.4.2";
 
 const FEATURES = [
   {
@@ -51,14 +57,14 @@ const FEATURES = [
     value: String(DATA.rainStations),
     label: "estações",
     title: "Chuva observada",
-    text: "Leitura de 1h, 24h e 96h da estação ativa mais próxima, com distância e horário.",
+    text: "Leitura de 1h e 24h da estação ativa mais próxima; 96h entra no risco.",
   },
   {
     icon: ShieldAlert,
     value: String(DATA.riskNeighborhoods),
     label: "bairros",
-    title: "Risco estrutural",
-    text: "ISMFI por bairro (COPPE/UFRJ): suscetibilidade do território, com contexto.",
+    title: "Risco de alagamento",
+    text: "No dossiê: chuva × ISMFI do território, com contexto.",
   },
   {
     icon: Building2,
@@ -66,6 +72,13 @@ const FEATURES = [
     label: "leitura",
     title: "Prédios com altura",
     text: "Uma camada 3D opcional para ler a forma da cidade, sem sair do mapa.",
+  },
+  {
+    icon: HeartHandshake,
+    value: DATA.publicEquipment.toLocaleString("pt-BR"),
+    label: "equipamentos",
+    title: "Equipamentos públicos",
+    text: "Pontos de ajuda, abrigos e hospitais públicos, com filtro por tipo e bairro.",
   },
 ] as const;
 
@@ -80,7 +93,6 @@ const ROADMAP = [
       "Filtros por situação, região e bairro",
       "Dossiê com links oficiais",
     ],
-    tone: "done",
   },
   {
     phase: "02",
@@ -93,7 +105,6 @@ const ROADMAP = [
       "Estágio operacional do COR-Rio",
       "Risco estrutural por bairro",
     ],
-    tone: "done",
   },
   {
     phase: "03",
@@ -105,27 +116,24 @@ const ROADMAP = [
       "Toggle Mostrar 3D",
       "Câmeras por cima dos prédios",
     ],
-    tone: "done",
   },
   {
     phase: "04",
-    status: "Planejado",
-    title: "Equipamentos públicos",
-    text: "A próxima camada: outros equipamentos públicos, com filtro por tipo e território.",
+    status: "No ar",
+    title: "Equipamentos e relatos",
+    text: "A camada de ajuda, os relatos de câmera e a moderação no admin.",
     items: [
-      "Hospitais, escolas e universidades",
-      "Academias da 3ª idade",
-      "Filtro por tipo, região e bairro",
+      "189 pontos de ajuda, 12 abrigos e 76 hospitais públicos",
+      "Relatos com moderação, rate limit e auditoria",
+      "Modo avançado automático em estágio 3+",
     ],
-    tone: "next",
   },
 ] as const;
 
 const EQUIPMENT = [
-  { label: "Hospitais", icon: Hospital },
-  { label: "Escolas", icon: School },
-  { label: "Universidades", icon: GraduationCap },
-  { label: "Academias da 3ª idade", icon: Dumbbell },
+  { label: "Pontos de ajuda", icon: HeartHandshake },
+  { label: "Abrigos", icon: House },
+  { label: "Hospitais públicos", icon: Hospital },
 ] as const;
 
 function SectionHeading({
@@ -142,11 +150,11 @@ function SectionHeading({
       <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
         {eyebrow}
       </p>
-      <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+      <h2 className="mt-1.5 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
         {title}
       </h2>
       {description ? (
-        <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
+        <p className="mt-2 text-xs leading-relaxed text-muted sm:text-sm">
           {description}
         </p>
       ) : null}
@@ -162,8 +170,8 @@ function Stat({
   label: string;
 }) {
   return (
-    <div className="rounded-xl border border-line/70 bg-background/60 p-3">
-      <p className="text-xl font-semibold tabular-nums tracking-tight">
+    <div className="rounded-xl border border-line/70 bg-background/60 p-2.5">
+      <p className="text-lg font-semibold tabular-nums tracking-tight sm:text-xl">
         {value}
       </p>
       <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">
@@ -186,50 +194,53 @@ export default function AboutPage() {
           className="pointer-events-none absolute -left-40 top-64 size-96 rounded-full bg-accent/10 blur-3xl"
         />
 
-        <section className="relative mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 lg:pb-24 lg:pt-20">
+        <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:pb-24 lg:pt-20">
           <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted">
                 Sobre o errejota.live
               </p>
-              <h1 className="mt-3 max-w-3xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl lg:text-6xl">
                 O Rio de Janeiro em camadas de dados públicos.
               </h1>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-                Câmeras, chuva observada, risco estrutural e uma leitura 3D dos
-                prédios em um só mapa, por região e bairro. Cada câmera abre a
-                página oficial do provedor.
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+                Câmeras, chuva observada, risco de alagamento, equipamentos
+                públicos e uma leitura 3D dos prédios em um só mapa, por região
+                e bairro. Cada câmera abre a página oficial do provedor.
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted">
-                <span className="rounded-full border border-line bg-card px-3 py-1.5">
-                  Versão 1.4.1
+              <div className="mt-4 flex flex-wrap gap-1.5 text-[10px] text-muted">
+                <span className="rounded-full border border-line bg-card px-2.5 py-1">
+                  Versão {VERSION}
                 </span>
-                <span className="rounded-full border border-line bg-card px-3 py-1.5">
+                <span className="rounded-full border border-line bg-card px-2.5 py-1">
                   Rio de Janeiro · RJ
                 </span>
-                <span className="rounded-full border border-line bg-card px-3 py-1.5">
+                <span className="rounded-full border border-line bg-card px-2.5 py-1">
                   {DATA.cameras.toLocaleString("pt-BR")} câmeras
                 </span>
-                <span className="rounded-full border border-line bg-card px-3 py-1.5">
+                <span className="rounded-full border border-line bg-card px-2.5 py-1">
+                  {DATA.publicEquipment} equipamentos públicos
+                </span>
+                <span className="rounded-full border border-line bg-card px-2.5 py-1">
                   {DATA.rainStations} estações de chuva
                 </span>
-                <span className="rounded-full border border-line bg-card px-3 py-1.5">
+                <span className="rounded-full border border-line bg-card px-2.5 py-1">
                   {DATA.sources} fontes
                 </span>
               </div>
 
-              <div className="mt-7 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 <Link
                   href="/"
-                  className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-strong"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-strong"
                 >
                   Abrir o mapa
                   <ArrowRight aria-hidden className="size-4" />
                 </Link>
                 <Link
                   href="/bairros"
-                  className="inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-card px-4 text-sm font-medium transition-colors hover:border-brand/30 hover:text-brand"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-line bg-card px-4 text-sm font-medium transition-colors hover:border-brand/30 hover:text-brand"
                 >
                   <Map aria-hidden className="size-4" />
                   Explorar bairros
@@ -238,7 +249,7 @@ export default function AboutPage() {
             </div>
 
             <div className="relative lg:justify-self-end">
-              <div className="w-full max-w-xl rounded-3xl border border-line bg-card/90 p-5 shadow-xl backdrop-blur">
+              <div className="w-full max-w-xl rounded-2xl border border-line bg-card/90 p-4 shadow-xl backdrop-blur sm:rounded-3xl sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
@@ -249,11 +260,11 @@ export default function AboutPage() {
                     </p>
                   </div>
                   <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-semibold text-brand">
-                    v1.4.1
+                    v{VERSION}
                   </span>
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-2.5">
+                <div className="mt-4 grid grid-cols-3 gap-2">
                   <Stat
                     value={DATA.cameras.toLocaleString("pt-BR")}
                     label="câmeras"
@@ -264,9 +275,14 @@ export default function AboutPage() {
                     label="bairros"
                   />
                   <Stat value={String(DATA.regions)} label="regiões" />
+                  <Stat
+                    value={String(DATA.publicEquipment)}
+                    label="equipamentos"
+                  />
+                  <Stat value={String(DATA.sources)} label="fontes" />
                 </div>
 
-                <div className="relative mt-3 h-28 overflow-hidden rounded-2xl border border-line bg-background/60">
+                <div className="relative mt-3 hidden h-20 overflow-hidden sm:block sm:h-28 rounded-2xl border border-line bg-background/60">
                   <div
                     aria-hidden
                     className="absolute inset-0 opacity-70"
@@ -282,25 +298,25 @@ export default function AboutPage() {
                   <span className="absolute left-[79%] top-[70%] size-1.5 rounded-full bg-emerald-500" />
                   <span className="absolute left-[30%] top-[74%] size-1.5 rounded-full bg-brand/70" />
                   <span className="absolute bottom-2 left-3 text-[9px] text-muted">
-                    7.571 pontos · 162 bairros
+                    7.571 câmeras · 277 equipamentos · 162 bairros
                   </span>
                 </div>
 
                 <div className="mt-3 flex items-center justify-between text-[10px] text-muted">
                   <span>OpenFreeMap · OpenStreetMap</span>
-                  <span>3D · chuva · risco</span>
+                  <span>3D · chuva · risco · ajuda</span>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
+        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-16">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <SectionHeading
               eyebrow="O que está no mapa"
-              title="Quatro camadas, uma leitura da cidade."
-              description="O mapa combina o catálogo de câmeras com contexto urbano: chuva observada, risco estrutural e uma camada 3D opcional."
+              title="Cinco camadas, uma leitura da cidade."
+              description="O mapa combina o catálogo de câmeras com contexto urbano: chuva observada, risco de alagamento, equipamentos públicos e uma camada 3D opcional."
             />
             <p className="max-w-xs text-xs leading-relaxed text-muted">
               Tudo em um só lugar, com filtros por região e bairro — e a fonte
@@ -308,20 +324,20 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-5">
             {FEATURES.map((feature) => {
               const Icon = feature.icon;
               return (
                 <div
                   key={feature.title}
-                  className="group relative overflow-hidden rounded-2xl border border-line bg-card p-5 shadow-sm transition-colors hover:border-brand/30"
+                  className="group relative overflow-hidden rounded-2xl border border-line bg-card p-3.5 shadow-sm transition-colors last:col-span-2 hover:border-brand/30 sm:p-5 xl:last:col-span-1"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="grid size-10 place-items-center rounded-xl bg-brand/10 text-brand">
+                    <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand sm:size-10">
                       <Icon aria-hidden className="size-5" />
                     </span>
                     <div className="text-right">
-                      <p className="text-2xl font-semibold tabular-nums tracking-tight">
+                      <p className="text-lg font-semibold tabular-nums tracking-tight sm:text-xl sm:text-2xl">
                         {feature.value}
                       </p>
                       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">
@@ -329,8 +345,8 @@ export default function AboutPage() {
                       </p>
                     </div>
                   </div>
-                  <p className="mt-4 text-sm font-semibold">{feature.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted">
+                  <p className="mt-3 text-xs font-semibold sm:text-sm">{feature.title}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-muted sm:text-xs">
                     {feature.text}
                   </p>
                 </div>
@@ -339,7 +355,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
+        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-16">
           <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
             <div>
               <SectionHeading
@@ -347,7 +363,7 @@ export default function AboutPage() {
                 title="Do filtro ao link oficial em poucos cliques."
                 description="O mapa foi feito para navegar rápido: escolha a situação, a região ou o bairro e veja o que está disponível."
               />
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">
                 {[
                   {
                     icon: Layers,
@@ -357,7 +373,7 @@ export default function AboutPage() {
                   {
                     icon: Map,
                     title: "Dossiê do bairro",
-                    text: "Lista as câmeras da área, com link e status.",
+                    text: "Lista câmeras ou equipamentos da área, com fonte e status.",
                   },
                   {
                     icon: Search,
@@ -369,18 +385,28 @@ export default function AboutPage() {
                     title: "Status declarado",
                     text: "Online/offline com verificação e ajuste manual.",
                   },
+                  {
+                    icon: Flag,
+                    title: "Relatos de câmera",
+                    text: "Reporte um problema no dossiê; a moderação aprova e aplica o status.",
+                  },
+                  {
+                    icon: ShieldAlert,
+                    title: "Modo avançado",
+                    text: "Em estágio 3+, chuva, risco e ajuda entram; as câmeras saem.",
+                  },
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
                     <div
                       key={item.title}
-                      className="rounded-xl border border-line bg-card p-4"
+                      className="rounded-xl border border-line bg-card p-3"
                     >
                       <Icon aria-hidden className="size-4 text-brand" />
                       <p className="mt-2 text-sm font-medium text-foreground">
                         {item.title}
                       </p>
-                      <p className="mt-1 text-xs leading-relaxed text-muted">
+                      <p className="mt-1 text-[10px] leading-relaxed text-muted sm:text-xs">
                         {item.text}
                       </p>
                     </div>
@@ -389,7 +415,7 @@ export default function AboutPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-line bg-card p-4 shadow-sm sm:p-5">
+            <div className="hidden rounded-3xl border border-line bg-card p-4 shadow-sm sm:block sm:p-5">
               <div className="flex items-center justify-between border-b border-line/60 pb-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                   Filtros
@@ -450,23 +476,23 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
+        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-16">
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-3xl border border-line bg-card p-6 shadow-sm">
-              <span className="grid size-10 place-items-center rounded-xl bg-brand/10 text-brand">
+            <div className="rounded-2xl border border-line bg-card p-3.5 shadow-sm sm:rounded-3xl sm:p-6">
+              <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand sm:size-10">
                 <CloudRain aria-hidden className="size-5" />
               </span>
-              <h3 className="mt-4 text-2xl font-semibold tracking-tight">
+              <h3 className="mt-3 text-xl font-semibold tracking-tight sm:text-2xl">
                 Chuva e risco, com contexto.
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
+              <p className="mt-1.5 text-xs leading-relaxed text-muted sm:text-sm">
                 A chuva observada nas estações do Alerta Rio é associada ao
-                bairro pela estação ativa mais próxima (até 5 km), com 1h, 24h
-                e 96h, distância e horário no card. O risco de alagamento é
-                indicativo: cruza os limiares de chuva por janela com o ISMFI
-                estrutural da COPPE/UFRJ. Bairros secos não são pintados, mesmo
-                que esteja chovendo em outra região. O alerta oficial é sempre
-                o do Alerta Rio / COR-Rio / Defesa Civil.
+                bairro pela estação ativa mais próxima (até 5 km), com 1h e 24h
+                no card e 96h no cálculo do risco, além de distância e horário.
+                O risco de alagamento é indicativo: cruza os limiares de chuva
+                por janela com o ISMFI estrutural da COPPE/UFRJ. Sem chuva, o
+                risco é baixo; com chuva, o dossiê mostra o cruzamento. O alerta
+                oficial é sempre o do Alerta Rio / COR-Rio / Defesa Civil.
               </p>
               <div className="mt-5 grid grid-cols-2 gap-2.5">
                 <Stat value={String(DATA.rainStations)} label="estações" />
@@ -527,14 +553,14 @@ export default function AboutPage() {
               </p>
             </div>
 
-            <div className="rounded-3xl border border-line bg-card p-6 shadow-sm">
+            <div className="rounded-2xl border border-line bg-card p-3.5 shadow-sm sm:rounded-3xl sm:p-6">
               <span className="grid size-10 place-items-center rounded-xl bg-accent-soft text-accent">
                 <Building2 aria-hidden className="size-5" />
               </span>
-              <h3 className="mt-4 text-2xl font-semibold tracking-tight">
+              <h3 className="mt-3 text-xl font-semibold tracking-tight sm:text-2xl">
                 Uma camada 3D para ler a cidade.
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
+              <p className="mt-1.5 text-xs leading-relaxed text-muted sm:text-sm">
                 O botão <strong>Mostrar 3D</strong> inclina o mapa e extruda os
                 prédios com alturas do OpenStreetMap/OpenFreeMap. O fade
                 acompanha o zoom e os pontos de câmera continuam por cima.
@@ -559,122 +585,97 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
+        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-16">
           <SectionHeading
             eyebrow="Roadmap"
             title="O caminho até aqui — e o próximo quarteirão."
-            description="O que já está no mapa, o que está em produção local e o que vem depois. A próxima camada é a de equipamentos públicos."
+            description="As camadas planejadas até aqui estão no ar. O próximo passo é ampliar fontes e histórico."
           />
 
-          <div className="relative mt-10">
+          <div className="relative mt-6">
             <div
               aria-hidden
               className="absolute left-[1.125rem] top-0 h-full w-px bg-line md:left-0 md:top-[1.125rem] md:h-px md:w-full"
             />
-            <ol className="grid gap-8 md:grid-cols-4 md:gap-4">
-              {ROADMAP.map((phase) => {
-                const isNext = phase.tone === "next";
-                return (
-                  <li key={phase.phase} className="relative pl-12 md:pl-0">
-                    <div
-                      className={`absolute left-0 top-0 grid size-9 place-items-center rounded-full border text-[11px] font-semibold md:relative md:mb-4 ${
-                        isNext
-                          ? "border-accent/40 bg-accent-soft text-accent"
-                          : "border-brand/30 bg-brand/10 text-brand"
-                      }`}
-                    >
-                      {isNext ? (
-                        <Clock3 aria-hidden className="size-4" />
-                      ) : (
-                        <CheckCircle2 aria-hidden className="size-4" />
-                      )}
+            <ol className="grid gap-5 md:grid-cols-4 md:gap-4">
+              {ROADMAP.map((phase) => (
+                <li key={phase.phase} className="relative pl-12 md:pl-0">
+                  <div className="absolute left-0 top-0 grid size-9 place-items-center rounded-full border border-brand/30 bg-brand/10 text-brand text-[11px] font-semibold md:relative md:mb-4">
+                    <CheckCircle2 aria-hidden className="size-4" />
+                  </div>
+                  <div className="rounded-2xl border border-line bg-card p-3.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-brand">
+                        {phase.status}
+                      </span>
+                      <span className="text-[9px] tabular-nums text-muted">
+                        {phase.phase}
+                      </span>
                     </div>
-                    <div
-                      className={`rounded-2xl border p-4 ${
-                        isNext
-                          ? "border-accent/30 bg-accent-soft/30"
-                          : "border-line bg-card"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${
-                            isNext
-                              ? "bg-accent-soft text-accent"
-                              : "bg-brand/10 text-brand"
-                          }`}
-                        >
-                          {phase.status}
-                        </span>
-                        <span className="text-[9px] tabular-nums text-muted">
-                          {phase.phase}
-                        </span>
-                      </div>
-                      <h3 className="mt-3 text-sm font-semibold">
-                        {phase.title}
-                      </h3>
-                      <p className="mt-1 text-xs leading-relaxed text-muted">
-                        {phase.text}
-                      </p>
-                      <ul className="mt-3 space-y-1.5 text-[10px] leading-relaxed text-muted">
-                        {phase.items.map((item) => (
-                          <li key={item} className="flex gap-1.5">
-                            <span
-                              className={`mt-1 size-1 shrink-0 rounded-full ${
-                                isNext ? "bg-accent" : "bg-brand"
-                              }`}
-                            />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </li>
-                );
-              })}
+                    <h3 className="mt-2 text-xs font-semibold sm:text-sm">
+                      {phase.title}
+                    </h3>
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted sm:text-xs">
+                      {phase.text}
+                    </p>
+                    <ul className="mt-3 space-y-1.5 text-[10px] leading-relaxed text-muted">
+                      {phase.items.map((item) => (
+                        <li key={item} className="flex gap-1.5">
+                          <span className="mt-1 size-1 shrink-0 rounded-full bg-brand" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </li>
+              ))}
             </ol>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-2 text-[10px] text-muted">
             <Clock3 aria-hidden className="size-3.5" />
-            Depois: mais fontes, histórico, admin em produção e performance.
+            Depois: mais fontes, histórico e evolução do app.
           </div>
 
-          <div className="mt-8 overflow-hidden rounded-3xl border border-brand/20 bg-gradient-to-br from-brand/10 via-card to-accent/10 p-6 shadow-sm">
+          <div className="mt-6 overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand/10 via-card to-accent/10 p-4 shadow-sm sm:rounded-3xl sm:p-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-brand">
-                  Próxima camada
+                  No mapa
                 </p>
-                <h3 className="mt-1 text-2xl font-semibold tracking-tight">
-                  Equipamentos públicos, com filtro.
+                <h3 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+                  Ajuda no mapa, com fonte e tipo.
                 </h3>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-                  Hospitais, escolas, universidades, academias da 3ª idade e
-                  outros equipamentos públicos — com filtro por tipo, região e
-                  bairro. A ideia é reunir tudo que for público, sempre com
-                  fonte, endereço e atribuição.
+                  Pontos de ajuda, abrigos e hospitais públicos da Defesa Civil
+                  e do CNES. Filtro por tipo, dossiê por bairro, endereço,
+                  fonte, atribuição e link para o Google Maps. Somente
+                  equipamentos públicos; hospitais particulares ficam de fora.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-1.5">
-                  {EQUIPMENT.map(({ label, icon: Icon }) => (
+                  {[
+                    `${DATA.helpPoints} pontos de ajuda`,
+                    `${DATA.shelters} abrigos`,
+                    `${DATA.hospitals} hospitais públicos`,
+                  ].map((label) => (
                     <span
                       key={label}
                       className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-2.5 py-1 text-[10px] text-muted"
                     >
-                      <Icon aria-hidden className="size-3" />
                       {label}
                     </span>
                   ))}
                 </div>
-                <span className="mt-3 inline-flex rounded-full bg-accent-soft px-2.5 py-1 text-[10px] font-semibold text-accent">
-                  Planejado para depois
+                <span className="mt-3 inline-flex rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-semibold text-brand">
+                  No ar
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {EQUIPMENT.map(({ label, icon: Icon }) => (
                   <div
                     key={label}
-                    className="grid size-20 place-items-center rounded-2xl border border-line bg-card/80 text-brand"
+                    className="grid size-14 place-items-center rounded-2xl border border-line bg-card/80 text-brand sm:size-20"
+                    title={label}
                   >
                     <Icon aria-hidden className="size-6" />
                   </div>
@@ -684,12 +685,12 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
+        <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-16">
           <SectionHeading
             eyebrow="Princípios"
             title="Dados públicos, com fonte e contexto."
           />
-          <div className="mt-8 grid gap-3 md:grid-cols-3">
+          <div className="mt-6 grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4">
             {[
               {
                 icon: ExternalLink,
@@ -699,23 +700,28 @@ export default function AboutPage() {
               {
                 icon: Database,
                 title: "Atribuição e proveniência",
-                text: "Alerta Rio, COPPE/UFRJ, OpenStreetMap e OpenFreeMap, com a fonte em cada camada.",
+                text: "Alerta Rio, COR-Rio, COPPE/UFRJ, Defesa Civil, CNES, Data.Rio, OpenStreetMap e OpenFreeMap.",
               },
               {
                 icon: ShieldCheck,
                 title: "Privacidade por padrão",
-                text: "Sem contas e sem rastreamento de terceiros. As métricas são anônimas e não guardam dados pessoais.",
+                text: "Sem contas, sem métricas de uso e sem rastreamento de terceiros. Relatos usam hash de IP com sal rotativo só para limite de abuso.",
+              },
+              {
+                icon: ShieldAlert,
+                title: "Incerteza explícita",
+                text: "Falha de fonte vira “dados indisponíveis”, nunca “normal” ou “sem risco”.",
               },
             ].map((item) => {
               const Icon = item.icon;
               return (
                 <div
                   key={item.title}
-                  className="rounded-2xl border border-line bg-card p-5 shadow-sm"
+                  className="rounded-2xl border border-line bg-card p-3.5 shadow-sm sm:p-5"
                 >
                   <Icon aria-hidden className="size-5 text-brand" />
-                  <p className="mt-3 text-sm font-semibold">{item.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted">
+                  <p className="mt-2 text-xs font-semibold sm:text-sm">{item.title}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-muted sm:text-xs">
                     {item.text}
                   </p>
                 </div>
@@ -723,12 +729,13 @@ export default function AboutPage() {
             })}
           </div>
 
-          <div className="mt-8 flex flex-col items-start justify-between gap-4 rounded-3xl border border-line bg-card p-6 shadow-sm sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-col items-start justify-between gap-4 rounded-2xl border border-line bg-card p-3.5 shadow-sm sm:rounded-3xl sm:p-6 sm:flex-row sm:items-center">
             <div>
               <p className="text-sm font-semibold">Fontes e atribuições</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted">
+              <p className="mt-1 text-[10px] leading-relaxed text-muted sm:text-xs">
                 Chuva: Alerta Rio · Estágio: COR-Rio · Risco: COPPE/UFRJ ·
-                Mapa e 3D: OpenFreeMap/OpenStreetMap.
+                Ajuda: Defesa Civil e CNES/DATASUS · Coordenadas: Data.Rio e
+                OpenStreetMap/Nominatim · Mapa e 3D: OpenFreeMap/OpenStreetMap.
               </p>
               <p className="mt-1 text-[10px] text-muted">
                 Catálogo revisado em {formatDate(CATALOG_LAST_CHECKED_AT)}.
@@ -753,17 +760,20 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <p className="mt-6 text-center text-[11px] text-muted">
-            Desenvolvido por Victor Capilé ·{" "}
-            <a
-              href="https://github.com/victorcapile/errejota-live"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand hover:underline"
-            >
-              GitHub
-            </a>
-          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[11px] text-muted">
+            <p>
+              Desenvolvido por Victor Capilé ·{" "}
+              <a
+                href="https://github.com/victorcapile/errejota-live"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand hover:underline"
+              >
+                GitHub
+              </a>
+            </p>
+            <span className="text-[10px] sm:hidden">· Versão {VERSION}</span>
+          </div>
         </section>
       </article>
       <SiteFooter />
