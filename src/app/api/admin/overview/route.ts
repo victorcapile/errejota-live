@@ -48,27 +48,22 @@ export async function GET(request: Request) {
       : "all";
 
   try {
-    const [
-      reports,
-      counts,
-      cameraSummary,
-      cameraList,
-      criticalMode,
-      manualStages,
-      rain,
-      lastRainRun,
-      audit,
-    ] = await Promise.all([
-      listReports({ status, reason, query, limit: 120 }),
-      getReportCounts(),
-      getCameraStatusSummary(),
-      listCameras({ query, status: cameraStatus, limit: 120 }),
-      getCriticalMode(),
-      listManualStages(),
-      listRainReadings({ limit: 120 }),
-      getLastIngestRun("rain"),
-      listAudit(20),
-    ]);
+    // Consultas sequenciais: o cliente remoto usa max: 1 e o pooler do
+    // Supabase não lida bem com várias queries simultâneas na mesma conexão.
+    // Com Promise.all a rota ficava presa e estourava o limite de 60s.
+    const reports = await listReports({ status, reason, query, limit: 120 });
+    const counts = await getReportCounts();
+    const cameraSummary = await getCameraStatusSummary();
+    const cameraList = await listCameras({
+      query,
+      status: cameraStatus,
+      limit: 120,
+    });
+    const criticalMode = await getCriticalMode();
+    const manualStages = await listManualStages();
+    const rain = await listRainReadings({ limit: 120 });
+    const lastRainRun = await getLastIngestRun("rain");
+    const audit = await listAudit(20);
 
     const stage = {
       stage: criticalMode.stage,
