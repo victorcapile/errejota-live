@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type {
   ExpressionSpecification,
+  FilterSpecification,
   Map as MapLibreMap,
   Marker as MapLibreMarker,
+  StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -42,6 +44,55 @@ const MAP_STYLES = {
   light: "https://tiles.openfreemap.org/styles/positron",
   dark: "https://tiles.openfreemap.org/styles/dark",
 } as const;
+
+/**
+ * O estilo do OpenFreeMap filtra os escudos de rodovia com
+ * `["<=", ["get", "ref_length"], 6]`. Alguns elementos vêm com
+ * `ref_length: null`, o que gera warning no MapLibre. Corrigimos o filtro
+ * antes do estilo ser aplicado.
+ */
+function patchShieldFilter(expression: unknown): unknown {
+  if (!Array.isArray(expression)) {
+    return expression;
+  }
+  if (
+    expression[0] === "<=" &&
+    Array.isArray(expression[1]) &&
+    expression[1][0] === "get" &&
+    expression[1][1] === "ref_length"
+  ) {
+    return ["<=", ["coalesce", expression[1], 999], ...expression.slice(2)];
+  }
+  return expression.map(patchShieldFilter);
+}
+
+function transformOpenFreeMapStyle(
+  _previous: StyleSpecification | undefined,
+  next: StyleSpecification,
+): StyleSpecification {
+  if (!next.layers) {
+    return next;
+  }
+
+  let changed = false;
+  const layers = next.layers.map((layer) => {
+    if (
+      (layer.id === "highway-shield-non-us" ||
+        layer.id === "highway-shield-us-interstate") &&
+      "filter" in layer &&
+      layer.filter
+    ) {
+      changed = true;
+      return {
+        ...layer,
+        filter: patchShieldFilter(layer.filter) as FilterSpecification,
+      };
+    }
+    return layer;
+  });
+
+  return changed ? { ...next, layers } : next;
+}
 
 const CAMERA_SOURCE_PREFIX = "cameras-";
 const RAIN_FIELD_SOURCE = "rain-field";
@@ -1019,6 +1070,7 @@ export function MapCanvas({
       center: initialMapCenter(),
       zoom: 11,
       attributionControl: false,
+      transformStyle: transformOpenFreeMapStyle,
     });
 
     // O banner de estágio (e outros elementos) pode mudar a altura do
@@ -1601,7 +1653,9 @@ export function MapCanvas({
     }
 
     const applyStyle = () => {
-      map.setStyle(MAP_STYLES[theme]);
+      map.setStyle(MAP_STYLES[theme], {
+        transformStyle: transformOpenFreeMapStyle,
+      });
     };
 
     if (map.isStyleLoaded()) {
