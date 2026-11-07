@@ -32,12 +32,18 @@ export const FLOOD_RISK_LEVEL_COLORS: Record<FloodRiskLevel, string> = {
  * Cruzamento do limiar de chuva (1h/24h/96h) com a suscetibilidade
  * estrutural do território (ISMFI). É um indicativo de alagamento, não um
  * alerta oficial: o alerta oficial é do Alerta Rio / COR-Rio / Defesa Civil.
+ *
+ * A chuva define o piso do indicativo; a suscetibilidade estrutural só pode
+ * elevá-lo, nunca rebaixá-lo. Um limiar médio de chuva (25–50 mm/h) já é
+ * intenso o bastante para alagamentos mesmo em área de baixa suscetibilidade,
+ * então não deve ser exibido como "Baixo". ISMFI alto eleva chuva média para
+ * "Alto"; chuva alta ou muito alta já é "Alto" em qualquer classe.
  */
 const MATRIX: Record<
   "baixa" | "media" | "alta",
   Record<Exclude<RainAlertLevel, "nenhum">, AssessedFloodRiskLevel>
 > = {
-  baixa: { medio: "baixo", alto: "moderado", muito_alto: "alto" },
+  baixa: { medio: "moderado", alto: "alto", muito_alto: "alto" },
   media: { medio: "moderado", alto: "alto", muito_alto: "alto" },
   alta: { medio: "alto", alto: "alto", muito_alto: "alto" },
 };

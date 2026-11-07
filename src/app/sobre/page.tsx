@@ -490,9 +490,10 @@ export default function AboutPage() {
                 bairro pela estação ativa mais próxima (até 5 km), com 1h e 24h
                 no card e 96h no cálculo do risco, além de distância e horário.
                 O risco de alagamento é indicativo: cruza os limiares de chuva
-                por janela com o ISMFI estrutural da COPPE/UFRJ. Sem chuva, o
-                risco é baixo; com chuva, o dossiê mostra o cruzamento. O alerta
-                oficial é sempre o do Alerta Rio / COR-Rio / Defesa Civil.
+                por janela com o ISMFI estrutural da COPPE/UFRJ. A chuva define
+                o piso do indicativo e o ISMFI pode elevá-lo; sem chuva, o risco
+                é baixo. O alerta oficial é sempre o do Alerta Rio / COR-Rio /
+                Defesa Civil.
               </p>
               <div className="mt-5 grid grid-cols-2 gap-2.5">
                 <Stat value={String(DATA.rainStations)} label="estações" />
