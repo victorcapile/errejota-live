@@ -98,9 +98,14 @@ export function assessFloodRisk(
 }
 
 export function floodRiskTitle(assessment: FloodRiskAssessment): string {
-  const rain = RAIN_ALERT_LABELS[assessment.rainAlert];
   const structural = RISK_CLASS_LABELS[assessment.structural];
   const level = FLOOD_RISK_LEVEL_LABELS[assessment.level];
+
+  if (assessment.rainAlert === "nenhum") {
+    return `Risco de alagamento ${level.toLowerCase()} (indicativo): chuva abaixo dos limiares de referência (1h: 25 mm; 24h: 85 mm; 96h: 140 mm) + ISMFI ${structural.toLowerCase()}. Referência: Ehrlich et al. (2021). Não é alerta oficial; acompanhe o Alerta Rio, o COR-Rio e a Defesa Civil.`;
+  }
+
+  const rain = RAIN_ALERT_LABELS[assessment.rainAlert];
   const window = assessment.highestWindow ?? "1h";
 
   return `Risco de alagamento ${level.toLowerCase()} (indicativo): limiar de chuva ${rain.toLowerCase()} em ${window} + ISMFI ${structural.toLowerCase()}. ${rainThresholdTitle(window)} Referência: Ehrlich et al. (2021). Não é alerta oficial; acompanhe o Alerta Rio, o COR-Rio e a Defesa Civil.`;

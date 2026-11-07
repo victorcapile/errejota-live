@@ -129,10 +129,7 @@ export function RainConditionSummary({
   const assessment = assessFloodRisk(values, condition.riskClass);
   const unavailable =
     !classification.hasData || condition.rainStatus !== "ok";
-  const showRisk =
-    !unavailable &&
-    classification.level !== "nenhum" &&
-    assessment.level !== "nao_avaliado";
+  const showRisk = !unavailable && assessment.level !== "nao_avaliado";
 
   const headline = unavailable
     ? "Dados indisponíveis"

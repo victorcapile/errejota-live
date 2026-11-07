@@ -491,9 +491,9 @@ export default function AboutPage() {
                 no card e 96h no cálculo do risco, além de distância e horário.
                 O risco de alagamento é indicativo: cruza os limiares de chuva
                 por janela com o ISMFI estrutural da COPPE/UFRJ. A chuva define
-                o piso do indicativo e o ISMFI pode elevá-lo; sem chuva, o risco
-                é baixo. O alerta oficial é sempre o do Alerta Rio / COR-Rio /
-                Defesa Civil.
+                o piso do indicativo e o ISMFI pode elevá-lo; sem chuva ou
+                abaixo dos limiares, o risco é baixo. O alerta oficial é sempre
+                o do Alerta Rio / COR-Rio / Defesa Civil.
               </p>
               <div className="mt-5 grid grid-cols-2 gap-2.5">
                 <Stat value={String(DATA.rainStations)} label="estações" />
