@@ -1,7 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  cityStages,
   ingestRuns,
   neighborhoods,
   rainStations,
@@ -9,6 +8,7 @@ import {
   riskIndicators,
 } from "@/db/schema";
 import type { RainMetric } from "./constants";
+import { getCityStage } from "./city-stage";
 import { distanceMeters } from "./geo";
 import type {
   ConditionsSummary,
@@ -127,8 +127,6 @@ export async function listNeighborhoodConditions(params: {
   metric?: RainMetric;
   limit?: number;
 }): Promise<ConditionsSummary> {
-  const metric: RainMetric = params.metric ?? "mm_1h";
-
   // Consultas sequenciais: o pooler do Supabase e o cliente com max: 1 não
   // lidam bem com várias queries simultâneas na mesma conexão.
   const stationRows = await db
@@ -143,7 +141,8 @@ export async function listNeighborhoodConditions(params: {
     .from(rainStations)
     .where(eq(rainStations.isActive, true));
 
-  const latest = await loadLatestObservations(metric);
+  // Carrega as três janelas de uma vez; o card sempre mostra 1h/24h/96h.
+  const latest = await loadLatestObservations();
 
   const riskRows = await db
     .select({
@@ -166,91 +165,80 @@ export async function listNeighborhoodConditions(params: {
     .from(neighborhoods)
     .innerJoin(regions, eq(regions.id, neighborhoods.regionId));
 
-  const stageRows = await db
-    .select()
-    .from(cityStages)
-    .orderBy(desc(cityStages.effectiveAt))
-    .limit(1);
+  const stageResult = await getCityStage();
+  const lastRainRun = await getLastIngestRun("rain");
 
-  const latestByStation = new Map(
-    latest.map((row) => [row.stationId, row]),
-  );
-  const stationNeighborhood = new Map(
-    stationRows.map((station) => [station.id, station.neighborhoodSlug]),
-  );
-
-  const rainByNeighborhood = new Map<
-    string,
-    {
-      max: number;
-      count: number;
-      readingAt: string;
-      stationName: string;
+  function rainStatusFor(
+    readingAt: string | null,
+  ): "ok" | "stale" | "unavailable" {
+    if (!readingAt) {
+      return "unavailable";
     }
-  >();
-
-  for (const row of latest) {
-    const slug = stationNeighborhood.get(row.stationId);
-    if (!slug) continue;
-    const station = stationRows.find((item) => item.id === row.stationId);
-    const stationName = station?.name ?? "estação";
-    const current = rainByNeighborhood.get(slug);
-    if (!current) {
-      rainByNeighborhood.set(slug, {
-        max: row.valueMm,
-        count: 1,
-        readingAt: row.readingAt,
-        stationName,
-      });
-      continue;
+    const timestamp = new Date(readingAt).getTime();
+    if (!Number.isFinite(timestamp)) {
+      return "unavailable";
     }
-    if (row.valueMm > current.max) {
-      current.max = row.valueMm;
-      current.stationName = stationName;
+    const ageMinutes = (Date.now() - timestamp) / 60_000;
+    if (lastRainRun?.status === "failed" && ageMinutes > 10) {
+      return "unavailable";
     }
-    current.count += 1;
-    if (row.readingAt > current.readingAt) {
-      current.readingAt = row.readingAt;
-    }
+    return ageMinutes > 30 ? "stale" : "ok";
   }
 
-  /** Estação ativa mais próxima (até 5 km) com leitura recente. */
-  function nearestStation(hood: {
-    latitude: number | null;
-    longitude: number | null;
-  }) {
-    if (hood.latitude === null || hood.longitude === null) {
+  type StationMetrics = Partial<
+    Record<RainMetric, { valueMm: number; readingAt: string }>
+  >;
+
+  const metricsByStation = new Map<string, StationMetrics>();
+  for (const row of latest) {
+    const metrics = metricsByStation.get(row.stationId) ?? {};
+    metrics[row.metric] = {
+      valueMm: row.valueMm,
+      readingAt: row.readingAt,
+    };
+    metricsByStation.set(row.stationId, metrics);
+  }
+
+  function summarizeMetrics(stationId: string) {
+    const metrics = metricsByStation.get(stationId);
+    if (!metrics) {
       return null;
     }
-    let best:
-      | {
-          stationName: string;
-          valueMm: number;
-          readingAt: string;
-          distanceKm: number;
-        }
-      | null = null;
 
-    for (const station of stationRows) {
-      const reading = latestByStation.get(station.id);
-      if (!reading) continue;
-      const distanceKm =
-        distanceMeters(
-          { latitude: hood.latitude, longitude: hood.longitude },
-          { latitude: station.latitude, longitude: station.longitude },
-        ) / 1000;
-      if (distanceKm > 5) continue;
-      if (!best || distanceKm < best.distanceKm) {
-        best = {
-          stationName: station.name,
-          valueMm: reading.valueMm,
-          readingAt: reading.readingAt,
-          distanceKm,
-        };
+    const h1 = metrics.mm_1h;
+    const h24 = metrics.mm_24h;
+    const h96 = metrics.mm_96h;
+    if (!h1 && !h24 && !h96) {
+      return null;
+    }
+
+    let readingAt: string | null = null;
+    for (const item of [h1, h24, h96]) {
+      if (item && (!readingAt || item.readingAt > readingAt)) {
+        readingAt = item.readingAt;
       }
     }
 
-    return best;
+    return {
+      mm1h: h1?.valueMm ?? null,
+      mm24h: h24?.valueMm ?? null,
+      mm96h: h96?.valueMm ?? null,
+      readingAt,
+    };
+  }
+
+  function highestFirst(
+    a: { metrics: NonNullable<ReturnType<typeof summarizeMetrics>> },
+    b: { metrics: NonNullable<ReturnType<typeof summarizeMetrics>> },
+  ) {
+    for (const key of ["mm1h", "mm24h", "mm96h"] as const) {
+      const left = a.metrics[key] ?? -1;
+      const right = b.metrics[key] ?? -1;
+      if (right !== left) {
+        return right - left;
+      }
+    }
+    return 0;
   }
 
   const riskByNeighborhood = new Map(
@@ -264,19 +252,66 @@ export async function listNeighborhoodConditions(params: {
         (!params.neighborhood || hood.slug === params.neighborhood),
     )
     .map((hood) => {
-      const rain = rainByNeighborhood.get(hood.slug);
-      const nearest = rain ? null : nearestStation(hood);
+      const localStations = stationRows
+        .filter((station) => station.neighborhoodSlug === hood.slug)
+        .map((station) => ({
+          station,
+          metrics: summarizeMetrics(station.id),
+        }))
+        .filter(
+          (item): item is {
+            station: (typeof stationRows)[number];
+            metrics: NonNullable<ReturnType<typeof summarizeMetrics>>;
+          } => item.metrics !== null,
+        )
+        .sort(highestFirst);
+
+      let selected:
+        | {
+            station: (typeof stationRows)[number];
+            metrics: NonNullable<ReturnType<typeof summarizeMetrics>>;
+            distanceKm: number;
+            count: number;
+          }
+        | null = null;
+
+      if (localStations.length > 0) {
+        selected = {
+          ...localStations[0],
+          distanceKm: 0,
+          count: localStations.length,
+        };
+      } else if (hood.latitude !== null && hood.longitude !== null) {
+        for (const station of stationRows) {
+          const metrics = summarizeMetrics(station.id);
+          if (!metrics) continue;
+          const distanceKm =
+            distanceMeters(
+              { latitude: hood.latitude, longitude: hood.longitude },
+              { latitude: station.latitude, longitude: station.longitude },
+            ) / 1000;
+          if (distanceKm > 5) continue;
+          if (!selected || distanceKm < selected.distanceKm) {
+            selected = { station, metrics, distanceKm, count: 1 };
+          }
+        }
+      }
+
       const risk = riskByNeighborhood.get(hood.slug);
 
       return {
         neighborhoodSlug: hood.slug,
         neighborhoodName: hood.name,
         regionSlug: hood.regionSlug,
-        rainMaxMm: rain?.max ?? nearest?.valueMm ?? null,
-        rainStationCount: rain?.count ?? (nearest ? 1 : 0),
-        rainReadingAt: rain?.readingAt ?? nearest?.readingAt ?? null,
-        rainStationName: rain?.stationName ?? nearest?.stationName ?? null,
-        rainDistanceKm: rain ? 0 : nearest?.distanceKm ?? null,
+        rain1hMm: selected?.metrics.mm1h ?? null,
+        rain24hMm: selected?.metrics.mm24h ?? null,
+        rain96hMm: selected?.metrics.mm96h ?? null,
+        rainStatus: rainStatusFor(selected?.metrics.readingAt ?? null),
+        rainStationCount: selected?.count ?? 0,
+        rainReadingAt: selected?.metrics.readingAt ?? null,
+        rainStationId: selected?.station.id ?? null,
+        rainStationName: selected?.station.name ?? null,
+        rainDistanceKm: selected?.distanceKm ?? null,
         riskClass: risk?.class ?? null,
         riskScore: risk?.score ?? null,
         riskSourceId: risk?.sourceId ?? null,
@@ -291,17 +326,12 @@ export async function listNeighborhoodConditions(params: {
     return item.rainReadingAt > latestAt ? item.rainReadingAt : latestAt;
   }, null);
 
-  const stageRow = stageRows[0];
-  const stage = stageRow
-    ? {
-        stage: stageRow.stage,
-        message: stageRow.message,
-        sourceLabel: stageRow.sourceLabel,
-        effectiveAt: stageRow.effectiveAt,
-      }
-    : null;
-
-  return { stage, updatedAt, items: limitedItems };
+  return {
+    stage: stageResult.stage,
+    stageStatus: stageResult.status,
+    updatedAt,
+    items: limitedItems,
+  };
 }
 
 export type IngestRunSummary = {
@@ -333,21 +363,4 @@ export async function getLastIngestRun(
   return row ?? null;
 }
 
-export async function getLatestCityStage() {
-  const [row] = await db
-    .select()
-    .from(cityStages)
-    .orderBy(desc(cityStages.effectiveAt))
-    .limit(1);
-
-  if (!row) {
-    return null;
-  }
-
-  return {
-    stage: row.stage,
-    message: row.message,
-    sourceLabel: row.sourceLabel,
-    effectiveAt: row.effectiveAt,
-  };
-}
+export { getLatestCityStage } from "./city-stage";

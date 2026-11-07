@@ -1,0 +1,19 @@
+name: Remover tabelas legadas (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  drop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Remover tabelas de uso/presença (destrutivo)
+        run: npm run db:drop-legacy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

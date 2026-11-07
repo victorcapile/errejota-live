@@ -72,7 +72,7 @@ export function SiteNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="flex min-w-0 flex-1 justify-center"
+      className="flex min-w-0 justify-center"
     >
       <ul className="flex items-center gap-1 rounded-2xl border border-line/70 bg-card/70 p-1 shadow-sm backdrop-blur">
         {items.map((item) => {

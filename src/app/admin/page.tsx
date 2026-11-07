@@ -2,14 +2,13 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { AdminConsole } from "@/components/admin/AdminConsole";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import {
   isAdminAuthenticated,
   isAdminHostAllowed,
   isLocalRequest,
 } from "@/lib/admin-auth";
-import { getUsageStats } from "@/lib/usage";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -35,8 +34,7 @@ async function AdminContent() {
     return <AdminLogin localOnly={await isLocalRequest()} />;
   }
 
-  const stats = await getUsageStats();
-  return <AdminDashboard stats={stats} />;
+  return <AdminConsole />;
 }
 
 function AdminLoading() {

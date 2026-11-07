@@ -13,12 +13,16 @@ if (typeof window !== "undefined") {
   maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
 }
 
-import { REGION_COLORS } from "@/lib/constants";
+import {
+  REGION_COLORS,
+  SAFETY_FACILITY_KIND_COLORS,
+  SAFETY_FACILITY_KIND_VALUES,
+} from "@/lib/constants";
 import {
   FLOOD_RISK_LEVEL_COLORS,
   type AssessedFloodRiskLevel,
 } from "@/lib/flood-risk";
-import { trackLocation, trackUsage } from "@/lib/usage-client";
+import type { SafetyFacility } from "@/lib/safety";
 import type { Camera, RainStationLatest } from "@/lib/types";
 
 // Centro inicial sem GPS: Tijuca no mobile e Freguesia (Jacarepaguá) no desktop.
@@ -59,6 +63,11 @@ const HIGHLIGHT_SOURCE = "camera-highlight";
 const HIGHLIGHT_HALO_LAYER = "camera-highlight-halo";
 const HIGHLIGHT_DOT_LAYER = "camera-highlight-dot";
 
+const SAFETY_SOURCE = "safety-facilities";
+const SAFETY_CIRCLE_LAYER = "safety-facilities-circle";
+const SAFETY_SELECTED_LAYER = "safety-facilities-selected";
+const SAFETY_LABEL_LAYER = "safety-facilities-label";
+
 type RiskOverlay = { slug: string; level: AssessedFloodRiskLevel };
 
 /** Pinta o polígono do bairro selecionado com o risco do ISMFI. */
@@ -93,6 +102,34 @@ function applyRiskState(
     previousSlugRef.current = overlay.slug;
   } catch {
     // Fonte recarregando.
+  }
+}
+
+function applyGlobalRiskState(
+  map: MapLibreMap,
+  riskBySlug: Record<string, "baixa" | "media" | "alta">,
+  show: boolean,
+): void {
+  if (!map.getSource("bairros")) {
+    return;
+  }
+
+  for (const [slug, level] of Object.entries(riskBySlug)) {
+    try {
+      if (show) {
+        const mapped =
+          level === "alta"
+            ? "alto"
+            : level === "media"
+              ? "moderado"
+              : "baixo";
+        map.setFeatureState({ source: "bairros", id: slug }, { risk: mapped });
+      } else {
+        map.removeFeatureState({ source: "bairros", id: slug }, "risk");
+      }
+    } catch {
+      // Fonte recarregando.
+    }
   }
 }
 
@@ -479,6 +516,225 @@ function syncRainLayers(
   }
 }
 
+function trianglePath(ctx: CanvasRenderingContext2D): void {
+  const size = 48;
+  const pad = 6;
+  ctx.beginPath();
+  ctx.moveTo(size / 2, pad);
+  ctx.lineTo(size - pad, size - pad);
+  ctx.lineTo(pad, size - pad);
+  ctx.closePath();
+}
+
+function triangleIcon(
+  fill: string,
+  stroke: string,
+  strokeWidth: number,
+): ImageData | null {
+  const size = 48;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  trianglePath(ctx);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = strokeWidth;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = stroke;
+  ctx.stroke();
+  return ctx.getImageData(0, 0, size, size);
+}
+
+/**
+ * Marcadores triangulares dos equipamentos, distintos das bolinhas das
+ * câmeras e dos contornos dos bairros. Gera um ícone por tipo e uma
+ * variante com anel âmbar para bairros de risco alto.
+ */
+function ensureSafetyIcons(map: MapLibreMap): void {
+  for (const kind of SAFETY_FACILITY_KIND_VALUES) {
+    const color = SAFETY_FACILITY_KIND_COLORS[kind];
+    const variants: Array<[string, string, number]> = [
+      ["", "#000000", 3],
+      ["-risk", "#f59e0b", 6],
+    ];
+    for (const [suffix, stroke, width] of variants) {
+      const name = `safety-triangle-${kind}${suffix}`;
+      if (map.hasImage(name)) continue;
+      const image = triangleIcon(color, stroke, width);
+      if (image) map.addImage(name, image, { pixelRatio: 2 });
+    }
+  }
+
+  const selected = "safety-triangle-selected";
+  if (!map.hasImage(selected)) {
+    const image = triangleIcon("rgba(0,0,0,0)", "#f8fafc", 6);
+    if (image) map.addImage(selected, image, { pixelRatio: 2 });
+  }
+}
+
+function syncSafetyLayers(
+  map: MapLibreMap,
+  facilities: SafetyFacility[],
+  visible: boolean,
+  selectedId: string | null,
+  theme: "light" | "dark",
+): void {
+  try {
+    ensureSafetyIcons(map);
+
+    const data = {
+      type: "FeatureCollection" as const,
+      features: facilities.map((facility) => ({
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [facility.longitude, facility.latitude],
+        },
+        properties: {
+          id: facility.id,
+          kind: facility.kind,
+          name: facility.name,
+          nearHighRisk: facility.nearHighRisk,
+          riskClass: facility.riskClass,
+        },
+      })),
+    };
+
+    const source = map.getSource(SAFETY_SOURCE) as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    if (source) {
+      source.setData(data);
+    } else {
+      map.addSource(SAFETY_SOURCE, { type: "geojson", data });
+    }
+
+    const existingMain = map.getLayer(SAFETY_CIRCLE_LAYER);
+    if (existingMain && existingMain.type !== "symbol") {
+      map.removeLayer(SAFETY_CIRCLE_LAYER);
+    }
+    if (!map.getLayer(SAFETY_CIRCLE_LAYER)) {
+      map.addLayer({
+        id: SAFETY_CIRCLE_LAYER,
+        type: "symbol",
+        source: SAFETY_SOURCE,
+        layout: {
+          "icon-image": [
+            "case",
+            ["get", "nearHighRisk"],
+            ["concat", "safety-triangle-", ["get", "kind"], "-risk"],
+            ["concat", "safety-triangle-", ["get", "kind"]],
+          ] as ExpressionSpecification,
+          "icon-size": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10,
+            0.38,
+            14,
+            0.6,
+            17,
+            0.8,
+          ],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+      });
+    }
+
+    const existingSelected = map.getLayer(SAFETY_SELECTED_LAYER);
+    if (existingSelected && existingSelected.type !== "symbol") {
+      map.removeLayer(SAFETY_SELECTED_LAYER);
+    }
+    if (!map.getLayer(SAFETY_SELECTED_LAYER)) {
+      map.addLayer({
+        id: SAFETY_SELECTED_LAYER,
+        type: "symbol",
+        source: SAFETY_SOURCE,
+        filter: ["==", ["get", "id"], selectedId ?? ""],
+        layout: {
+          "icon-image": "safety-triangle-selected",
+          "icon-size": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10,
+            0.52,
+            14,
+            0.8,
+            17,
+            1.05,
+          ],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+      });
+    }
+
+    if (!map.getLayer(SAFETY_LABEL_LAYER)) {
+      map.addLayer({
+        id: SAFETY_LABEL_LAYER,
+        type: "symbol",
+        source: SAFETY_SOURCE,
+        minzoom: 13,
+        layout: {
+          "text-field": ["get", "name"],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9, 16, 12],
+          "text-offset": [0, 1.2],
+          "text-anchor": "top",
+          "text-max-width": 12,
+          "text-optional": true,
+          "text-allow-overlap": false,
+        },
+        paint: {
+          "text-color": theme === "dark" ? "#f8fafc" : "#0f172a",
+          "text-halo-color": theme === "dark" ? "#0f172a" : "#ffffff",
+          "text-halo-width": 1.5,
+        },
+      });
+    }
+
+    for (const layer of [
+      SAFETY_CIRCLE_LAYER,
+      SAFETY_SELECTED_LAYER,
+      SAFETY_LABEL_LAYER,
+    ]) {
+      if (map.getLayer(layer)) {
+        map.setLayoutProperty(
+          layer,
+          "visibility",
+          visible ? "visible" : "none",
+        );
+      }
+    }
+
+    if (map.getLayer(SAFETY_SELECTED_LAYER)) {
+      map.setFilter(SAFETY_SELECTED_LAYER, [
+        "==",
+        ["get", "id"],
+        selectedId ?? "",
+      ]);
+    }
+    if (map.getLayer(SAFETY_LABEL_LAYER)) {
+      map.setPaintProperty(
+        SAFETY_LABEL_LAYER,
+        "text-color",
+        theme === "dark" ? "#f8fafc" : "#0f172a",
+      );
+      map.setPaintProperty(
+        SAFETY_LABEL_LAYER,
+        "text-halo-color",
+        theme === "dark" ? "#0f172a" : "#ffffff",
+      );
+    }
+  } catch {
+    // Estilo ainda carregando.
+  }
+}
+
 function cameraCirclePaint(
   color: string,
 ): NonNullable<maplibregl.CircleLayerSpecification["paint"]> {
@@ -610,8 +866,7 @@ function locateUser(
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      const { latitude, longitude, accuracy } = position.coords;
-      trackLocation({ latitude, longitude, accuracy });
+      const { latitude, longitude } = position.coords;
       const element = document.createElement("div");
       element.className = "map-user-location";
       markerRef.current?.remove();
@@ -646,10 +901,17 @@ export function MapCanvas({
   focusPoint,
   focusKey,
   riskOverlay,
+  riskBySlug,
+  showGlobalRisk,
   fitBoundsRequest,
   resetViewRequest,
   locateRequest,
   theme,
+  safetyFacilities,
+  showSafety,
+  selectedSafetyId,
+  onSelectSafetyFacility,
+  safetyFocusRequest,
 }: {
   cameras: Camera[];
   onSelectNeighborhood: (slug: string) => void;
@@ -663,10 +925,21 @@ export function MapCanvas({
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
   riskOverlay: RiskOverlay | null;
+  riskBySlug: Record<string, "baixa" | "media" | "alta">;
+  showGlobalRisk: boolean;
   fitBoundsRequest: { points: [number, number][]; key: number } | null;
   resetViewRequest: number;
   locateRequest: number;
   theme: "light" | "dark";
+  safetyFacilities: SafetyFacility[];
+  showSafety: boolean;
+  selectedSafetyId: string | null;
+  onSelectSafetyFacility: (id: string) => void;
+  safetyFocusRequest: {
+    latitude: number;
+    longitude: number;
+    key: number;
+  } | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNeighborhoodName, setHoveredNeighborhoodName] = useState<
@@ -691,8 +964,14 @@ export function MapCanvas({
   const focusedCameraRef = useRef<Camera | null>(focusedCamera);
   const focusedCameraId = focusedCamera?.id ?? null;
   const riskOverlayRef = useRef<RiskOverlay | null>(riskOverlay);
+  const riskBySlugRef = useRef(riskBySlug);
+  const showGlobalRiskRef = useRef(showGlobalRisk);
   const riskFeatureSlugRef = useRef<string | null>(null);
   const highlightFrameRef = useRef<number | null>(null);
+  const safetyFacilitiesRef = useRef<SafetyFacility[]>(safetyFacilities);
+  const showSafetyRef = useRef(showSafety);
+  const selectedSafetyIdRef = useRef<string | null>(selectedSafetyId);
+  const onSelectSafetyFacilityRef = useRef(onSelectSafetyFacility);
 
   useEffect(() => {
     camerasRef.current = cameras;
@@ -703,6 +982,12 @@ export function MapCanvas({
     onSelectNeighborhoodRef.current = onSelectNeighborhood;
     themeRef.current = theme;
     riskOverlayRef.current = riskOverlay;
+    riskBySlugRef.current = riskBySlug;
+    showGlobalRiskRef.current = showGlobalRisk;
+    safetyFacilitiesRef.current = safetyFacilities;
+    showSafetyRef.current = showSafety;
+    selectedSafetyIdRef.current = selectedSafetyId;
+    onSelectSafetyFacilityRef.current = onSelectSafetyFacility;
   }, [
     cameras,
     onSelectNeighborhood,
@@ -712,22 +997,36 @@ export function MapCanvas({
     rainOpacity,
     theme,
     riskOverlay,
+    riskBySlug,
+    showGlobalRisk,
+    safetyFacilities,
+    showSafety,
+    selectedSafetyId,
+    onSelectSafetyFacility,
   ]);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) {
+    const container = containerRef.current;
+    if (!container || mapRef.current) {
       return;
     }
 
     maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
 
     const map = new maplibregl.Map({
-      container: containerRef.current,
+      container,
       style: MAP_STYLES[themeRef.current],
       center: initialMapCenter(),
       zoom: 11,
       attributionControl: false,
     });
+
+    // O banner de estágio (e outros elementos) pode mudar a altura do
+    // container sem disparar um resize de janela. Mantém o canvas ajustado.
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize();
+    });
+    resizeObserver.observe(container);
 
     // Zoom (+/-) só faz sentido no desktop; no mobile os gestos já resolvem.
     if (window.matchMedia("(min-width: 1024px)").matches) {
@@ -787,6 +1086,13 @@ export function MapCanvas({
           map,
           rainStationsRef.current,
           rainOpacityRef.current,
+          themeRef.current,
+        );
+        syncSafetyLayers(
+          map,
+          safetyFacilitiesRef.current,
+          showSafetyRef.current,
+          selectedSafetyIdRef.current,
           themeRef.current,
         );
       } catch {
@@ -980,6 +1286,40 @@ export function MapCanvas({
             );
           }
 
+          if (!map.getLayer("bairros-risk-global")) {
+            map.addLayer(
+              {
+                id: "bairros-risk-global",
+                type: "fill",
+                source: "bairros",
+                layout: {
+                  visibility: showGlobalRiskRef.current
+                    ? "visible"
+                    : "none",
+                },
+                paint: {
+                  "fill-color": [
+                    "match",
+                    ["feature-state", "risk"],
+                    "baixo",
+                    FLOOD_RISK_LEVEL_COLORS.baixo,
+                    "moderado",
+                    FLOOD_RISK_LEVEL_COLORS.moderado,
+                    "alto",
+                    FLOOD_RISK_LEVEL_COLORS.alto,
+                    "rgba(0,0,0,0)",
+                  ],
+                  "fill-opacity": 0.18,
+                },
+              },
+              map.getLayer("bairros-risk")
+                ? "bairros-risk"
+                : map.getLayer("bairros-outline")
+                  ? "bairros-outline"
+                  : firstCameraLayer,
+            );
+          }
+
           if (!map.getLayer("bairros-outline")) {
             map.addLayer({
               id: "bairros-outline",
@@ -1055,6 +1395,11 @@ export function MapCanvas({
         })
         .then(() => {
           applyRiskState(map, riskOverlayRef.current, riskFeatureSlugRef);
+          applyGlobalRiskState(
+            map,
+            riskBySlugRef.current,
+            showGlobalRiskRef.current,
+          );
           ensureRainLayers();
         })
         .catch(() => {
@@ -1185,6 +1530,47 @@ export function MapCanvas({
     });
 
     map.on("click", (event) => {
+      if (
+        showSafetyRef.current &&
+        map.getLayer(SAFETY_CIRCLE_LAYER)
+      ) {
+        const safetyFeatures = map.queryRenderedFeatures(event.point, {
+          layers: [SAFETY_CIRCLE_LAYER],
+        });
+        const safety = safetyFeatures[0];
+        if (safety) {
+          const id = safety.properties?.id;
+          const geometry = safety.geometry as
+            | { coordinates?: [number, number] }
+            | undefined;
+          const coordinates = geometry?.coordinates;
+          if (typeof id === "string") {
+            if (
+              selectedSafetyIdRef.current === id &&
+              Array.isArray(coordinates) &&
+              coordinates.length >= 2
+            ) {
+              const [longitude, latitude] = coordinates;
+              window.open(
+                `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`,
+                "_blank",
+                "noopener,noreferrer",
+              );
+            } else {
+              onSelectSafetyFacilityRef.current(id);
+              if (Array.isArray(coordinates) && coordinates.length >= 2) {
+                map.flyTo({
+                  center: [coordinates[0], coordinates[1]],
+                  zoom: Math.max(map.getZoom(), 15),
+                  duration: 900,
+                });
+              }
+            }
+            return;
+          }
+        }
+      }
+
       const pointLayers = cameraPointLayers();
       if (pointLayers.length === 0) return;
       const features = map.queryRenderedFeatures(event.point, {
@@ -1194,19 +1580,6 @@ export function MapCanvas({
       const properties = feature?.properties ?? {};
       const url = properties.url;
       if (typeof url === "string" && url.length > 0) {
-        const cameraId = properties.id;
-        const cameraName = properties.name;
-        if (typeof cameraId === "string" && typeof cameraName === "string") {
-          trackUsage({
-            type: "camera_click",
-            cameraId,
-            cameraName,
-            neighborhoodSlug:
-              typeof properties.neighborhoodSlug === "string"
-                ? properties.neighborhoodSlug
-                : null,
-          });
-        }
         window.open(url, "_blank", "noopener,noreferrer");
       }
     });
@@ -1214,7 +1587,8 @@ export function MapCanvas({
     mapRef.current = map;
 
     return () => {
-    cameraSyncRef.current = null;
+      resizeObserver.disconnect();
+      cameraSyncRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -1257,6 +1631,32 @@ export function MapCanvas({
     }
     syncRainLayers(map, rainStations, rainOpacity, theme);
   }, [rainStations, rainOpacity, theme]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+    syncSafetyLayers(
+      map,
+      safetyFacilities,
+      showSafety,
+      selectedSafetyId,
+      theme,
+    );
+  }, [safetyFacilities, showSafety, selectedSafetyId, theme]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !safetyFocusRequest) {
+      return;
+    }
+    map.flyTo({
+      center: [safetyFocusRequest.longitude, safetyFocusRequest.latitude],
+      zoom: Math.max(map.getZoom(), 15),
+      duration: 900,
+    });
+  }, [safetyFocusRequest]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1461,8 +1861,16 @@ export function MapCanvas({
     if (!map) {
       return;
     }
+    applyGlobalRiskState(map, riskBySlug, showGlobalRisk);
     applyRiskState(map, riskOverlay, riskFeatureSlugRef);
-  }, [riskOverlay]);
+    if (map.getLayer("bairros-risk-global")) {
+      map.setLayoutProperty(
+        "bairros-risk-global",
+        "visibility",
+        showGlobalRisk ? "visible" : "none",
+      );
+    }
+  }, [riskOverlay, riskBySlug, showGlobalRisk]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1510,7 +1918,7 @@ export function MapCanvas({
       ) : null}
       {show3dHint ? (
         <div className="pointer-events-none absolute bottom-16 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border border-line bg-card/95 px-3 py-1.5 text-[11px] text-muted shadow-md backdrop-blur">
-          Aproxime para ver os prédios em 3D
+          Aproxime para mapa em 3D
         </div>
       ) : null}
       <div className="pointer-events-none absolute bottom-1 left-1/2 z-10 -translate-x-1/2">

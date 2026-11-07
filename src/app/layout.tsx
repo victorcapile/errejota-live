@@ -64,7 +64,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <div className="flex min-h-dvh flex-col">
             <SiteHeader />
-            <main id="conteudo" className="flex-1">
+            <main id="conteudo" className="flex min-h-0 flex-1 flex-col">
               {children}
             </main>
           </div>

@@ -1,31 +1,75 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Camera as CameraIcon,
-  Loader2,
-  Power,
-  PowerOff,
-  X,
-} from "lucide-react";
+import { Camera as CameraIcon, X } from "lucide-react";
 import { RainConditionSummary } from "./RainConditionCard";
-import { trackUsage } from "@/lib/usage-client";
+import { CameraReportButton } from "./CameraReportButton";
+import {
+  FLOOD_RISK_LEVEL_COLORS,
+  FLOOD_RISK_LEVEL_LABELS,
+  assessFloodRisk,
+  floodRiskTitle,
+} from "@/lib/flood-risk";
 import type {
   Camera,
   NeighborhoodCondition,
   NeighborhoodWithCount,
 } from "@/lib/types";
 
+function RainRiskBadge({
+  condition,
+  status,
+}: {
+  condition?: NeighborhoodCondition | null;
+  status?: "loading" | "ready" | "error";
+}) {
+  const assessment = condition
+    ? assessFloodRisk(
+        {
+          mm1h: condition.rain1hMm,
+          mm24h: condition.rain24hMm,
+          mm96h: condition.rain96hMm,
+        },
+        condition.riskClass,
+      )
+    : null;
+  const label =
+    status === "loading" && !condition
+      ? "carregando…"
+      : assessment
+        ? FLOOD_RISK_LEVEL_LABELS[assessment.level]
+        : "dados indisponíveis";
+  const color = assessment
+    ? FLOOD_RISK_LEVEL_COLORS[assessment.level]
+    : "#94a3b8";
+  const title = assessment
+    ? floodRiskTitle(assessment)
+    : "Dados de chuva indisponíveis. Não é possível avaliar o risco de alagamento agora.";
+
+  return (
+    <span
+      className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-line bg-card/60 px-2 py-0.5 text-[9px] font-medium text-muted"
+      title={title}
+    >
+      <span
+        aria-hidden
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ background: color }}
+      />
+      Risco de alagamento:{" "}
+      <strong className="font-semibold text-foreground">{label}</strong>
+    </span>
+  );
+}
+
 type CameraDossierPanelProps = {
   neighborhood: NeighborhoodWithCount;
   neighborhoodCameras: Camera[];
   open: boolean;
   onClose: () => void;
-  onStatusChange: (camera: Camera, status: "online" | "offline") => void;
   onHoverCamera?: (camera: Camera | null) => void;
   condition?: NeighborhoodCondition | null;
   conditionStatus?: "loading" | "ready" | "error";
-  updatingCameraId?: string | null;
   statusFilter: "all" | "online" | "offline";
 };
 
@@ -34,11 +78,9 @@ export function CameraDossierPanel({
   neighborhoodCameras,
   open,
   onClose,
-  onStatusChange,
   onHoverCamera,
   condition,
   conditionStatus,
-  updatingCameraId,
   statusFilter,
 }: CameraDossierPanelProps) {
   // O player do COR-Rio usa WebRTC com codecs que o Firefox desktop no macOS
@@ -79,6 +121,7 @@ export function CameraDossierPanel({
               · {neighborhood.regionName}
             </span>
           </h3>
+          <RainRiskBadge condition={condition} status={conditionStatus} />
         </div>
         <button
           type="button"
@@ -141,14 +184,6 @@ export function CameraDossierPanel({
                       href={neighborhoodCamera.pageUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() =>
-                        trackUsage({
-                          type: "camera_click",
-                          cameraId: neighborhoodCamera.id,
-                          cameraName: neighborhoodCamera.name,
-                          neighborhoodSlug: neighborhood.slug,
-                        })
-                      }
                       title={
                         offline
                           ? "Câmera offline no provedor"
@@ -179,36 +214,7 @@ export function CameraDossierPanel({
                         </span>
                       ) : null}
                     </a>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onStatusChange(
-                          neighborhoodCamera,
-                          offline ? "online" : "offline",
-                        )
-                      }
-                      disabled={updatingCameraId === neighborhoodCamera.id}
-                      aria-label={
-                        offline
-                          ? `Marcar ${neighborhoodCamera.name} como online`
-                          : `Marcar ${neighborhoodCamera.name} como offline`
-                      }
-                      title={
-                        offline ? "Marcar como online" : "Marcar como offline"
-                      }
-                      className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:cursor-wait disabled:opacity-50"
-                    >
-                      {updatingCameraId === neighborhoodCamera.id ? (
-                        <Loader2
-                          aria-hidden
-                          className="size-3.5 animate-spin"
-                        />
-                      ) : offline ? (
-                        <Power aria-hidden className="size-3.5" />
-                      ) : (
-                        <PowerOff aria-hidden className="size-3.5" />
-                      )}
-                    </button>
+                    <CameraReportButton camera={neighborhoodCamera} />
                   </li>
                 );
               })}

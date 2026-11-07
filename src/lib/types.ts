@@ -225,9 +225,13 @@ export type NeighborhoodCondition = {
   neighborhoodSlug: string;
   neighborhoodName: string;
   regionSlug: string | null;
-  rainMaxMm: number | null;
+  rain1hMm: number | null;
+  rain24hMm: number | null;
+  rain96hMm: number | null;
+  rainStatus: "ok" | "stale" | "unavailable";
   rainStationCount: number;
   rainReadingAt: string | null;
+  rainStationId: string | null;
   rainStationName: string | null;
   rainDistanceKm: number | null;
   riskClass: RiskClass | null;
@@ -237,13 +241,18 @@ export type NeighborhoodCondition = {
 
 export type CityStageView = {
   stage: CityStage;
+  label: string;
+  color: string;
   message: string | null;
   sourceLabel: string;
   effectiveAt: string;
 } | null;
 
+export type CityStageStatus = "ok" | "fallback" | "unavailable";
+
 export type ConditionsSummary = {
   stage: CityStageView;
+  stageStatus: CityStageStatus;
   updatedAt: string | null;
   items: NeighborhoodCondition[];
 };

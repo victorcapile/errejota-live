@@ -1,7 +1,5 @@
 import {
-  bigint,
   boolean,
-  doublePrecision,
   index,
   integer,
   primaryKey,
@@ -12,9 +10,10 @@ import {
 } from "drizzle-orm/pg-core";
 import {
   AVAILABILITY_STATUS_VALUES,
+  CAMERA_REPORT_REASON_VALUES,
+  CAMERA_REPORT_STATUS_VALUES,
   CATEGORY_VALUES,
   CITY_STAGE_VALUES,
-  DEVICE_VALUES,
   LOCATION_PRECISION_VALUES,
   MEDIA_TYPE_VALUES,
   NEWS_KIND_VALUES,
@@ -23,6 +22,7 @@ import {
   RAIN_METRIC_VALUES,
   RISK_CLASS_VALUES,
   RISK_KIND_VALUES,
+  SAFETY_FACILITY_KIND_VALUES,
   SCOPE_VALUES,
 } from "@/lib/constants";
 
@@ -235,16 +235,6 @@ export type TagRow = typeof tags.$inferSelect;
 export type SourceStatusCheckRow = typeof sourceStatusChecks.$inferSelect;
 
 /**
- * Presença efêmera: cada aba/navegador registra um "batimento" periódico.
- * A contagem de usuários online é derivada da janela de tempo (últimos
- * 60 segundos), então linhas antigas podem ser removidas sem prejuízo.
- */
-export const presenceSessions = pgTable("presence_sessions", {
-  sessionId: text("session_id").primaryKey(),
-  lastSeen: bigint("last_seen", { mode: "number" }).notNull(),
-});
-
-/**
  * Estações pluviométricas oficiais (Alerta Rio / Geo-Rio).
  * O ponto é associado a um bairro por join espacial na ingestão.
  */
@@ -394,8 +384,9 @@ export const drainagePoints = pgTable(
 );
 
 /**
- * Estágio operacional da cidade, atualizado manualmente pelo admin.
- * O registro mais recente por effectiveAt é o vigente.
+ * Estágio operacional da cidade, usado como fallback manual quando a fonte
+ * oficial (COR-Rio) está indisponível. O registro mais recente por
+ * effectiveAt é o vigente.
  */
 export const cityStages = pgTable(
   "city_stages",
@@ -410,6 +401,51 @@ export const cityStages = pgTable(
   },
   (table) => [index("city_stages_effective_idx").on(table.effectiveAt)],
 );
+
+/**
+ * Camadas de segurança pública: pontos de apoio, abrigos e hospitais.
+ * Dados públicos, sem relação com coordenadas de visitantes.
+ */
+export const safetyFacilities = pgTable(
+  "safety_facilities",
+  {
+    id: text("id").primaryKey(),
+    kind: text("kind", { enum: [...SAFETY_FACILITY_KIND_VALUES] }).notNull(),
+    externalId: text("external_id").notNull(),
+    name: text("name").notNull(),
+    address: text("address"),
+    neighborhoodSlug: text("neighborhood_slug"),
+    regionSlug: text("region_slug"),
+    latitude: real("latitude").notNull(),
+    longitude: real("longitude").notNull(),
+    sourceLabel: text("source_label").notNull(),
+    sourceUrl: text("source_url"),
+    attribution: text("attribution").notNull(),
+    sourceUpdatedAt: text("source_updated_at"),
+    syncedAt: text("synced_at").notNull(),
+    metadata: text("metadata"),
+    isActive: boolean("is_active").notNull().default(true),
+  },
+  (table) => [
+    uniqueIndex("safety_facilities_kind_external_idx").on(
+      table.kind,
+      table.externalId,
+    ),
+    index("safety_facilities_kind_idx").on(table.kind),
+    index("safety_facilities_neighborhood_idx").on(table.neighborhoodSlug),
+    index("safety_facilities_latlon_idx").on(table.latitude, table.longitude),
+  ],
+);
+
+/**
+ * Estado persistente de recursos do app (ex.: modo crítico com histerese).
+ * O valor é um JSON em texto para evoluir sem migration a cada campo.
+ */
+export const systemState = pgTable("system_state", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
 
 /**
  * Histórico de execuções de ingestão para exibir "última atualização"
@@ -435,73 +471,67 @@ export const ingestRuns = pgTable(
 );
 
 /**
- * Eventos anônimos de uso para o painel admin local: visualizações de página,
- * abertura de bairros e cliques em câmeras. Em produção guarda só o hash do IP.
+ * Relatos de problema enviados pelo público. Um relato isolado não altera o
+ * status da câmera: ele entra na fila de moderação do admin.
+ * Nenhum IP/coordenada em claro é armazenado; guardamos apenas o hash com sal
+ * rotativo e a versão do sal.
  */
-export const usageEvents = pgTable(
-  "usage_events",
+export const cameraReports = pgTable(
+  "camera_reports",
   {
     id: text("id").primaryKey(),
-    type: text("type", {
-      enum: ["page_view", "neighborhood_view", "camera_click"],
+    cameraId: text("camera_id").notNull(),
+    cameraExternalId: text("camera_external_id"),
+    cameraName: text("camera_name").notNull(),
+    reason: text("reason", {
+      enum: [...CAMERA_REPORT_REASON_VALUES],
     }).notNull(),
-    device: text("device", { enum: [...DEVICE_VALUES] }),
-    sessionId: text("session_id"),
-    ip: text("ip"),
+    note: text("note"),
+    status: text("status", {
+      enum: [...CAMERA_REPORT_STATUS_VALUES],
+    })
+      .notNull()
+      .default("pending"),
     ipHash: text("ip_hash"),
-    visitorHash: text("visitor_hash"),
-    neighborhoodSlug: text("neighborhood_slug"),
-    cameraId: text("camera_id"),
-    cameraName: text("camera_name"),
-    path: text("path"),
+    saltVersion: text("salt_version"),
+    dedupeKey: text("dedupe_key"),
+    moderatedBy: text("moderated_by"),
+    moderatedAt: text("moderated_at"),
+    moderationNote: text("moderation_note"),
     createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
   },
   (table) => [
-    index("usage_events_type_created_idx").on(table.type, table.createdAt),
-    index("usage_events_neighborhood_idx").on(table.neighborhoodSlug),
-    index("usage_events_camera_idx").on(table.cameraId),
-    index("usage_events_ip_hash_idx").on(table.ipHash),
-    index("usage_events_visitor_hash_idx").on(table.visitorHash),
-  ],
-);
-
-/** Apelidos dados pelo admin para um visitante pseudônimo (hash do IP). */
-export const visitorLabels = pgTable("visitor_labels", {
-  visitorKey: text("visitor_key").primaryKey(),
-  nickname: text("nickname").notNull(),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
-/**
- * Coordenadas compartilhadas voluntariamente quando o visitante usa o botão
- * de localização. Em produção guarda só o hash do IP, como usage_events.
- */
-export const visitorLocations = pgTable(
-  "visitor_locations",
-  {
-    id: text("id").primaryKey(),
-    sessionId: text("session_id"),
-    device: text("device", { enum: [...DEVICE_VALUES] }),
-    ip: text("ip"),
-    ipHash: text("ip_hash"),
-    latitude: doublePrecision("latitude").notNull(),
-    longitude: doublePrecision("longitude").notNull(),
-    accuracy: real("accuracy"),
-    street: text("street"),
-    neighborhood: text("neighborhood"),
-    placeKey: text("place_key"),
-    createdAt: text("created_at").notNull(),
-  },
-  (table) => [
-    index("visitor_locations_ip_hash_created_idx").on(
+    index("camera_reports_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    index("camera_reports_camera_idx").on(table.cameraId),
+    index("camera_reports_dedupe_idx").on(table.dedupeKey),
+    index("camera_reports_ip_hash_created_idx").on(
       table.ipHash,
       table.createdAt,
     ),
-    index("visitor_locations_created_idx").on(table.createdAt),
-    index("visitor_locations_place_key_idx").on(table.placeKey),
   ],
 );
+
+/** Trilha simples de ações do admin (moderação, status, estágio). */
+export const adminAudit = pgTable(
+  "admin_audit",
+  {
+    id: text("id").primaryKey(),
+    action: text("action").notNull(),
+    entity: text("entity").notNull(),
+    entityId: text("entity_id"),
+    detail: text("detail"),
+    actor: text("actor").notNull().default("admin"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("admin_audit_created_idx").on(table.createdAt)],
+);
+
+export type CameraReportRow = typeof cameraReports.$inferSelect;
+export type AdminAuditRow = typeof adminAudit.$inferSelect;
 
 export type RainStationRow = typeof rainStations.$inferSelect;
 export type RainObservationRow = typeof rainObservations.$inferSelect;
@@ -509,4 +539,6 @@ export type RainDailyRow = typeof rainDaily.$inferSelect;
 export type RiskIndicatorRow = typeof riskIndicators.$inferSelect;
 export type DrainagePointRow = typeof drainagePoints.$inferSelect;
 export type CityStageRow = typeof cityStages.$inferSelect;
+export type SafetyFacilityRow = typeof safetyFacilities.$inferSelect;
+export type SystemStateRow = typeof systemState.$inferSelect;
 export type IngestRunRow = typeof ingestRuns.$inferSelect;

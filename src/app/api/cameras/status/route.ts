@@ -1,3 +1,4 @@
+import { isAdminAuthenticated } from "@/lib/admin-auth";
 import {
   getCameraStatusSummary,
   runCameraStatusBatch,
@@ -19,15 +20,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const expectedToken = process.env.CAMERA_STATUS_TOKEN;
   const authorized =
-    process.env.NODE_ENV !== "production" ||
-    (Boolean(expectedToken) &&
-      request.headers.get("x-status-token") === expectedToken);
+    process.env.NODE_ENV !== "production" || (await isAdminAuthenticated());
 
   if (!authorized) {
     return Response.json(
-      { error: "Defina CAMERA_STATUS_TOKEN e envie o cabeçalho x-status-token." },
+      { error: "Acesso restrito ao admin." },
       { status: 403 },
     );
   }

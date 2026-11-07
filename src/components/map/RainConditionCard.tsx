@@ -9,6 +9,14 @@ import {
   floodRiskTitle,
   type FloodRiskAssessment,
 } from "@/lib/flood-risk";
+import {
+  RAIN_ALERT_COLORS,
+  classifyRain,
+  rainThresholdTitle,
+  rainWindowLabel,
+  type RainAlertLevel,
+  type RainWindow,
+} from "@/lib/rain-alert";
 import { rainFreshness, rainHeadline } from "@/lib/rain-labels";
 import type { NeighborhoodCondition } from "@/lib/types";
 
@@ -25,12 +33,7 @@ export function RainIcon({ mm }: { mm: number | null }) {
   }, []);
 
   if (mm !== null && mm > 0) {
-    return (
-      <CloudRain
-        aria-hidden
-        className="size-4 shrink-0 text-brand"
-      />
-    );
+    return <CloudRain aria-hidden className="size-4 shrink-0 text-brand" />;
   }
 
   if (hour === null) {
@@ -43,6 +46,38 @@ export function RainIcon({ mm }: { mm: number | null }) {
     <Sun aria-hidden className="size-4 shrink-0 text-amber-500" />
   ) : (
     <Moon aria-hidden className="size-4 shrink-0 text-slate-500 dark:text-slate-300" />
+  );
+}
+
+function RainValue({
+  window,
+  mm,
+  level,
+}: {
+  window: RainWindow;
+  mm: number | null;
+  level: RainAlertLevel;
+}) {
+  const hasValue = mm !== null;
+  const color = hasValue ? RAIN_ALERT_COLORS[level] : "#94a3b8";
+
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1"
+      title={rainThresholdTitle(window)}
+    >
+      <span
+        aria-hidden
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ background: color }}
+      />
+      <span className="font-semibold tabular-nums text-foreground">
+        {mm === null ? "—" : `${mm.toLocaleString("pt-BR")} mm`}
+      </span>
+      <span className="font-medium text-muted">
+        ({rainWindowLabel(window)})
+      </span>
+    </span>
   );
 }
 
@@ -77,7 +112,7 @@ function CompactFloodRisk({
 
 /**
  * Conteúdo compartilhado entre o card flutuante do celular e o card do
- * dossiê no desktop. Mantém o mesmo layout compacto nos dois.
+ * dossiê no desktop. Mostra apenas 1h e 24h para deixar espaço ao risco.
  */
 export function RainConditionSummary({
   condition,
@@ -85,49 +120,84 @@ export function RainConditionSummary({
   condition: NeighborhoodCondition;
 }) {
   const freshness = rainFreshness(condition.rainReadingAt);
-  const assessment = assessFloodRisk(condition.rainMaxMm, condition.riskClass);
-  const showRisk = assessment.rain !== "sem_chuva" && !freshness.stale;
-  const freshnessText = freshness.stale
-    ? `leitura ${freshness.time} · desatualizado`
-    : `atualizado ${freshness.time}`;
+  const values = {
+    mm1h: condition.rain1hMm,
+    mm24h: condition.rain24hMm,
+    mm96h: condition.rain96hMm,
+  };
+  const classification = classifyRain(values);
+  const assessment = assessFloodRisk(values, condition.riskClass);
+  const unavailable =
+    !classification.hasData || condition.rainStatus !== "ok";
+  const showRisk =
+    !unavailable &&
+    classification.level !== "nenhum" &&
+    assessment.level !== "nao_avaliado";
+
+  const headline = unavailable
+    ? "Dados indisponíveis"
+    : rainHeadline(condition.rain1hMm);
+  const freshnessText = !condition.rainReadingAt
+    ? "sem leitura"
+    : condition.rainStatus !== "ok"
+      ? `dados indisponíveis · última leitura ${freshness.time}`
+      : `atualizado ${freshness.time}`;
+  const stationText = condition.rainStationName
+    ? `${condition.rainStationName}${
+        condition.rainDistanceKm && condition.rainDistanceKm > 0
+          ? ` · ${condition.rainDistanceKm.toFixed(1)} km`
+          : ""
+      }`
+    : null;
 
   return (
     <div className="flex items-center gap-2.5">
-      <RainIcon mm={condition.rainMaxMm} />
+      <RainIcon mm={condition.rain1hMm} />
       <div className="min-w-0 flex-1">
-        <p className="flex items-baseline gap-1.5 text-[11px] font-semibold leading-snug text-foreground">
-          <span className="truncate">{rainHeadline(condition.rainMaxMm)}</span>
-          {condition.rainMaxMm !== null ? (
-            <span className="shrink-0 text-[10px] font-normal text-muted">
-              {condition.rainMaxMm.toLocaleString("pt-BR")} mm
-            </span>
-          ) : null}
-        </p>
-        <p className="truncate text-[9px] leading-tight text-muted">
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-[11px] font-semibold leading-snug text-foreground">
+            {headline}
+          </p>
+          {showRisk ? <CompactFloodRisk assessment={assessment} /> : null}
+        </div>
+        <div className="mt-0.5 flex min-w-0 items-center gap-x-2 text-[9px] leading-tight text-muted">
+          <RainValue
+            window="1h"
+            mm={condition.rain1hMm}
+            level={classification.byWindow["1h"]}
+          />
+          <span aria-hidden className="shrink-0 text-muted/50">
+            |
+          </span>
+          <RainValue
+            window="24h"
+            mm={condition.rain24hMm}
+            level={classification.byWindow["24h"]}
+          />
           <span
             suppressHydrationWarning
-            className={
-              freshness.stale
+            className={`truncate ${
+              unavailable
                 ? "font-medium text-amber-600 dark:text-amber-400"
-                : undefined
-            }
+                : ""
+            }`}
             title={
-              freshness.stale
-                ? "Leitura antiga: a fonte não atualizou nas últimas coletas."
-                : `Horário da leitura na estação ${
+              unavailable
+                ? "A fonte não atualizou nas últimas coletas. Os valores acima são a última leitura conhecida e não devem ser lidos como ausência de chuva ou de risco."
+                : `Leitura na estação ${
                     condition.rainStationName ?? "mais próxima"
                   }${
                     condition.rainDistanceKm && condition.rainDistanceKm > 0
                       ? ` a ${condition.rainDistanceKm.toFixed(1)} km`
                       : ""
-                  } (fonte Alerta Rio). A coleta no Errejota ocorre poucos minutos depois.`
+                  } (fonte Alerta Rio). A coleta no Errejota ocorre a cada ~5 min.`
             }
           >
             {freshnessText}
+            {stationText ? ` · ${stationText}` : ""}
           </span>
-        </p>
+        </div>
       </div>
-      {showRisk ? <CompactFloodRisk assessment={assessment} /> : null}
     </div>
   );
 }

@@ -32,10 +32,11 @@ export async function GET(request: Request) {
     const lastRun = await getLastIngestRun("rain");
     return Response.json(
       {
-        metric: parsed.query.metric,
+        metrics: ["mm_1h", "mm_24h", "mm_96h"],
         sources: {
           rain: "alerta-rio",
           risk: "coppe-ufrj",
+          stage: "cor-rio",
         },
         lastRun,
         ...result,

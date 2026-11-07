@@ -25,7 +25,6 @@ type Options = {
   onlyUnknown: boolean;
   maxBatches: number;
   baseUrl: string;
-  token: string | null;
 };
 
 function readFlag(name: string): string | null {
@@ -49,19 +48,14 @@ const options: Options = {
   onlyUnknown: !process.argv.includes("--all"),
   maxBatches: Math.floor(readNumber("max-batches", 0)),
   baseUrl: readFlag("url") ?? process.env.APP_URL ?? "http://localhost:3000",
-  token: readFlag("token") ?? process.env.CAMERA_STATUS_TOKEN ?? null,
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function headers(): Record<string, string> {
-  const result: Record<string, string> = {
+  return {
     "Content-Type": "application/json",
   };
-  if (options.token) {
-    result["x-status-token"] = options.token;
-  }
-  return result;
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {

@@ -1,22 +1,18 @@
 import { RISK_CLASS_LABELS, type RiskClass } from "./constants";
+import {
+  RAIN_ALERT_LABELS,
+  classifyRain,
+  rainThresholdTitle,
+  type RainAlertLevel,
+  type RainWindow,
+  type RainWindowValues,
+} from "./rain-alert";
 
-export type RainIntensity = "sem_chuva" | "fraca" | "moderada" | "forte";
-export type FloodRiskLevel =
-  | "nao_avaliado"
-  | "baixo"
-  | "moderado"
-  | "alto";
+export type FloodRiskLevel = "nao_avaliado" | "baixo" | "moderado" | "alto";
 export type AssessedFloodRiskLevel = Exclude<
   FloodRiskLevel,
   "nao_avaliado"
 >;
-
-export const RAIN_INTENSITY_LABELS: Record<RainIntensity, string> = {
-  sem_chuva: "Sem chuva",
-  fraca: "Chuva fraca",
-  moderada: "Chuva moderada",
-  forte: "Chuva forte",
-};
 
 export const FLOOD_RISK_LEVEL_LABELS: Record<FloodRiskLevel, string> = {
   nao_avaliado: "Não avaliado",
@@ -32,56 +28,74 @@ export const FLOOD_RISK_LEVEL_COLORS: Record<FloodRiskLevel, string> = {
   alto: "#dc2626",
 };
 
-/** Mesmos cortes usados no card de chuva. */
-export function rainIntensity(mm: number | null): RainIntensity {
-  if (mm === null || mm < 0.1) return "sem_chuva";
-  if (mm < 2.5) return "fraca";
-  if (mm < 10) return "moderada";
-  return "forte";
-}
-
 /**
- * Cruzamento chuva × suscetibilidade estrutural (ISMFI).
- * A chuva fraca só eleva o risco quando o território já é muito suscetível;
- * a chuva moderada/forte pesa mais em bairros de risco médio/alto.
+ * Cruzamento do limiar de chuva (1h/24h/96h) com a suscetibilidade
+ * estrutural do território (ISMFI). É um indicativo de alagamento, não um
+ * alerta oficial: o alerta oficial é do Alerta Rio / COR-Rio / Defesa Civil.
  */
 const MATRIX: Record<
   "baixa" | "media" | "alta",
-  Record<"fraca" | "moderada" | "forte", AssessedFloodRiskLevel>
+  Record<Exclude<RainAlertLevel, "nenhum">, AssessedFloodRiskLevel>
 > = {
-  baixa: { fraca: "baixo", moderada: "baixo", forte: "moderado" },
-  media: { fraca: "baixo", moderada: "moderado", forte: "alto" },
-  alta: { fraca: "moderado", moderada: "alto", forte: "alto" },
+  baixa: { medio: "baixo", alto: "moderado", muito_alto: "alto" },
+  media: { medio: "moderado", alto: "alto", muito_alto: "alto" },
+  alta: { medio: "alto", alto: "alto", muito_alto: "alto" },
 };
 
 export type FloodRiskAssessment = {
-  rain: RainIntensity;
+  rainAlert: RainAlertLevel;
+  byWindow: Record<RainWindow, RainAlertLevel>;
+  rainHasData: boolean;
+  highestWindow: RainWindow | null;
   structural: RiskClass;
   level: FloodRiskLevel;
 };
 
 export function assessFloodRisk(
-  rainMm: number | null,
+  values: RainWindowValues,
   structuralClass: RiskClass | null,
 ): FloodRiskAssessment {
-  const rain = rainIntensity(rainMm);
+  const classification = classifyRain(values);
   const structural = structuralClass ?? "nao_avaliado";
 
-  if (rain === "sem_chuva" || structural === "nao_avaliado") {
-    return { rain, structural, level: "nao_avaliado" };
+  if (!classification.hasData || structural === "nao_avaliado") {
+    return {
+      rainAlert: classification.level,
+      byWindow: classification.byWindow,
+      rainHasData: classification.hasData,
+      highestWindow: classification.highestWindow,
+      structural,
+      level: "nao_avaliado",
+    };
+  }
+
+  // Sem chuva não há alagamento por chuva: risco baixo, não "não avaliado".
+  if (classification.level === "nenhum") {
+    return {
+      rainAlert: classification.level,
+      byWindow: classification.byWindow,
+      rainHasData: classification.hasData,
+      highestWindow: classification.highestWindow,
+      structural,
+      level: "baixo",
+    };
   }
 
   return {
-    rain,
+    rainAlert: classification.level,
+    byWindow: classification.byWindow,
+    rainHasData: classification.hasData,
+    highestWindow: classification.highestWindow,
     structural,
-    level: MATRIX[structural][rain],
+    level: MATRIX[structural][classification.level],
   };
 }
 
 export function floodRiskTitle(assessment: FloodRiskAssessment): string {
-  const rain = RAIN_INTENSITY_LABELS[assessment.rain];
+  const rain = RAIN_ALERT_LABELS[assessment.rainAlert];
   const structural = RISK_CLASS_LABELS[assessment.structural];
   const level = FLOOD_RISK_LEVEL_LABELS[assessment.level];
+  const window = assessment.highestWindow ?? "1h";
 
-  return `Risco de alagamento ${level.toLowerCase()}: ${rain.toLowerCase()} + ISMFI ${structural.toLowerCase()}. Base: estação mais próxima (Alerta Rio) e suscetibilidade do território (COPPE/UFRJ). Não é previsão nem alerta em tempo real.`;
+  return `Risco de alagamento ${level.toLowerCase()} (indicativo): limiar de chuva ${rain.toLowerCase()} em ${window} + ISMFI ${structural.toLowerCase()}. ${rainThresholdTitle(window)} Referência: Ehrlich et al. (2021). Não é alerta oficial; acompanhe o Alerta Rio, o COR-Rio e a Defesa Civil.`;
 }

@@ -1,18 +1,18 @@
-import { getLatestCityStage } from "@/lib/rain";
+import { getCityStage } from "@/lib/city-stage";
 
 const CACHE = {
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+  "Cache-Control": "no-store",
 };
 
 export async function GET() {
   try {
-    const stage = await getLatestCityStage();
-    return Response.json({ stage }, { headers: CACHE });
+    const result = await getCityStage();
+    return Response.json(result, { headers: CACHE });
   } catch (error) {
     console.error("Falha ao consultar o estágio da cidade:", error);
     return Response.json(
-      { error: "Não foi possível consultar o estágio da cidade." },
-      { status: 500 },
+      { stage: null, status: "unavailable", fetchedAt: new Date().toISOString() },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

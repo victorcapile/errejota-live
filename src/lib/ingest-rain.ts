@@ -1,4 +1,4 @@
-import { eq, max } from "drizzle-orm";
+import { eq, inArray, lt, max } from "drizzle-orm";
 import { db } from "@/db";
 import {
   ingestRuns,
@@ -11,10 +11,13 @@ const MC_URL = "https://alertario.rio.rj.gov.br/upload/Mapa/mc.json";
 const SOURCE_SLUG = "alerta-rio";
 const FRESH_WINDOW_MS = 4.5 * 60 * 1000;
 const CHECK_THROTTLE_MS = 30 * 1000;
+const RETENTION_DAYS = 90;
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+let lastPruneAt = 0;
 
-// A UI usa apenas a janela de 1 h; guardar as 8 janelas a cada 5 min
-// multiplicaria o volume sem uso. O script manual continua gravando todas.
-const INGEST_METRICS: RainMetric[] = ["mm_1h"];
+// Janelas usadas pelo card do bairro e pelo cálculo de risco. As demais
+// (5 min, 10 min, 15 min, 4 h, mês) continuam disponíveis no script manual.
+const INGEST_METRICS: RainMetric[] = ["mm_1h", "mm_24h", "mm_96h"];
 
 const METRIC_FIELDS: Record<RainMetric, string> = {
   mm_5m: "ch05m",
@@ -243,6 +246,17 @@ async function ingestRain(): Promise<IngestResult> {
       }
     }
 
+    if (Date.now() - lastPruneAt > PRUNE_INTERVAL_MS) {
+      lastPruneAt = Date.now();
+      const cutoff = new Date(
+        Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      await db
+        .delete(rainObservations)
+        .where(lt(rainObservations.readingAt, cutoff))
+        .catch(() => {});
+    }
+
     await db
       .update(ingestRuns)
       .set({
@@ -291,13 +305,28 @@ export async function ensureFreshRain(): Promise<void> {
   lastCheckedAt = now;
 
   try {
-    const [row] = await db
-      .select({ latest: max(rainObservations.readingAt) })
+    const rows = await db
+      .select({
+        metric: rainObservations.metric,
+        latest: max(rainObservations.readingAt),
+      })
       .from(rainObservations)
-      .where(eq(rainObservations.metric, "mm_1h"));
+      .where(inArray(rainObservations.metric, INGEST_METRICS))
+      .groupBy(rainObservations.metric);
 
-    const latest = row?.latest ? new Date(row.latest).getTime() : 0;
-    if (Number.isFinite(latest) && now - latest < FRESH_WINDOW_MS) {
+    const latestByMetric = new Map(
+      rows.map((row) => [row.metric, row.latest]),
+    );
+    const allFresh = INGEST_METRICS.every((metric) => {
+      const latest = latestByMetric.get(metric);
+      if (!latest) {
+        return false;
+      }
+      const timestamp = new Date(latest).getTime();
+      return Number.isFinite(timestamp) && now - timestamp < FRESH_WINDOW_MS;
+    });
+
+    if (allFresh) {
       return;
     }
 

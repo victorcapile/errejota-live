@@ -609,37 +609,192 @@ export const RISK_CLASS_LABELS: Record<RiskClass, string> = {
   alta: "Alto",
 };
 
-/** Tipo de dispositivo inferido pelo User-Agent (sem guardar o UA). */
-export const DEVICE_VALUES = [
-  "mobile",
-  "tablet",
-  "desktop",
-  "unknown",
+/** Motivos de relato de problema em uma câmera. */
+export const CAMERA_REPORT_REASON_VALUES = [
+  "offline",
+  "online",
+  "other",
 ] as const;
 
-export type DeviceType = (typeof DEVICE_VALUES)[number];
+export type CameraReportReason =
+  (typeof CAMERA_REPORT_REASON_VALUES)[number];
 
-export const DEVICE_LABELS: Record<DeviceType, string> = {
-  mobile: "Celular",
-  tablet: "Tablet",
-  desktop: "Desktop",
-  unknown: "Desconhecido",
+export const CAMERA_REPORT_REASON_LABELS: Record<
+  CameraReportReason,
+  string
+> = {
+  offline: "Câmera offline",
+  online: "Câmera online",
+  other: "Outro problema",
 };
 
-/** Estágio operacional da cidade (atualizado manualmente no admin). */
-export const CITY_STAGE_VALUES = [
-  "normal",
-  "atencao",
-  "alerta",
-  "crise",
+/** Motivos antigos mantidos apenas para exibir relatos históricos. */
+const LEGACY_CAMERA_REPORT_REASON_LABELS: Record<string, string> = {
+  wrong_location: "Localização errada (legado)",
+  wrong_name: "Nome/endereço errado (legado)",
+  frozen: "Imagem travada (legado)",
+};
+
+export function cameraReportReasonLabel(reason: string): string {
+  return (
+    CAMERA_REPORT_REASON_LABELS[reason as CameraReportReason] ??
+    LEGACY_CAMERA_REPORT_REASON_LABELS[reason] ??
+    "Outro problema"
+  );
+}
+
+/** Estados da fila de moderação. */
+export const CAMERA_REPORT_STATUS_VALUES = [
+  "pending",
+  "approved",
+  "rejected",
+  "resolved",
+  "duplicate",
 ] as const;
+
+export type CameraReportStatus =
+  (typeof CAMERA_REPORT_STATUS_VALUES)[number];
+
+export const CAMERA_REPORT_STATUS_LABELS: Record<
+  CameraReportStatus,
+  string
+> = {
+  pending: "Pendente",
+  approved: "Aprovado",
+  rejected: "Rejeitado",
+  resolved: "Resolvido",
+  duplicate: "Duplicado",
+};
+
+/**
+ * Estágio operacional da cidade, na escala oficial de 5 níveis do COR-Rio.
+ * O código usa "1".."5"; valores antigos (normal/atencao/alerta/crise) são
+ * normalizados na leitura para não quebrar registros históricos.
+ */
+export const CITY_STAGE_VALUES = ["1", "2", "3", "4", "5"] as const;
 
 export type CityStage = (typeof CITY_STAGE_VALUES)[number];
 
 export const CITY_STAGE_LABELS: Record<CityStage, string> = {
-  normal: "Normal",
-  atencao: "Atenção",
-  alerta: "Alerta",
-  crise: "Crise",
+  "1": "Estágio 1",
+  "2": "Estágio 2",
+  "3": "Estágio 3",
+  "4": "Estágio 4",
+  "5": "Estágio 5",
 };
+
+export const CITY_STAGE_SHORT_LABELS: Record<CityStage, string> = {
+  "1": "Normal",
+  "2": "Risco",
+  "3": "Impacto",
+  "4": "Grave",
+  "5": "Crítico",
+};
+
+export const CITY_STAGE_DESCRIPTIONS: Record<CityStage, string> = {
+  "1": "Sem ocorrências que alterem a rotina da cidade.",
+  "2": "Risco de ocorrências de alto impacto; mantenha-se informado.",
+  "3": "Uma ou mais ocorrências já impactam a cidade.",
+  "4": "Ocorrências graves afetam a cidade; evite deslocamentos.",
+  "5": "Múltiplos danos comprometem a capacidade de resposta.",
+};
+
+/** Cores oficiais da escala do COR-Rio. */
+export const CITY_STAGE_COLORS: Record<CityStage, string> = {
+  "1": "#228d46",
+  "2": "#e6b800",
+  "3": "#e8791e",
+  "4": "#c62828",
+  "5": "#6a1b9a",
+};
+
+export const CITY_STAGE_LEVELS: Record<CityStage, number> = {
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+};
+
+const CITY_STAGE_ALIASES: Record<string, CityStage> = {
+  "1": "1",
+  "2": "2",
+  "3": "3",
+  "4": "4",
+  "5": "5",
+  estagio1: "1",
+  estagio2: "2",
+  estagio3: "3",
+  estagio4: "4",
+  estagio5: "5",
+  normal: "1",
+  normalidade: "1",
+  mobilizacao: "2",
+  atencao: "3",
+  alerta: "4",
+  crise: "5",
+};
+
+/** Converte o valor do banco/COR (ex.: "Estágio 4", "normal") em "1".."5". */
+export function normalizeCityStage(value: unknown): CityStage | null {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return value >= 1 && value <= 5 ? (String(value) as CityStage) : null;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const key = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+  return CITY_STAGE_ALIASES[key] ?? null;
+}
+
+export function isHighCityStage(stage: CityStage | null): boolean {
+  return stage === "4" || stage === "5";
+}
+
+/** Camadas de segurança pública (sem sirenes, conforme decisão do produto). */
+export const SAFETY_FACILITY_KIND_VALUES = [
+  "support_point",
+  "shelter",
+  "hospital",
+] as const;
+
+export type SafetyFacilityKind =
+  (typeof SAFETY_FACILITY_KIND_VALUES)[number];
+
+export const SAFETY_FACILITY_KIND_LABELS: Record<
+  SafetyFacilityKind,
+  string
+> = {
+  support_point: "Pontos de ajuda",
+  shelter: "Abrigos",
+  hospital: "Hospitais",
+};
+
+export const SAFETY_FACILITY_KIND_SINGULAR: Record<
+  SafetyFacilityKind,
+  string
+> = {
+  support_point: "Ponto de ajuda",
+  shelter: "Abrigo",
+  hospital: "Hospital",
+};
+
+export const SAFETY_FACILITY_KIND_COLORS: Record<
+  SafetyFacilityKind,
+  string
+> = {
+  // Cores fora da paleta das regiões/bairros.
+  support_point: "#06b6d4",
+  shelter: "#84cc16",
+  hospital: "#d946ef",
+};
+
+/** Estágio a partir do qual o mapa entra no modo avançado. */
+export const ADVANCED_STAGE_LEVEL = 3;
 

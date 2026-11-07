@@ -51,7 +51,7 @@ const FEATURES = [
     value: String(DATA.rainStations),
     label: "estações",
     title: "Chuva observada",
-    text: "Leitura da estação ativa mais próxima, com distância e atualização sob demanda.",
+    text: "Leitura de 1h, 24h e 96h da estação ativa mais próxima, com distância e horário.",
   },
   {
     icon: ShieldAlert,
@@ -89,7 +89,8 @@ const ROADMAP = [
     text: "A camada pluviométrica do Alerta Rio e o ISMFI estrutural por bairro.",
     items: [
       "33 estações e estação mais próxima",
-      "Chuva de 1 h, atualizada sob demanda",
+      "Chuva de 1h, 24h e 96h",
+      "Estágio operacional do COR-Rio",
       "Risco estrutural por bairro",
     ],
     tone: "done",
@@ -202,7 +203,7 @@ export default function AboutPage() {
 
               <div className="mt-6 flex flex-wrap gap-1.5 text-[11px] text-muted">
                 <span className="rounded-full border border-line bg-card px-3 py-1.5">
-                  Versão 1.3.2
+                  Versão 1.4.1
                 </span>
                 <span className="rounded-full border border-line bg-card px-3 py-1.5">
                   Rio de Janeiro · RJ
@@ -248,7 +249,7 @@ export default function AboutPage() {
                     </p>
                   </div>
                   <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-semibold text-brand">
-                    v1.3.2
+                    v1.4.1
                   </span>
                 </div>
 
@@ -460,23 +461,65 @@ export default function AboutPage() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">
                 A chuva observada nas estações do Alerta Rio é associada ao
-                bairro pela estação ativa mais próxima (até 5 km), com distância
-                e horário no card. Quando a estação mais próxima do bairro
-                registra chuva recente, o bairro selecionado recebe um
-                preenchimento fraco em verde, amarelo ou vermelho conforme o
-                risco de alagamento calculado pela combinação da intensidade da
-                chuva com o ISMFI estrutural da COPPE/UFRJ. Bairros secos não
-                são pintados, mesmo que esteja chovendo em outra região.
+                bairro pela estação ativa mais próxima (até 5 km), com 1h, 24h
+                e 96h, distância e horário no card. O risco de alagamento é
+                indicativo: cruza os limiares de chuva por janela com o ISMFI
+                estrutural da COPPE/UFRJ. Bairros secos não são pintados, mesmo
+                que esteja chovendo em outra região. O alerta oficial é sempre
+                o do Alerta Rio / COR-Rio / Defesa Civil.
               </p>
               <div className="mt-5 grid grid-cols-2 gap-2.5">
                 <Stat value={String(DATA.rainStations)} label="estações" />
                 <Stat value="5 km" label="raio da estação" />
-                <Stat value="~5 min" label="atualização" />
+                <Stat value="~5 min" label="entre coletas" />
                 <Stat
                   value={String(DATA.riskNeighborhoods)}
                   label="bairros com ISMFI"
                 />
               </div>
+              <div className="mt-4 rounded-xl border border-line/70 bg-background/50 p-3 text-[10px] leading-relaxed text-muted">
+                <p className="font-semibold text-foreground">
+                  Limiares de referência (Ehrlich et al., 2021)
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  <li>
+                    1h: 25–50 mm médio · 50–80 mm alto · &gt;80 mm muito alto.
+                  </li>
+                  <li>
+                    24h: 85–140 mm médio · 140–220 mm alto · &gt;220 mm muito
+                    alto.
+                  </li>
+                  <li>
+                    96h: 140–220 mm (com 24h 25–50) médio · 220–300 mm (com 24h
+                    50–100) alto · &gt;300 mm (com 24h &gt;100) muito alto.
+                  </li>
+                </ul>
+                <p className="mt-1">
+                  Indicativo, não oficial. A tabela operacional histórica do
+                  Alerta Rio (2005) fica documentada como referência.
+                </p>
+              </div>
+              <p className="mt-3 text-[10px] leading-relaxed text-muted">
+                Em emergência, siga os canais oficiais:{" "}
+                <a
+                  href="https://alertario.rio.rj.gov.br/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  Alerta Rio
+                </a>
+                ,{" "}
+                <a
+                  href="https://cor.rio/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  COR-Rio
+                </a>{" "}
+                e Defesa Civil (199).
+              </p>
               <p className="mt-4 text-[10px] leading-relaxed text-muted">
                 A leitura de pluviômetro é pontual: pode chover no seu ponto e
                 não na estação mais próxima. O card do bairro continua
@@ -661,7 +704,7 @@ export default function AboutPage() {
               {
                 icon: ShieldCheck,
                 title: "Privacidade por padrão",
-                text: "Sem contas e sem rastreamento de terceiros. As métricas são anônimas; a coordenada só é registrada quando você usa o botão de localização e autoriza o GPS. Para exibir rua e bairro, ela é consultada no Nominatim/OpenStreetMap.",
+                text: "Sem contas e sem rastreamento de terceiros. As métricas são anônimas e não guardam dados pessoais.",
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -684,8 +727,8 @@ export default function AboutPage() {
             <div>
               <p className="text-sm font-semibold">Fontes e atribuições</p>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                Chuva: Alerta Rio · Risco: COPPE/UFRJ · Mapa e 3D:
-                OpenFreeMap/OpenStreetMap.
+                Chuva: Alerta Rio · Estágio: COR-Rio · Risco: COPPE/UFRJ ·
+                Mapa e 3D: OpenFreeMap/OpenStreetMap.
               </p>
               <p className="mt-1 text-[10px] text-muted">
                 Catálogo revisado em {formatDate(CATALOG_LAST_CHECKED_AT)}.

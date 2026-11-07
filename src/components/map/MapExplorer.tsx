@@ -18,21 +18,24 @@ import {
   Menu,
   Moon,
   Search,
+  ShieldCheck,
   Sun,
   X,
 } from "lucide-react";
 import { CameraDossierPanel } from "@/components/map/CameraDossierPanel";
-import { trackUsage } from "@/lib/usage-client";
 import { RainConditionCard } from "@/components/map/RainConditionCard";
-import { PresenceBadge } from "@/components/presence/PresenceBadge";
+import { SafetyFacilityCard } from "@/components/map/SafetyFacilityCard";
+import { SafetyFacilityListPanel } from "@/components/map/SafetyFacilityListPanel";
 import {
   REGION_VALUES,
   REGION_COLORS,
   type RegionSlug,
+  type SafetyFacilityKind,
 } from "@/lib/constants";
+import type { CriticalModeView } from "@/lib/critical-mode";
 import { assessFloodRisk, type AssessedFloodRiskLevel } from "@/lib/flood-risk";
-import { rainFreshness } from "@/lib/rain-labels";
 import { normalizeText } from "@/lib/text";
+import type { SafetyFacility } from "@/lib/safety";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import type {
   Camera,
@@ -43,9 +46,6 @@ import type {
 
 /** Rebusca chuva/condições enquanto a aba estiver visível. */
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-
-// Evita page_view duplicado no StrictMode e em remontagens do mapa.
-let pageViewTracked = false;
 
 const MapCanvas = dynamic(
   () => import("./MapCanvas").then((module) => module.MapCanvas),
@@ -148,6 +148,37 @@ export function MapExplorer({
   const [showCameras, setShowCameras] = useState(true);
   const [showRain, setShowRain] = useState(false);
   const [show3d, setShow3d] = useState(false);
+  const [criticalMode, setCriticalMode] = useState<CriticalModeView | null>(
+    null,
+  );
+  const [showSafety, setShowSafety] = useState(false);
+  const [safetyFacilities, setSafetyFacilities] = useState<SafetyFacility[]>(
+    [],
+  );
+  const [safetyStatus, setSafetyStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [safetyKind, setSafetyKind] = useState<SafetyFacilityKind | "all">(
+    "all",
+  );
+  const [selectedSafetyId, setSelectedSafetyId] = useState<string | null>(
+    null,
+  );
+  const [safetyFocusRequest, setSafetyFocusRequest] = useState<{
+    latitude: number;
+    longitude: number;
+    key: number;
+  } | null>(null);
+  const criticalActiveRef = useRef(false);
+  const criticalPrevRef = useRef<{
+    showCameras: boolean;
+    showRain: boolean;
+    showSafety: boolean;
+  } | null>(null);
+  const safetyPrevCamerasRef = useRef(true);
+  const safetyCamerasTouchedRef = useRef(false);
+  const advancedMode = Boolean(criticalMode?.active);
+  const refreshInterval = advancedMode ? 60_000 : REFRESH_INTERVAL_MS;
   const [rainStations, setRainStations] = useState<RainStationLatest[]>([]);
   const [conditions, setConditions] = useState<NeighborhoodCondition[]>([]);
   const [conditionsStatus, setConditionsStatus] = useState<
@@ -172,7 +203,6 @@ export function MapExplorer({
   const [locateRequest, setLocateRequest] = useState(0);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [camerasLoading, setCamerasLoading] = useState(true);
-  const [updatingCameraId, setUpdatingCameraId] = useState<string | null>(null);
   const [dismissedDossierNeighborhood, setDismissedDossierNeighborhood] =
     useState<string | null>(null);
   const [searchBounds, setSearchBounds] = useState<{
@@ -192,31 +222,6 @@ export function MapExplorer({
   const dossierOpen = Boolean(
     selectedNeighborhood && dismissedDossierNeighborhood !== neighborhood,
   );
-  const trackedNeighborhoodRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (pageViewTracked) {
-      return;
-    }
-    pageViewTracked = true;
-    trackUsage({ type: "page_view", path: window.location.pathname });
-  }, []);
-
-  useEffect(() => {
-    if (!dossierOpen || !neighborhood) {
-      trackedNeighborhoodRef.current = null;
-      return;
-    }
-    if (trackedNeighborhoodRef.current === neighborhood) {
-      return;
-    }
-    trackedNeighborhoodRef.current = neighborhood;
-    trackUsage({
-      type: "neighborhood_view",
-      neighborhoodSlug: neighborhood,
-      path: window.location.pathname,
-    });
-  }, [dossierOpen, neighborhood]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -309,7 +314,7 @@ export function MapExplorer({
       document.removeEventListener("visibilitychange", refreshIfVisible);
       controller.abort();
     };
-  }, []);
+  }, [refreshInterval]);
 
   useEffect(() => {
     if (!showRain) {
@@ -357,7 +362,191 @@ export function MapExplorer({
       document.removeEventListener("visibilitychange", refreshIfVisible);
       controller.abort();
     };
-  }, [showRain]);
+  }, [showRain, refreshInterval]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const load = () => {
+      fetch("/api/critical-mode", {
+        signal: controller.signal,
+        cache: "no-store",
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload: CriticalModeView | null) => {
+          if (!payload || controller.signal.aborted) return;
+          setCriticalMode(payload);
+
+          const active = Boolean(payload.active);
+          if (active === criticalActiveRef.current) return;
+          criticalActiveRef.current = active;
+
+          if (active) {
+            criticalPrevRef.current = {
+              showCameras,
+              showRain,
+              showSafety,
+            };
+            setShowCameras(false);
+            setShowRain(true);
+            setShowSafety(true);
+            setSafetyStatus("loading");
+          } else if (criticalPrevRef.current) {
+            const previous = criticalPrevRef.current;
+            setShowCameras(previous.showCameras);
+            setShowRain(previous.showRain);
+            setShowSafety(previous.showSafety);
+            criticalPrevRef.current = null;
+          }
+        })
+        .catch(() => {
+          // Mantém o último estado conhecido.
+        });
+    };
+
+    load();
+    const timer = window.setInterval(load, 60_000);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [showCameras, showRain, showSafety]);
+
+  useEffect(() => {
+    if (!showSafety) {
+      return;
+    }
+    const controller = new AbortController();
+
+    fetch("/api/safety?limit=2000", {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { items?: SafetyFacility[] } | null) => {
+        if (controller.signal.aborted) return;
+        setSafetyFacilities(payload?.items ?? []);
+        setSafetyStatus("ready");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setSafetyStatus("error");
+        }
+      });
+
+    return () => controller.abort();
+  }, [showSafety]);
+
+  const visibleSafetyFacilities = useMemo(
+    () =>
+      safetyKind === "all"
+        ? safetyFacilities
+        : safetyFacilities.filter((facility) => facility.kind === safetyKind),
+    [safetyFacilities, safetyKind],
+  );
+
+  const neighborhoodNameBySlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of meta.neighborhoods) {
+      map.set(item.slug, item.name);
+    }
+    return map;
+  }, [meta.neighborhoods]);
+
+  const safetyFacilitiesForNeighborhood = useMemo(
+    () =>
+      neighborhood
+        ? safetyFacilities.filter(
+            (facility) => facility.neighborhoodSlug === neighborhood,
+          )
+        : safetyFacilities,
+    [safetyFacilities, neighborhood],
+  );
+
+  const safetyTypeCounts = useMemo(() => {
+    const counts = {
+      all: safetyFacilitiesForNeighborhood.length,
+      support_point: 0,
+      shelter: 0,
+      hospital: 0,
+    };
+    for (const facility of safetyFacilitiesForNeighborhood) {
+      counts[facility.kind] += 1;
+    }
+    return counts;
+  }, [safetyFacilitiesForNeighborhood]);
+
+  const safetyDossierFacilities = useMemo(() => {
+    const filtered =
+      safetyKind === "all"
+        ? safetyFacilitiesForNeighborhood
+        : safetyFacilitiesForNeighborhood.filter(
+            (facility) => facility.kind === safetyKind,
+          );
+    return [...filtered].sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [safetyFacilitiesForNeighborhood, safetyKind]);
+
+  const selectedSafetyFacility = useMemo(
+    () =>
+      safetyFacilities.find(
+        (facility) => facility.id === selectedSafetyId,
+      ) ?? null,
+    [safetyFacilities, selectedSafetyId],
+  );
+
+  const selectedSafetyNeighborhoodName = useMemo(() => {
+    if (!selectedSafetyFacility?.neighborhoodSlug) return null;
+    return (
+      meta.neighborhoods.find(
+        (item) => item.slug === selectedSafetyFacility.neighborhoodSlug,
+      )?.name ?? null
+    );
+  }, [selectedSafetyFacility, meta.neighborhoods]);
+
+  function handleSafetyToggle() {
+    const next = !showSafety;
+    setShowSafety(next);
+    setSafetyStatus("loading");
+    setSelectedSafetyId(null);
+    setHoveredCamera(null);
+    setSelectedCameraId("");
+    setNeighborhood("");
+    setDismissedDossierNeighborhood(null);
+
+    if (next) {
+      safetyPrevCamerasRef.current = showCameras;
+      safetyCamerasTouchedRef.current = false;
+      setShowCameras(false);
+    } else {
+      if (!safetyCamerasTouchedRef.current) {
+        setShowCameras(safetyPrevCamerasRef.current);
+      }
+      safetyCamerasTouchedRef.current = false;
+    }
+  }
+
+  function handleCamerasToggle(value: boolean) {
+    if (showSafety) {
+      safetyCamerasTouchedRef.current = true;
+    }
+    setShowCameras(value);
+  }
+
+  function handleSelectSafetyFacility(id: string) {
+    setSelectedSafetyId(id);
+  }
+
+  function handleSelectSafetyFacilityFromList(facility: SafetyFacility) {
+    handleSelectSafetyFacility(facility.id);
+    setSafetyFocusRequest((current) => ({
+      latitude: facility.latitude,
+      longitude: facility.longitude,
+      key: (current?.key ?? 0) + 1,
+    }));
+  }
 
   const cameraSearchIndex = useMemo(
     () =>
@@ -515,75 +704,6 @@ export function MapExplorer({
     }
   }
 
-  async function handleCameraStatusChange(
-    camera: Camera,
-    status: "online" | "offline",
-  ) {
-    setUpdatingCameraId(camera.id);
-    try {
-      const body = JSON.stringify({ externalId: camera.externalId, status });
-
-      const post = (token: string | null) =>
-        fetch("/api/cameras/status/manual", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { "x-status-token": token } : {}),
-          },
-          body,
-        });
-
-      let token: string | null = null;
-      try {
-        token = window.sessionStorage.getItem("errejota-status-token");
-      } catch {
-        token = null;
-      }
-
-      let response = await post(token);
-
-      if (response.status === 403) {
-        const informed = window.prompt(
-          "Token de manutenção para alterar o status das câmeras:",
-        );
-        if (informed) {
-          try {
-            window.sessionStorage.setItem(
-              "errejota-status-token",
-              informed,
-            );
-          } catch {
-            // Sem sessionStorage: usa o token apenas nesta requisição.
-          }
-          response = await post(informed);
-        }
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const payload = (await response.json()) as {
-        cameras?: Array<{ externalId: string; isOnline: boolean | null }>;
-      };
-      const updated = payload.cameras?.find(
-        (item) => item.externalId === camera.externalId,
-      );
-      const isOnline = updated ? updated.isOnline : status === "online";
-
-      setCameras((current) =>
-        current.map((item) =>
-          item.id === camera.id ? { ...item, isOnline } : item,
-        ),
-      );
-    } catch (error) {
-      console.error("Falha ao atualizar o status da câmera:", error);
-      window.alert("Não foi possível atualizar o status desta câmera.");
-    } finally {
-      setUpdatingCameraId(null);
-    }
-  }
-
   const dossierCameras = useMemo(() => {
     if (!dossierNeighborhood) return [];
     return cameras
@@ -596,6 +716,19 @@ export function MapExplorer({
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   }, [cameras, dossierNeighborhood, statusFilter]);
 
+  const riskBySlug = useMemo(() => {
+    const map: Record<string, "baixa" | "media" | "alta"> = {};
+    for (const condition of conditions) {
+      if (
+        condition.riskClass &&
+        condition.riskClass !== "nao_avaliado"
+      ) {
+        map[condition.neighborhoodSlug] = condition.riskClass;
+      }
+    }
+    return map;
+  }, [conditions]);
+
   const selectedCondition = useMemo(
     () =>
       conditions.find(
@@ -604,20 +737,25 @@ export function MapExplorer({
     [conditions, neighborhood],
   );
 
-  // O risco é contextual e local: cruza a chuva da estação mais próxima
+  // O risco é contextual e local: cruza os limiares de chuva (1h/24h/96h)
   // com o ISMFI do bairro. Bairro seco não recebe selo nem preenchimento.
   const floodRisk = useMemo(
     () =>
       assessFloodRisk(
-        selectedCondition?.rainMaxMm ?? null,
+        {
+          mm1h: selectedCondition?.rain1hMm ?? null,
+          mm24h: selectedCondition?.rain24hMm ?? null,
+          mm96h: selectedCondition?.rain96hMm ?? null,
+        },
         selectedCondition?.riskClass ?? null,
       ),
     [selectedCondition],
   );
 
   const isRainingHere =
-    floodRisk.rain !== "sem_chuva" &&
-    !rainFreshness(selectedCondition?.rainReadingAt ?? null).stale;
+    floodRisk.rainHasData &&
+    floodRisk.rainAlert !== "nenhum" &&
+    selectedCondition?.rainStatus === "ok";
 
   const riskOverlay = useMemo<{
     slug: string;
@@ -633,8 +771,8 @@ export function MapExplorer({
   }, [dossierOpen, neighborhood, isRainingHere, floodRisk.level]);
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden bg-background lg:relative lg:inset-auto lg:z-auto lg:h-[calc(100dvh-4rem)]">
-      <div className="relative h-full w-full overflow-hidden">
+    <div className="fixed inset-x-0 bottom-0 top-8 z-[100] overflow-hidden bg-background lg:relative lg:inset-auto lg:z-auto lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <div className="relative h-full w-full overflow-hidden lg:h-auto lg:min-h-0 lg:flex-1">
         {sidebarOpen ? (
           <button
             type="button"
@@ -829,27 +967,38 @@ export function MapExplorer({
             </div>
 
             <div className="px-3 pb-2 pt-2">
-              <ShowToggle
-                show={showRain}
-                onToggle={setShowRain}
-                icon={CloudRain}
-                labelOn="Ocultar chuva"
-                labelOff="Mostrar chuva"
-              />
-              <ShowToggle
-                show={show3d}
-                onToggle={setShow3d}
-                icon={Building2}
-                labelOn="Ocultar 3D"
-                labelOff="Mostrar 3D"
-              />
-              <div className="hidden lg:block">
+              <div className="grid grid-cols-4 gap-1.5">
                 <ShowToggle
                   show={showCameras}
-                  onToggle={setShowCameras}
+                  onToggle={handleCamerasToggle}
                   icon={CameraIcon}
+                  label="Câmeras"
                   labelOn="Ocultar câmeras"
                   labelOff="Mostrar câmeras"
+                />
+                <ShowToggle
+                  show={showSafety}
+                  onToggle={handleSafetyToggle}
+                  icon={ShieldCheck}
+                  label="Ajuda"
+                  labelOn="Ocultar ajuda"
+                  labelOff="Mostrar ajuda"
+                />
+                <ShowToggle
+                  show={showRain}
+                  onToggle={setShowRain}
+                  icon={CloudRain}
+                  label="Chuva"
+                  labelOn="Ocultar chuva"
+                  labelOff="Mostrar chuva"
+                />
+                <ShowToggle
+                  show={show3d}
+                  onToggle={setShow3d}
+                  icon={Building2}
+                  label="3D"
+                  labelOn="Ocultar 3D"
+                  labelOff="Mostrar 3D"
                 />
               </div>
             </div>
@@ -895,17 +1044,20 @@ export function MapExplorer({
               focusPoint={focusPoint}
               focusKey={focusKey}
               riskOverlay={riskOverlay}
+              riskBySlug={riskBySlug}
+              showGlobalRisk={advancedMode}
               fitBoundsRequest={searchBounds}
               resetViewRequest={resetViewRequest}
               locateRequest={locateRequest}
               theme={theme}
+              safetyFacilities={visibleSafetyFacilities}
+              showSafety={showSafety}
+              selectedSafetyId={selectedSafetyId}
+              onSelectSafetyFacility={handleSelectSafetyFacility}
+              safetyFocusRequest={safetyFocusRequest}
             />
 
-            <div className="absolute right-4 top-[calc(max(1rem,env(safe-area-inset-top))+44px)] z-10 lg:hidden">
-              <PresenceBadge variant="floating" />
-            </div>
-
-            {dossierOpen && selectedCondition ? (
+            {!showSafety && dossierOpen && !selectedSafetyFacility && selectedCondition ? (
               <div className="absolute inset-x-3 bottom-[calc(min(max(38dvh,14rem),22rem)+0.75rem)] z-20 lg:hidden">
                 <RainConditionCard condition={selectedCondition} />
               </div>
@@ -921,11 +1073,12 @@ export function MapExplorer({
               <LocateFixed aria-hidden className="size-5" />
             </button>
 
-            <div
-              className={`pointer-events-none absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 max-w-[calc(100vw-2rem)] ${
-                dossierOpen ? "lg:right-[25.5rem]" : "lg:right-[10px]"
-              }`}
-            >
+            {!showSafety ? (
+              <div
+                className={`pointer-events-none absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 max-w-[calc(100vw-2rem)] ${
+                  dossierOpen ? "lg:right-[25.5rem]" : "lg:right-[10px]"
+                }`}
+              >
               <div className="pointer-events-auto flex h-[32px] max-w-full items-center gap-3 rounded-xl border border-line bg-card/95 px-3 shadow-sm backdrop-blur">
                 {camerasLoading ? (
                   <span className="text-[11px] font-medium text-muted">
@@ -955,8 +1108,9 @@ export function MapExplorer({
                 )}
               </div>
             </div>
+            ) : null}
 
-            {dossierNeighborhood ? (
+            {!showSafety && dossierNeighborhood ? (
               <CameraDossierPanel
                 neighborhood={dossierNeighborhood}
                 neighborhoodCameras={dossierCameras}
@@ -968,13 +1122,41 @@ export function MapExplorer({
                   setDismissedDossierNeighborhood(null);
                   setResetViewRequest((value) => value + 1);
                 }}
-                onStatusChange={handleCameraStatusChange}
                 onHoverCamera={setHoveredCamera}
                 condition={selectedCondition}
                 conditionStatus={conditionsStatus}
-                updatingCameraId={updatingCameraId}
                 statusFilter={statusFilter}
               />
+            ) : null}
+
+            {showSafety && !selectedSafetyFacility ? (
+              <SafetyFacilityListPanel
+                title={selectedNeighborhood?.name ?? "Ajuda"}
+                subtitle={
+                  selectedNeighborhood
+                    ? `Equipamentos públicos · ${selectedNeighborhood.regionName}`
+                    : "Equipamentos públicos da cidade"
+                }
+                facilities={safetyDossierFacilities}
+                kind={safetyKind}
+                onKindChange={setSafetyKind}
+                counts={safetyTypeCounts}
+                status={safetyStatus}
+                selectedId={selectedSafetyId}
+                onSelect={handleSelectSafetyFacilityFromList}
+                onClose={handleSafetyToggle}
+                neighborhoodNameBySlug={neighborhoodNameBySlug}
+              />
+            ) : null}
+
+            {selectedSafetyFacility ? (
+              <div className="absolute inset-x-0 bottom-0 z-30 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[24rem] lg:rounded-2xl lg:border">
+                <SafetyFacilityCard
+                  facility={selectedSafetyFacility}
+                  neighborhoodName={selectedSafetyNeighborhoodName}
+                  onClose={() => setSelectedSafetyId(null)}
+                />
+              </div>
             ) : null}
 
             {!sidebarOpen ? <button
@@ -996,12 +1178,14 @@ function ShowToggle({
   show,
   onToggle,
   icon: Icon,
+  label,
   labelOn,
   labelOff,
 }: {
   show: boolean;
   onToggle: (value: boolean) => void;
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  label: string;
   labelOn: string;
   labelOff: string;
 }) {
@@ -1010,16 +1194,27 @@ function ShowToggle({
       type="button"
       onClick={() => onToggle(!show)}
       aria-pressed={show}
-      className="mb-2 flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-background px-3 py-2 text-[10px] font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand"
+      aria-label={show ? labelOn : labelOff}
+      title={show ? labelOn : labelOff}
+      className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-1 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
     >
-      <span className="flex items-center gap-2">
-        <Icon aria-hidden className="size-3.5" />
-        {show ? labelOn : labelOff}
-      </span>
       <span
         aria-hidden
-        className={`size-2 rounded-full ${show ? "bg-brand" : "bg-line"}`}
-      />
+        className={`grid size-9 shrink-0 place-items-center rounded-xl border transition-colors ${
+          show
+            ? "border-brand/40 bg-brand/10 text-brand"
+            : "border-line bg-background text-muted"
+        }`}
+      >
+        <Icon aria-hidden className="size-4" />
+      </span>
+      <span
+        className={`w-full truncate text-center text-[9px] font-medium leading-tight ${
+          show ? "text-brand" : "text-muted"
+        }`}
+      >
+        {label}
+      </span>
     </button>
   );
 }
