@@ -1040,23 +1040,12 @@ export function MapExplorer({
                     GitHub
                   </a>
                 </p>
-                <div className="flex shrink-0 items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      window.dispatchEvent(new Event("errejota:start-tour"))
-                    }
-                    className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground"
-                  >
-                    Tour
-                  </button>
-                  <Link
-                    href="/sobre"
-                    className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground lg:hidden"
-                  >
-                    Sobre
-                  </Link>
-                </div>
+                <Link
+                  href="/sobre"
+                  className="shrink-0 font-mono text-[9px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground lg:hidden"
+                >
+                  Sobre
+                </Link>
               </div>
             </div>
           </aside>
