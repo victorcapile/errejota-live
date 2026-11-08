@@ -3,6 +3,7 @@ import {
   getCameraStatusSummary,
   runCameraStatusBatch,
 } from "@/lib/camera-status";
+import { isSameOriginRequest } from "@/lib/request-origin";
 
 export const maxDuration = 300;
 
@@ -20,6 +21,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOriginRequest(request)) {
+    return Response.json(
+      { error: "Origem inválida." },
+      { status: 403 },
+    );
+  }
+
   const authorized =
     process.env.NODE_ENV !== "production" || (await isAdminAuthenticated());
 

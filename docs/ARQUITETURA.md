@@ -60,8 +60,7 @@ docs/                            proveniência, catálogo e guias de dados
 
 | Caminho | Uso |
 |---|---|
-| `/` | Catálogo de fontes com busca, filtros e paginação. |
-| `/bairros` | Índice geográfico dos bairros. |
+| `/` | Mapa com busca, filtros, dossiê e camadas. |
 | `/fontes/<slug>` | Detalhe e proveniência de uma fonte. |
 | `/sobre` | Método, limites do projeto e descrição da API. |
 | `GET /api/cameras?region=&neighborhood=` | Câmeras filtradas por região ou bairro. |

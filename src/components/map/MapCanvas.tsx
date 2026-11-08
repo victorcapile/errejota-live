@@ -166,7 +166,7 @@ function applyRiskState(
 
 function applyGlobalRiskState(
   map: MapLibreMap,
-  riskBySlug: Record<string, "baixa" | "media" | "alta">,
+  riskBySlug: Record<string, AssessedFloodRiskLevel>,
   show: boolean,
 ): void {
   if (!map.getSource("bairros")) {
@@ -176,13 +176,7 @@ function applyGlobalRiskState(
   for (const [slug, level] of Object.entries(riskBySlug)) {
     try {
       if (show) {
-        const mapped =
-          level === "alta"
-            ? "alto"
-            : level === "media"
-              ? "moderado"
-              : "baixo";
-        map.setFeatureState({ source: "bairros", id: slug }, { risk: mapped });
+        map.setFeatureState({ source: "bairros", id: slug }, { risk: level });
       } else {
         map.removeFeatureState({ source: "bairros", id: slug }, "risk");
       }
@@ -356,13 +350,15 @@ function createCameraPopupContent(
   meta.className = "map-popup-meta";
   meta.textContent = [provider, neighborhood].filter(Boolean).join(" · ");
 
-  const hint = document.createElement("p");
-  hint.className = "map-popup-meta";
-  hint.textContent = online
-    ? "Clique para abrir a página oficial."
-    : "Câmera offline no provedor — clique para abrir a página oficial.";
+  content.append(title, meta);
 
-  content.append(title, meta, hint);
+  if (!online) {
+    const hint = document.createElement("p");
+    hint.className = "map-popup-meta";
+    hint.textContent = "Câmera offline no provedor.";
+    content.append(hint);
+  }
+
   return content;
 }
 
@@ -985,7 +981,7 @@ export function MapCanvas({
   focusPoint: { latitude: number; longitude: number } | null;
   focusKey: string;
   riskOverlay: RiskOverlay | null;
-  riskBySlug: Record<string, "baixa" | "media" | "alta">;
+  riskBySlug: Record<string, AssessedFloodRiskLevel>;
   showGlobalRisk: boolean;
   fitBoundsRequest: { points: [number, number][]; key: number } | null;
   resetViewRequest: number;
@@ -1524,7 +1520,10 @@ export function MapCanvas({
       map.getCanvas().style.cursor = "pointer";
       const nextId = feature.id;
       if (hoveredBairro !== null && hoveredBairro !== nextId) {
-        map.removeFeatureState({ source: "bairros", id: hoveredBairro });
+        map.removeFeatureState(
+          { source: "bairros", id: hoveredBairro },
+          "hover",
+        );
       }
       hoveredBairro = nextId ?? null;
       if (nextId !== undefined) {
@@ -1536,7 +1535,10 @@ export function MapCanvas({
       map.getCanvas().style.cursor = "";
       setHoveredNeighborhoodName(null);
       if (hoveredBairro !== null && map.getSource("bairros")) {
-        map.removeFeatureState({ source: "bairros", id: hoveredBairro });
+        map.removeFeatureState(
+          { source: "bairros", id: hoveredBairro },
+          "hover",
+        );
         hoveredBairro = null;
       }
     });
@@ -1988,8 +1990,13 @@ export function MapCanvas({
     <>
       <div ref={containerRef} className="size-full" />
       {hoveredNeighborhoodName ? (
-        <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_4rem)] z-10 max-w-[calc(100%_-_8rem)] -translate-x-1/2 truncate rounded-lg border border-line bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-md backdrop-blur">
-          {hoveredNeighborhoodName}
+        <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)_+_4rem)] z-10 flex max-w-[calc(100%_-_8rem)] -translate-x-1/2 items-baseline gap-2 border border-line bg-card px-3 py-1.5">
+          <span className="shrink-0 font-mono text-[8px] uppercase tracking-[0.16em] text-muted">
+            Bairro
+          </span>
+          <span className="min-w-0 truncate font-editorial text-base font-semibold text-foreground">
+            {hoveredNeighborhoodName}
+          </span>
         </div>
       ) : null}
       {show3dHint ? (

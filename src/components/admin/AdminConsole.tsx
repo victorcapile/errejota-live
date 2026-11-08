@@ -87,7 +87,7 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Flag }> = [
 ];
 
 const fieldClass =
-  "h-9 rounded-lg border border-line bg-background px-2.5 text-xs text-foreground outline-none transition-colors focus:border-brand/40";
+  "h-9 rounded-[2px] border border-line bg-background px-2.5 font-mono text-[10px] text-foreground outline-none transition-colors focus:border-accent";
 
 function formatNumber(value: number): string {
   return value.toLocaleString("pt-BR");
@@ -114,7 +114,7 @@ function reportStatusClass(status: CameraReportStatus): string {
   if (status === "pending") return "border-amber-300/50 bg-amber-500/10 text-amber-700 dark:text-amber-300";
   if (status === "approved") return "border-emerald-300/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
   if (status === "rejected") return "border-red-300/50 bg-red-500/10 text-red-700 dark:text-red-300";
-  if (status === "resolved") return "border-brand/30 bg-brand/10 text-brand";
+  if (status === "resolved") return "border-accent/40 bg-accent/10 text-accent";
   return "border-line bg-background text-muted";
 }
 
@@ -147,14 +147,14 @@ function CountCard({
         : tone === "rejected"
           ? "border-red-300/50 bg-red-500/5"
           : tone === "resolved"
-            ? "border-brand/30 bg-brand/5"
+            ? "border-accent/40 bg-accent/5"
             : "border-line bg-card";
   return (
-    <div className={`rounded-xl border p-3 ${toneClass}`}>
-      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted">
+    <div className={`border p-3 ${toneClass}`}>
+      <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-muted">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight">
+      <p className="mt-1 font-editorial text-2xl font-semibold tabular-nums tracking-tight">
         {formatNumber(value)}
       </p>
     </div>
@@ -174,10 +174,10 @@ function Panel({
 }) {
   return (
     <section
-      className={`rounded-2xl border border-line bg-card p-4 shadow-sm sm:p-5 ${className}`}
+      className={`border border-line bg-card p-4 sm:p-5 ${className}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="font-editorial text-lg font-semibold">{title}</h2>
         {actions}
       </div>
       {children}
@@ -195,8 +195,8 @@ function EmptyState({
   description: string;
 }) {
   return (
-    <div className="mt-3 flex min-h-52 flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line/70 bg-background/40 px-6 py-8 text-center">
-      <span className="grid size-10 place-items-center rounded-xl border border-line/70 bg-card text-muted">
+    <div className="mt-3 flex min-h-52 flex-1 flex-col items-center justify-center gap-2 border border-dashed border-line bg-background/40 px-6 py-8 text-center">
+      <span className="grid size-9 place-items-center border border-line bg-card text-muted">
         <Icon aria-hidden className="size-5" />
       </span>
       <p className="text-sm font-medium text-foreground">{title}</p>
@@ -331,13 +331,13 @@ export function AdminConsole() {
   const stageStatus = overview?.stage.status ?? "unavailable";
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-6rem)] w-full max-w-7xl flex-col px-3 py-6 sm:px-6">
+    <div className="mx-auto flex min-h-[calc(100dvh-6rem)] w-full max-w-[1400px] flex-col px-3 py-6 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted">
+          <p className="font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-muted">
             Errejota · administração
           </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-2 font-editorial text-3xl font-semibold tracking-tight">
             Moderação e operação
           </h1>
           <p className="mt-1 text-xs text-muted">
@@ -348,7 +348,7 @@ export function AdminConsole() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-card px-3 text-xs font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-1.5 border border-line px-3 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted transition-colors hover:border-foreground/40 hover:text-accent disabled:opacity-50"
         >
           <RefreshCw
             aria-hidden
@@ -358,7 +358,7 @@ export function AdminConsole() {
         </button>
       </div>
 
-      <nav className="mt-5 flex gap-1 overflow-x-auto rounded-xl border border-line bg-card p-1">
+      <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-line">
         {TABS.map((item) => {
           const Icon = item.icon;
           const active = tab === item.id;
@@ -367,18 +367,20 @@ export function AdminConsole() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors ${
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 border-b-2 px-3 font-mono text-[9px] font-medium uppercase tracking-[0.1em] transition-colors ${
                 active
-                  ? "bg-brand text-white"
-                  : "text-muted hover:bg-brand/10 hover:text-brand"
+                  ? "border-accent text-foreground"
+                  : "border-transparent text-muted hover:text-foreground"
               }`}
             >
               <Icon aria-hidden className="size-3.5" />
               {item.label}
               {item.id === "moderation" && counts ? (
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
-                    active ? "bg-white/20" : "bg-brand/10 text-brand"
+                  className={`rounded-[2px] px-1.5 py-0.5 text-[8px] font-semibold ${
+                    active
+                      ? "bg-foreground text-background"
+                      : "border border-line text-muted"
                   }`}
                 >
                   {counts.pending}
@@ -390,13 +392,13 @@ export function AdminConsole() {
       </nav>
 
       {error ? (
-        <p className="mt-4 rounded-xl border border-red-300/50 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+        <p className="mt-4 border border-red-300/50 bg-red-500/10 px-4 py-3 font-mono text-[10px] text-red-700 dark:text-red-300">
           {error}
         </p>
       ) : null}
 
       {actionMessage ? (
-        <p className="mt-4 rounded-xl border border-line bg-card px-4 py-2 text-xs text-muted">
+        <p className="mt-4 border border-line bg-card px-4 py-2 font-mono text-[10px] text-muted">
           {actionMessage}
         </p>
       ) : null}
@@ -503,8 +505,8 @@ export function AdminConsole() {
                             onClick={() => selectReport(report)}
                             className={`flex w-full items-start justify-between gap-3 py-2.5 text-left transition-colors ${
                               selectedReportId === report.id
-                                ? "text-brand"
-                                : "text-foreground hover:text-brand"
+                                ? "text-accent"
+                                : "text-foreground hover:text-accent"
                             }`}
                           >
                             <span className="min-w-0 flex-1">
@@ -522,7 +524,7 @@ export function AdminConsole() {
                               ) : null}
                             </span>
                             <span
-                              className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${reportStatusClass(
+                              className={`shrink-0 rounded-[2px] border px-1.5 py-0.5 text-[9px] font-semibold ${reportStatusClass(
                                 report.status,
                               )}`}
                             >
@@ -555,18 +557,18 @@ export function AdminConsole() {
                       </div>
                       <div className="flex flex-wrap gap-1.5 text-[10px]">
                         <span
-                          className={`rounded-full border px-2 py-0.5 font-semibold ${reportStatusClass(
+                          className={`rounded-[2px] border px-2 py-0.5 font-semibold ${reportStatusClass(
                             selectedReport.status,
                           )}`}
                         >
                           {CAMERA_REPORT_STATUS_LABELS[selectedReport.status]}
                         </span>
-                        <span className="rounded-full border border-line bg-background px-2 py-0.5 text-muted">
+                        <span className="rounded-[2px] border border-line bg-background px-2 py-0.5 text-muted">
                           {cameraReportReasonLabel(selectedReport.reason)}
                         </span>
                       </div>
                       {selectedReport.note ? (
-                        <p className="rounded-lg border border-line/70 bg-background/60 p-2.5 text-xs leading-relaxed text-muted">
+                        <p className="rounded-[2px] border border-line/70 bg-background/60 p-2.5 text-xs leading-relaxed text-muted">
                           {selectedReport.note}
                         </p>
                       ) : (
@@ -575,7 +577,7 @@ export function AdminConsole() {
                         </p>
                       )}
 
-                      <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                      <label className="block font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
                         Nota da moderação
                         <textarea
                           value={moderationNote}
@@ -584,12 +586,12 @@ export function AdminConsole() {
                           }
                           rows={2}
                           maxLength={500}
-                          className="mt-1 w-full rounded-lg border border-line bg-background px-2.5 py-2 text-xs text-foreground outline-none focus:border-brand/40"
+                          className="mt-1 w-full rounded-[2px] border border-line bg-background px-2.5 py-2 text-xs text-foreground outline-none focus:border-accent"
                           placeholder="Opcional"
                         />
                       </label>
 
-                      <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                      <label className="block font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
                         Ao aprovar, aplicar status
                         <select
                           value={applyStatus}
@@ -616,7 +618,7 @@ export function AdminConsole() {
                           type="button"
                           onClick={() => moderate("approve")}
                           disabled={actionBusy}
-                          className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                          className="inline-flex h-8 items-center gap-1 rounded-[2px] bg-emerald-600 px-2.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                         >
                           <CheckCircle2 aria-hidden className="size-3.5" />
                           Aprovar
@@ -625,7 +627,7 @@ export function AdminConsole() {
                           type="button"
                           onClick={() => moderate("reject")}
                           disabled={actionBusy}
-                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-300/50 bg-red-500/10 px-2.5 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-300"
+                          className="inline-flex h-8 items-center gap-1 rounded-[2px] border border-red-300/50 bg-red-500/10 px-2.5 text-[11px] font-semibold text-red-700 transition-colors hover:bg-red-500/20 disabled:opacity-50 dark:text-red-300"
                         >
                           <XCircle aria-hidden className="size-3.5" />
                           Rejeitar
@@ -634,7 +636,7 @@ export function AdminConsole() {
                           type="button"
                           onClick={() => moderate("resolve")}
                           disabled={actionBusy}
-                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-brand/30 bg-brand/10 px-2.5 text-[11px] font-semibold text-brand transition-colors hover:bg-brand/20 disabled:opacity-50"
+                          className="inline-flex h-8 items-center gap-1 rounded-[2px] border border-accent/40 bg-accent/10 px-2.5 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
                         >
                           <CheckCircle2 aria-hidden className="size-3.5" />
                           Resolver
@@ -643,7 +645,7 @@ export function AdminConsole() {
                           type="button"
                           onClick={() => moderate("duplicate")}
                           disabled={actionBusy}
-                          className="inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-background px-2.5 text-[11px] font-medium text-muted transition-colors hover:text-brand disabled:opacity-50"
+                          className="inline-flex h-8 items-center gap-1 rounded-[2px] border border-line bg-background px-2.5 text-[11px] font-medium text-muted transition-colors hover:text-accent disabled:opacity-50"
                         >
                           <Flag aria-hidden className="size-3.5" />
                           Duplicado
@@ -751,7 +753,7 @@ export function AdminConsole() {
                         }
                       }}
                       disabled={actionBusy}
-                      className="h-9 rounded-lg border border-line bg-background px-2.5 text-[11px] font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:opacity-50"
+                      className="h-9 rounded-[2px] border border-line bg-background px-2.5 text-[11px] font-medium text-muted transition-colors hover:border-accent/40 hover:text-accent disabled:opacity-50"
                     >
                       Aplicar em lote
                     </button>
@@ -786,7 +788,7 @@ export function AdminConsole() {
                           </p>
                         </div>
                         <span
-                          className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${cameraStatusClass(
+                          className={`rounded-[2px] border px-1.5 py-0.5 text-[9px] font-semibold ${cameraStatusClass(
                             camera.isOnline,
                           )}`}
                         >
@@ -806,7 +808,7 @@ export function AdminConsole() {
                                   })
                                 }
                                 disabled={actionBusy}
-                                className="rounded-md border border-line bg-background px-1.5 py-0.5 text-[9px] font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:opacity-50"
+                                className="rounded-[2px] border border-line bg-background px-1.5 py-0.5 text-[9px] font-medium text-muted transition-colors hover:border-accent/40 hover:text-accent disabled:opacity-50"
                               >
                                 {status === "online"
                                   ? "Online"
@@ -838,7 +840,7 @@ export function AdminConsole() {
                 ) : (
                   <div className="mt-3">
                     <div
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold"
+                      className="inline-flex items-center gap-2 rounded-[2px] px-3 py-1 text-xs font-semibold"
                       style={{
                         backgroundColor: stage.color,
                         color:
@@ -865,7 +867,7 @@ export function AdminConsole() {
               <Panel title="Modo avançado">
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <span
-                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                    className={`rounded-[2px] border px-2 py-0.5 text-[10px] font-semibold ${
                       overview.criticalMode.active
                         ? "border-amber-300/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
                         : "border-line bg-background text-muted"
@@ -892,7 +894,7 @@ export function AdminConsole() {
                   no modo avançado até ser removido.
                 </p>
                 {stageStatus === "fallback" ? (
-                  <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                  <p className="mt-2 inline-flex items-center gap-1 rounded-[2px] border border-amber-300/60 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
                     Override ativo
                   </p>
                 ) : null}
@@ -908,7 +910,7 @@ export function AdminConsole() {
                     });
                   }}
                 >
-                  <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                  <label className="block font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
                     Estágio
                     <select
                       value={stageForm.stage}
@@ -927,7 +929,7 @@ export function AdminConsole() {
                       ))}
                     </select>
                   </label>
-                  <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                  <label className="block font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
                     Mensagem
                     <input
                       value={stageForm.message}
@@ -942,7 +944,7 @@ export function AdminConsole() {
                       placeholder="Opcional"
                     />
                   </label>
-                  <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+                  <label className="block font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
                     Fonte
                     <input
                       value={stageForm.sourceLabel}
@@ -960,7 +962,7 @@ export function AdminConsole() {
                     <button
                       type="submit"
                       disabled={actionBusy}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand px-3 text-xs font-semibold text-white transition-colors hover:bg-brand-strong disabled:opacity-50"
+                      className="inline-flex h-9 items-center gap-1.5 rounded-[2px] bg-foreground px-3 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-background transition-colors hover:bg-accent disabled:opacity-50"
                     >
                       <ShieldAlert aria-hidden className="size-3.5" />
                       Salvar override
@@ -970,7 +972,7 @@ export function AdminConsole() {
                         type="button"
                         onClick={() => void runAction({ type: "clear_stage" })}
                         disabled={actionBusy}
-                        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-background px-3 text-xs font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand disabled:opacity-50"
+                        className="inline-flex h-9 items-center gap-1.5 rounded-[2px] border border-line bg-background px-3 text-xs font-medium text-muted transition-colors hover:border-accent/40 hover:text-accent disabled:opacity-50"
                       >
                         Voltar ao COR-Rio
                       </button>
@@ -1024,13 +1026,13 @@ export function AdminConsole() {
                 ) : (
                   <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
                         Status
                       </p>
                       <p className="font-medium">{overview.lastRainRun.status}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
                         Início
                       </p>
                       <p className="font-medium">
@@ -1038,7 +1040,7 @@ export function AdminConsole() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
                         Itens
                       </p>
                       <p className="font-medium">
@@ -1046,7 +1048,7 @@ export function AdminConsole() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
                         Leitura
                       </p>
                       <p className="font-medium">

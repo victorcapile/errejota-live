@@ -14,19 +14,19 @@ import {
   Building2,
   Camera as CameraIcon,
   ChevronLeft,
+  ChevronRight,
   CloudRain,
   LocateFixed,
   Menu,
-  Moon,
   Search,
   ShieldCheck,
-  Sun,
   X,
 } from "lucide-react";
 import { CameraDossierPanel } from "@/components/map/CameraDossierPanel";
 import { RainConditionCard } from "@/components/map/RainConditionCard";
 import { SafetyFacilityCard } from "@/components/map/SafetyFacilityCard";
 import { SafetyFacilityListPanel } from "@/components/map/SafetyFacilityListPanel";
+import { WelcomeTour } from "@/components/onboarding/WelcomeTour";
 import {
   REGION_VALUES,
   REGION_COLORS,
@@ -39,6 +39,7 @@ import { assessFloodRisk, type AssessedFloodRiskLevel } from "@/lib/flood-risk";
 import { normalizeText } from "@/lib/text";
 import type { SafetyFacility } from "@/lib/safety";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import type {
   Camera,
   MapMeta,
@@ -107,15 +108,15 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+      className={`inline-flex shrink-0 items-center gap-1.5 border px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors ${
         active
-          ? "border-brand bg-brand text-white"
-          : "border-line bg-card text-muted hover:border-brand/30 hover:text-brand"
+          ? "border-foreground bg-foreground text-background"
+          : "border-line bg-transparent text-muted hover:border-foreground/40 hover:text-foreground"
       }`}
     >
       {children}
       {typeof count === "number" ? (
-        <span className={active ? "text-white opacity-70" : "text-[10px] opacity-70"}>
+        <span className={active ? "text-background opacity-70" : "text-[9px] opacity-70"}>
           {count}
         </span>
       ) : null}
@@ -127,7 +128,7 @@ export function MapExplorer({
   meta,
 }: Props) {
   const searchParams = useSearchParams();
-  const { theme, toggle } = useTheme();
+  const { theme } = useTheme();
 
   const initialRegion = searchParams.get("region");
   const initialNeighborhood = searchParams.get("neighborhood");
@@ -198,9 +199,7 @@ export function MapExplorer({
     () => true,
     () => false,
   );
-  const sidebarOpen = mounted
-    ? (sidebarOpenPreference ?? isDesktop)
-    : false;
+  const sidebarOpen = mounted ? (sidebarOpenPreference ?? isDesktop) : false;
 
   const [locateRequest, setLocateRequest] = useState(0);
   const [cameras, setCameras] = useState<Camera[]>([]);
@@ -721,13 +720,21 @@ export function MapExplorer({
   }, [cameras, dossierNeighborhood, statusFilter]);
 
   const riskBySlug = useMemo(() => {
-    const map: Record<string, "baixa" | "media" | "alta"> = {};
+    const map: Record<string, AssessedFloodRiskLevel> = {};
     for (const condition of conditions) {
-      if (
-        condition.riskClass &&
-        condition.riskClass !== "nao_avaliado"
-      ) {
-        map[condition.neighborhoodSlug] = condition.riskClass;
+      if (condition.rainStatus !== "ok") {
+        continue;
+      }
+      const assessment = assessFloodRisk(
+        {
+          mm1h: condition.rain1hMm,
+          mm24h: condition.rain24hMm,
+          mm96h: condition.rain96hMm,
+        },
+        condition.riskClass,
+      );
+      if (assessment.level !== "nao_avaliado") {
+        map[condition.neighborhoodSlug] = assessment.level;
       }
     }
     return map;
@@ -774,6 +781,8 @@ export function MapExplorer({
     return { slug: neighborhood, level: floodRisk.level };
   }, [dossierOpen, neighborhood, isRainingHere, floodRisk.level]);
 
+  const rightPanelOpen = dossierOpen || showSafety;
+
   return (
     <div className="fixed inset-x-0 bottom-0 top-8 z-[100] overflow-hidden bg-background lg:relative lg:inset-auto lg:z-auto lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <div className="relative h-full w-full overflow-hidden lg:h-auto lg:min-h-0 lg:flex-1">
@@ -789,82 +798,73 @@ export function MapExplorer({
             aria-label="Filtros e bairros"
             aria-hidden={!sidebarOpen}
             inert={!sidebarOpen}
-            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,24rem)] flex-col overflow-hidden border-r border-line bg-card shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-4 lg:left-4 lg:w-[23rem] lg:rounded-2xl lg:border ${
+            data-tour="index"
+            className={`absolute inset-y-0 left-0 z-40 flex w-[min(92vw,20rem)] flex-col overflow-hidden border-r border-line bg-card transition-transform duration-300 ease-out motion-reduce:transition-none lg:inset-y-0 lg:left-0 lg:w-[20rem] ${
               sidebarOpen
                 ? "translate-x-0"
                 : "-translate-x-[calc(100%+1rem)]"
             }`}
           >
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex items-center justify-between gap-2 border-b border-line/70 px-4 py-3 lg:hidden">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                Filtros
+            <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 lg:hidden">
+              <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted">
+                Índice
               </span>
-              <button
-                type="button"
-                onClick={toggle}
-                aria-label={
-                  theme === "dark" ? "Ativar modo claro" : "Ativar modo noturno"
-                }
-                title={theme === "dark" ? "Dia" : "Noite"}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-background px-2.5 py-1.5 text-[11px] font-medium text-muted transition-colors hover:border-brand/30 hover:text-brand"
-              >
-                {theme === "dark" ? (
-                  <Sun aria-hidden className="size-3.5" />
+              <ThemeToggle />
+            </div>
+
+            <div className="hidden items-center justify-between gap-2 border-b border-line px-4 py-3 lg:flex">
+              <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted">
+                Índice
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted/70">
+                RJ · 2026
+              </span>
+            </div>
+
+            <div className="px-4 pb-4 pt-4">
+              <label className="flex items-center gap-2 border-b border-line pb-2 transition-colors focus-within:border-accent">
+                <Search aria-hidden className="size-3.5 shrink-0 text-muted" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleSearchSubmit();
+                    }
+                  }}
+                  placeholder="Buscar câmera ou bairro"
+                  aria-label="Buscar câmeras no mapa"
+                  className="h-7 min-w-0 flex-1 bg-transparent font-mono text-[11px] outline-none placeholder:uppercase placeholder:tracking-[0.08em] placeholder:text-muted/60 [&::-webkit-search-cancel-button]:hidden"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    aria-label="Limpar busca"
+                    className="grid size-6 shrink-0 place-items-center text-muted transition-colors hover:text-foreground"
+                  >
+                    <X aria-hidden className="size-3.5" />
+                  </button>
                 ) : (
-                  <Moon aria-hidden className="size-3.5" />
+                  <kbd
+                    aria-hidden
+                    className="hidden shrink-0 border border-line px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.08em] text-muted lg:inline-flex"
+                  >
+                    Enter
+                  </kbd>
                 )}
-                {theme === "dark" ? "Dia" : "Noite"}
-              </button>
+              </label>
             </div>
 
-            <div className="px-3 pb-3 pt-3">
-              <div className="overflow-hidden rounded-xl border border-line/80 bg-gradient-to-br from-background to-card/80 shadow-sm transition-all focus-within:border-brand/50 focus-within:ring-2 focus-within:ring-brand/10">
-                <div className="flex items-center gap-2 px-2.5">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
-                    <Search aria-hidden className="size-3.5" />
-                  </span>
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        handleSearchSubmit();
-                      }
-                    }}
-                    placeholder="Buscar câmera, bairro ou região…"
-                    aria-label="Buscar câmeras no mapa"
-                    className="h-10 min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted/70 [&::-webkit-search-cancel-button]:hidden"
-                  />
-                  {query ? (
-                    <button
-                      type="button"
-                      onClick={() => setQuery("")}
-                      aria-label="Limpar busca"
-                      className="grid size-7 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-brand/10 hover:text-brand"
-                    >
-                      <X aria-hidden className="size-3.5" />
-                    </button>
-                  ) : (
-                    <kbd
-                      aria-hidden
-                      className="hidden shrink-0 items-center rounded-md border border-line bg-card px-1.5 py-0.5 text-[9px] font-medium text-muted lg:inline-flex"
-                    >
-                      Enter
-                    </kbd>
-                  )}
-                </div>
-              </div>
-            </div>
+            <div className="flex min-h-0 flex-1 flex-col px-4 pt-2 pb-4">
 
-            <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 pb-4">
-
-              <h4 className="mt-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
+              <h4 className="mt-0 font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
                 Situação
               </h4>
-              <div className="mt-2 flex flex-nowrap items-center gap-1.5">
+              <div className="mt-2 flex flex-nowrap items-center gap-1">
                 <Chip
                   active={statusFilter === "all"}
                   onClick={() => setStatusFilter("all")}
@@ -878,7 +878,7 @@ export function MapExplorer({
                   count={statusCounts.online}
                 >
                   <span
-                    className="size-2 shrink-0 rounded-full bg-brand"
+                    className="size-1.5 shrink-0 rounded-[1px] bg-brand"
                     aria-hidden
                   />
                   Online
@@ -896,10 +896,10 @@ export function MapExplorer({
                 </Chip>
               </div>
 
-              <h4 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted/80">
+              <h4 className="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
                 Região
               </h4>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-1">
                 <Chip
                   active={region === ""}
                   onClick={() => handleRegionChange("")}
@@ -915,7 +915,7 @@ export function MapExplorer({
                     count={camerasByRegion.get(item.slug) ?? 0}
                   >
                     <span
-                      className="size-2 shrink-0 rounded-full"
+                      className="size-1.5 shrink-0 rounded-[1px]"
                       style={{
                         background:
                           REGION_COLORS[item.slug as keyof typeof REGION_COLORS] ?? "#57534e",
@@ -928,10 +928,10 @@ export function MapExplorer({
               </div>
               <section className="mt-4 flex min-h-0 flex-1 flex-col border-t border-line/70 pt-3">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                  <h4 className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
                     Bairros
                   </h4>
-                  <span className="text-[10px] tabular-nums text-muted">
+                  <span className="font-mono text-[9px] tabular-nums text-muted">
                     {visibleNeighborhoods.length}
                   </span>
                 </div>
@@ -940,10 +940,18 @@ export function MapExplorer({
                     type="button"
                     onClick={() => handleNeighborhoodChange("")}
                     aria-pressed={!neighborhood}
-                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                    style={
                       !neighborhood
-                        ? "bg-brand/10 font-semibold text-brand"
-                        : "text-foreground hover:bg-background"
+                        ? {
+                            borderLeftColor:
+                              "var(--stage-color, var(--theme-accent))",
+                          }
+                        : undefined
+                    }
+                    className={`flex w-full items-center justify-between gap-2 border-b border-line/60 border-l-2 py-2 pl-2 text-left font-mono text-[10px] transition-colors ${
+                      !neighborhood
+                        ? "font-semibold text-foreground"
+                        : "border-l-transparent text-muted hover:text-foreground"
                     }`}
                   >
                     <span>Todos os bairros</span>
@@ -954,14 +962,22 @@ export function MapExplorer({
                       type="button"
                       onClick={() => handleNeighborhoodChange(item.slug)}
                       aria-pressed={neighborhood === item.slug}
-                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors ${
+                      style={
                         neighborhood === item.slug
-                          ? "bg-brand/10 font-semibold text-brand"
-                          : "text-foreground hover:bg-background"
+                          ? {
+                              borderLeftColor:
+                                "var(--stage-color, var(--theme-accent))",
+                            }
+                          : undefined
+                      }
+                      className={`flex w-full items-center justify-between gap-2 border-b border-line/60 border-l-2 py-2 pl-2 text-left font-mono text-[10px] transition-colors ${
+                        neighborhood === item.slug
+                          ? "font-semibold text-foreground"
+                          : "border-l-transparent text-muted hover:text-foreground"
                       }`}
                     >
                       <span className="min-w-0 truncate">{item.name}</span>
-                      <span className="shrink-0 text-[10px] tabular-nums text-muted">
+                      <span className="shrink-0 font-mono text-[9px] tabular-nums text-muted">
                         {camerasByNeighborhood.get(item.slug) ?? 0}
                       </span>
                     </button>
@@ -970,8 +986,8 @@ export function MapExplorer({
               </section>
             </div>
 
-            <div className="px-3 pb-2 pt-2">
-              <div className="grid grid-cols-4 gap-1.5">
+            <div className="px-4 pb-3 pt-2">
+              <div className="grid grid-cols-4 gap-1" data-tour="layers">
                 <ShowToggle
                   show={showCameras}
                   onToggle={handleCamerasToggle}
@@ -987,6 +1003,7 @@ export function MapExplorer({
                   label="Ajuda"
                   labelOn="Ocultar ajuda"
                   labelOff="Mostrar ajuda"
+                  dataTour="help"
                 />
                 <ShowToggle
                   show={showRain}
@@ -995,6 +1012,7 @@ export function MapExplorer({
                   label="Chuva"
                   labelOn="Ocultar chuva"
                   labelOff="Mostrar chuva"
+                  dataTour="rain"
                 />
                 <ShowToggle
                   show={show3d}
@@ -1003,30 +1021,42 @@ export function MapExplorer({
                   label="3D"
                   labelOn="Ocultar 3D"
                   labelOff="Mostrar 3D"
+                  dataTour="3d"
                 />
               </div>
             </div>
             </div>
 
-            <div className="shrink-0 border-t border-line/70 px-4 py-3">
+            <div className="shrink-0 border-t border-line px-4 py-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] leading-relaxed text-muted">
+                <p className="font-mono text-[9px] leading-relaxed tracking-[0.04em] text-muted">
                   Desenvolvido por Victor Capilé ·{" "}
                   <a
                     href="https://github.com/victorcapile/errejota-live"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-brand hover:underline"
+                    className="text-foreground hover:text-accent"
                   >
                     GitHub
                   </a>
                 </p>
-                <Link
-                  href="/sobre"
-                  className="shrink-0 text-[10px] font-medium text-muted transition-colors hover:text-brand lg:hidden"
-                >
-                  Sobre
-                </Link>
+                <div className="flex shrink-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.dispatchEvent(new Event("errejota:start-tour"))
+                    }
+                    className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground"
+                  >
+                    Tour
+                  </button>
+                  <Link
+                    href="/sobre"
+                    className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-foreground lg:hidden"
+                  >
+                    Sobre
+                  </Link>
+                </div>
               </div>
             </div>
           </aside>
@@ -1037,13 +1067,17 @@ export function MapExplorer({
               onClick={() => setSidebarOpenPreference(false)}
               aria-label="Recolher menu"
               title="Recolher menu"
-              className="absolute left-[min(92vw,24rem)] top-1/2 z-50 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-card text-muted shadow-lg transition-colors hover:bg-background hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[24rem]"
+              className="absolute left-[min(92vw,20rem)] top-1/2 z-50 grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[2px] border border-line bg-card text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:left-[20rem]"
             >
-              <ChevronLeft aria-hidden className="size-5" />
+              <ChevronLeft aria-hidden className="size-4" />
             </button>
           ) : null}
 
-          <main className="absolute inset-0 overflow-hidden bg-background">
+          <main
+            className="absolute inset-0 overflow-hidden bg-background"
+            data-right-panel-open={rightPanelOpen ? "true" : "false"}
+            data-tour="map"
+          >
             <MapCanvas
               cameras={filteredCameras}
               onSelectNeighborhood={handleNeighborhoodChange}
@@ -1080,39 +1114,43 @@ export function MapExplorer({
               onClick={() => setLocateRequest((request) => request + 1)}
               aria-label="Centralizar minha localização"
               title="Centralizar minha localização"
-              className="absolute right-3 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-10 grid size-9 place-items-center rounded-xl border border-line bg-card text-brand shadow-lg transition-colors hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:bottom-auto lg:right-[10px] lg:top-[calc(env(safe-area-inset-top)+131px)]"
+              className={`absolute right-3 bottom-[calc(7rem+env(safe-area-inset-bottom))] z-10 grid size-8 place-items-center rounded-[2px] border border-line bg-card text-foreground transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:bottom-auto lg:top-[8rem] ${
+                rightPanelOpen
+                  ? "lg:right-[calc(24rem+10px)]"
+                  : "lg:right-[10px]"
+              }`}
             >
-              <LocateFixed aria-hidden className="size-5" />
+              <LocateFixed aria-hidden className="size-4" />
             </button>
 
             {!showSafety ? (
               <div
                 className={`pointer-events-none absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-20 max-w-[calc(100vw-2rem)] ${
-                  dossierOpen ? "lg:right-[25.5rem]" : "lg:right-[10px]"
+                  dossierOpen
+                    ? "lg:right-[calc(24rem+10px)]"
+                    : "lg:right-[10px]"
                 }`}
               >
-              <div className="pointer-events-auto flex h-[32px] max-w-full items-center gap-3 rounded-xl border border-line bg-card/95 px-3 shadow-sm backdrop-blur">
+              <div className="pointer-events-auto flex h-7 max-w-full items-center gap-3 border border-line bg-card px-2.5 font-mono text-[9px] uppercase tracking-[0.1em]">
                 {camerasLoading ? (
-                  <span className="text-[11px] font-medium text-muted">
-                    Carregando…
-                  </span>
+                  <span className="text-muted">Carregando…</span>
                 ) : (
                   <>
-                    <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-foreground">
-                      <span className="relative flex size-1.5" aria-hidden>
-                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-500 opacity-70" />
-                        <span className="relative inline-flex size-1.5 rounded-full bg-blue-500" />
-                      </span>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-foreground">
+                      <span
+                        aria-hidden
+                        className="size-1.5 rounded-full bg-brand"
+                      />
                       <CameraIcon
                         aria-hidden
-                        className="size-3.5 shrink-0 text-muted"
+                        className="size-3 shrink-0 text-muted"
                       />
                       {statusCounts.online} online
                     </span>
-                    <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-muted">
+                    <span className="flex items-center gap-1.5 whitespace-nowrap text-muted">
                       <span
                         aria-hidden
-                        className="size-1.5 rounded-full bg-foreground opacity-30"
+                        className="size-1.5 rounded-full bg-muted/50"
                       />
                       {statusCounts.offline} offline
                     </span>
@@ -1146,8 +1184,8 @@ export function MapExplorer({
                 title={selectedNeighborhood?.name ?? "Ajuda"}
                 subtitle={
                   selectedNeighborhood
-                    ? `Equipamentos públicos · ${selectedNeighborhood.regionName}`
-                    : "Equipamentos públicos da cidade"
+                    ? `Equipamentos públicos de apoio · ${selectedNeighborhood.regionName}`
+                    : "Equipamentos públicos de apoio da cidade"
                 }
                 facilities={safetyDossierFacilities}
                 kind={safetyKind}
@@ -1162,7 +1200,13 @@ export function MapExplorer({
             ) : null}
 
             {selectedSafetyFacility ? (
-              <div className="panel-enter absolute inset-x-0 bottom-0 z-30 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col rounded-t-2xl border-t border-line bg-background pb-[env(safe-area-inset-bottom)] shadow-2xl lg:inset-y-4 lg:right-4 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[24rem] lg:rounded-2xl lg:border">
+              <div
+                className="panel-enter absolute inset-x-0 bottom-0 z-30 flex h-[38dvh] min-h-56 max-h-[22rem] w-full flex-col border-t-2 bg-card pb-[env(safe-area-inset-bottom)] lg:inset-y-0 lg:right-0 lg:left-auto lg:h-auto lg:min-h-0 lg:max-h-none lg:w-[23rem] lg:border-l lg:border-t-0 lg:border-l-line"
+                style={{
+                  borderTopColor:
+                    "var(--stage-color, var(--theme-accent))",
+                }}
+              >
                 <SafetyFacilityCard
                   facility={selectedSafetyFacility}
                   neighborhoodName={selectedSafetyNeighborhoodName}
@@ -1171,17 +1215,40 @@ export function MapExplorer({
               </div>
             ) : null}
 
-            {!sidebarOpen ? <button
-              type="button"
-              onClick={() => setSidebarOpenPreference(true)}
-              aria-label="Abrir menu de filtros e bairros"
-              title="Abrir menu de filtros e bairros"
-              className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] z-40 grid size-11 place-items-center rounded-xl border border-line bg-card text-foreground shadow-lg transition-colors hover:bg-brand/10 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            >
-              <Menu aria-hidden className="size-5" />
-            </button> : null}
+            {!sidebarOpen ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpenPreference(true)}
+                  aria-label="Abrir menu de filtros e bairros"
+                  title="Abrir menu de filtros e bairros"
+                  data-tour="index"
+                  className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] z-40 grid size-9 place-items-center rounded-[2px] border border-line bg-card text-foreground transition-colors hover:border-foreground/40 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:hidden"
+                >
+                  <Menu aria-hidden className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpenPreference(true)}
+                  aria-label="Abrir índice de filtros e bairros"
+                  title="Abrir índice"
+                  data-tour="index"
+                  className="absolute inset-y-0 left-0 z-40 hidden w-10 flex-col items-center justify-between border-r border-line bg-card py-4 text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:flex"
+                >
+                  <span className="font-mono text-[9px] uppercase tracking-[0.22em] [writing-mode:vertical-rl]">
+                    Índice
+                  </span>
+                  <ChevronRight aria-hidden className="size-4" />
+                </button>
+              </>
+            ) : null}
           </main>
       </div>
+
+      <WelcomeTour
+        sidebarOpen={sidebarOpen}
+        onSidebarChange={setSidebarOpenPreference}
+      />
     </div>
   );
 }
@@ -1193,6 +1260,7 @@ function ShowToggle({
   label,
   labelOn,
   labelOff,
+  dataTour,
 }: {
   show: boolean;
   onToggle: (value: boolean) => void;
@@ -1200,6 +1268,7 @@ function ShowToggle({
   label: string;
   labelOn: string;
   labelOff: string;
+  dataTour?: string;
 }) {
   return (
     <button
@@ -1208,21 +1277,22 @@ function ShowToggle({
       aria-pressed={show}
       aria-label={show ? labelOn : labelOff}
       title={show ? labelOn : labelOff}
-      className="flex w-full min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-1 transition-colors hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      data-tour={dataTour}
+      className="flex w-full min-w-0 flex-col items-center gap-1 border border-line px-1 py-1.5 transition-colors hover:border-foreground/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
     >
       <span
         aria-hidden
-        className={`grid size-9 shrink-0 place-items-center rounded-xl border transition-colors ${
+        className={`grid size-7 shrink-0 place-items-center border transition-colors ${
           show
-            ? "border-brand/40 bg-brand/10 text-brand"
-            : "border-line bg-background text-muted"
+            ? "border-foreground bg-foreground text-background"
+            : "border-line text-muted"
         }`}
       >
-        <Icon aria-hidden className="size-4" />
+        <Icon aria-hidden className="size-3.5" />
       </span>
       <span
-        className={`w-full truncate text-center text-[9px] font-medium leading-tight ${
-          show ? "text-brand" : "text-muted"
+        className={`w-full truncate text-center font-mono text-[8px] uppercase tracking-[0.08em] leading-tight ${
+          show ? "text-foreground" : "text-muted"
         }`}
       >
         {label}

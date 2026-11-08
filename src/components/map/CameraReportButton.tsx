@@ -128,15 +128,15 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
         }}
         aria-label={`Reportar problema em ${camera.name}`}
         title="Reportar problema"
-        className="grid size-9 shrink-0 place-items-center rounded-lg border border-amber-200/30 bg-amber-500/5 text-amber-500/35 transition-all duration-200 hover:border-amber-400/70 hover:bg-amber-500/15 hover:text-amber-600 hover:shadow-[0_0_0_3px_rgba(245,158,11,0.12)] dark:border-amber-300/20 dark:bg-amber-400/5 dark:text-amber-400/35 dark:hover:text-amber-300"
+        className="grid size-7 shrink-0 place-items-center border border-line text-muted transition-colors hover:border-foreground/40 hover:text-accent"
       >
-        <Flag aria-hidden className="size-4" fill="currentColor" />
+        <Flag aria-hidden className="size-3.5" />
       </button>
 
       {open && typeof document !== "undefined"
         ? createPortal(
             <div
-              className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center sm:p-4"
+              className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 sm:items-center sm:p-4"
               role="presentation"
               onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
@@ -148,20 +148,24 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
-                className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-line bg-card shadow-2xl sm:rounded-3xl"
+                className="flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden border border-line border-t-2 bg-card"
+                style={{
+                  borderTopColor:
+                    "var(--stage-color, var(--theme-accent))",
+                }}
               >
-                <div className="flex items-start gap-3 border-b border-line/70 bg-gradient-to-br from-amber-500/10 via-card to-card px-5 pb-4 pt-5">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-2xl border border-amber-300/40 bg-amber-500/10 text-amber-600 dark:text-amber-300">
-                    <Flag aria-hidden className="size-5" fill="currentColor" />
+                <div className="flex items-start gap-3 border-b border-line px-5 py-4">
+                  <span className="grid size-9 shrink-0 place-items-center border border-line text-accent">
+                    <Flag aria-hidden className="size-4" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <h2
                       id={titleId}
-                      className="text-base font-semibold leading-snug"
+                      className="font-editorial text-xl font-semibold leading-tight"
                     >
                       Reportar problema
                     </h2>
-                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted">
+                    <p className="mt-1 line-clamp-2 font-mono text-[9px] uppercase tracking-[0.08em] leading-snug text-muted">
                       {camera.name}
                     </p>
                   </div>
@@ -169,20 +173,20 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                     type="button"
                     onClick={close}
                     aria-label="Fechar"
-                    className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:text-brand"
+                    className="grid size-7 shrink-0 place-items-center rounded-[2px] border border-line text-muted transition-colors hover:text-accent"
                   >
-                    <X aria-hidden className="size-4" />
+                    <X aria-hidden className="size-3.5" />
                   </button>
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                   {status === "sent" ? (
                     <div className="flex flex-col items-center gap-3 py-6 text-center">
-                      <span className="grid size-14 place-items-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
-                        <CheckCircle2 aria-hidden className="size-7" />
+                      <span className="grid size-12 place-items-center border border-line text-accent">
+                        <CheckCircle2 aria-hidden className="size-6" />
                       </span>
                       <div>
-                        <p className="text-sm font-semibold">
+                        <p className="font-editorial text-xl font-semibold">
                           Relato enviado
                         </p>
                         <p className="mt-1 text-xs leading-relaxed text-muted">
@@ -193,7 +197,7 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                       <button
                         type="button"
                         onClick={close}
-                        className="mt-1 inline-flex h-9 items-center justify-center rounded-xl border border-line bg-background px-4 text-xs font-semibold text-foreground transition-colors hover:border-brand/30 hover:text-brand"
+                        className="mt-1 inline-flex h-9 items-center justify-center border border-line px-4 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-foreground transition-colors hover:border-foreground/40 hover:text-accent"
                       >
                         Fechar
                       </button>
@@ -207,10 +211,10 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                       }}
                     >
                       <fieldset>
-                        <legend className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                        <legend className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">
                           O que está errado?
                         </legend>
-                        <div className="mt-2 grid gap-2">
+                        <div className="mt-2 grid gap-1">
                           {CAMERA_REPORT_REASON_VALUES.map((value) => {
                             const meta = REASON_META[value];
                             const Icon = meta.icon;
@@ -218,10 +222,10 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                             return (
                               <label
                                 key={value}
-                                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+                                className={`flex cursor-pointer items-start gap-3 border p-3 transition-colors ${
                                   selected
-                                    ? "border-brand/50 bg-brand/5 ring-1 ring-brand/20"
-                                    : "border-line bg-background hover:border-brand/30"
+                                    ? "border-foreground bg-accent/5"
+                                    : "border-line hover:border-foreground/40"
                                 }`}
                               >
                                 <input
@@ -233,13 +237,13 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                                   className="sr-only"
                                 />
                                 <span
-                                  className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
+                                  className={`grid size-7 shrink-0 place-items-center border ${
                                     selected
-                                      ? "border-brand/30 bg-brand/10 text-brand"
-                                      : "border-line bg-card text-muted"
+                                      ? "border-foreground bg-foreground text-background"
+                                      : "border-line text-muted"
                                   }`}
                                 >
-                                  <Icon aria-hidden className="size-4" />
+                                  <Icon aria-hidden className="size-3.5" />
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block text-xs font-medium">
@@ -251,9 +255,9 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                                 </span>
                                 <span
                                   aria-hidden
-                                  className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border ${
+                                  className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-[2px] border ${
                                     selected
-                                      ? "border-brand bg-brand text-white"
+                                      ? "border-foreground bg-foreground text-background"
                                       : "border-line"
                                   }`}
                                 >
@@ -268,7 +272,7 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                       </fieldset>
 
                       <label className="block">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
+                        <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">
                           Observação{" "}
                           <span className="font-normal normal-case tracking-normal">
                             (opcional)
@@ -279,10 +283,10 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                           onChange={(event) => setNote(event.target.value)}
                           rows={3}
                           maxLength={500}
-                          className="mt-1.5 min-h-20 w-full resize-y rounded-xl border border-line bg-background px-3 py-2.5 text-xs leading-relaxed text-foreground outline-none transition-colors focus:border-brand/40 focus:ring-2 focus:ring-brand/10"
+                          className="mt-1.5 min-h-20 w-full resize-y rounded-[2px] border border-line bg-background px-3 py-2.5 text-xs leading-relaxed text-foreground outline-none transition-colors focus:border-accent"
                           placeholder="Ex.: a imagem está congelada desde ontem."
                         />
-                        <span className="mt-1 block text-right text-[9px] tabular-nums text-muted">
+                        <span className="mt-1 block text-right font-mono text-[8px] tabular-nums text-muted">
                           {note.length}/500
                         </span>
                       </label>
@@ -300,12 +304,12 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                       />
 
                       {error ? (
-                        <p className="rounded-xl border border-red-300/50 bg-red-500/10 px-3 py-2 text-[11px] text-red-700 dark:text-red-300">
+                        <p className="border border-red-300/50 bg-red-500/10 px-3 py-2 font-mono text-[9px] text-red-700 dark:text-red-300">
                           {error}
                         </p>
                       ) : null}
 
-                      <p className="rounded-xl border border-line/70 bg-background/60 px-3 py-2 text-[10px] leading-relaxed text-muted">
+                      <p className="border-y border-line py-2 text-[10px] leading-relaxed text-muted">
                         Seu relato vai para a fila de moderação. Ele não altera o
                         status da câmera sozinho.
                       </p>
@@ -313,7 +317,7 @@ export function CameraReportButton({ camera }: { camera: Camera }) {
                       <button
                         type="submit"
                         disabled={status === "sending"}
-                        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white transition-colors hover:bg-brand-strong disabled:opacity-50"
+                        className="inline-flex h-10 w-full items-center justify-center gap-2 bg-foreground font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-background transition-colors hover:bg-accent disabled:opacity-50"
                       >
                         {status === "sending" ? (
                           <Loader2

@@ -61,10 +61,10 @@ function InfoItem({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted">
+      <dt className="font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-muted">
         {label}
       </dt>
-      <dd className="mt-0.5 break-words text-[11px] leading-snug text-foreground">
+      <dd className="mt-0.5 break-words font-mono text-[10px] leading-snug text-foreground">
         {children}
       </dd>
     </div>
@@ -94,26 +94,26 @@ export function SafetyFacilityCard({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-start justify-between gap-3 border-b border-line/70 px-4 pt-3.5 pb-3">
+      <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <span
-              className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-white"
+              className="inline-flex items-center px-1.5 py-0.5 font-mono text-[8px] font-semibold uppercase tracking-[0.1em] text-white"
               style={{ backgroundColor: color }}
             >
               {SAFETY_FACILITY_KIND_SINGULAR[facility.kind]}
             </span>
             {neighborhoodName ? (
-              <span className="truncate text-[10px] font-medium text-muted">
+              <span className="truncate font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
                 {neighborhoodName}
               </span>
             ) : null}
           </div>
-          <h3 className="mt-1.5 text-sm font-semibold leading-snug text-foreground">
+          <h3 className="mt-1.5 font-editorial text-xl font-semibold leading-tight text-foreground">
             {facility.name}
           </h3>
           {facility.address ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-muted">
+            <p className="mt-1 text-[10px] leading-snug text-muted">
               {facility.address}
             </p>
           ) : null}
@@ -122,9 +122,9 @@ export function SafetyFacilityCard({
           type="button"
           onClick={onClose}
           aria-label="Fechar equipamento"
-          className="grid size-8 shrink-0 place-items-center rounded-lg border border-line bg-card text-muted transition-colors hover:text-brand"
+          className="grid size-7 shrink-0 place-items-center rounded-[2px] border border-line text-muted transition-colors hover:text-accent"
         >
-          <X aria-hidden className="size-4" />
+          <X aria-hidden className="size-3.5" />
         </button>
       </div>
 
@@ -135,7 +135,7 @@ export function SafetyFacilityCard({
             <InfoItem label="Telefone">
               <a
                 href={`tel:${phone.replace(/[^\d+]/g, "")}`}
-                className="inline-flex items-center gap-1 text-brand hover:underline"
+                className="inline-flex items-center gap-1 text-foreground hover:text-accent"
               >
                 <Phone aria-hidden className="size-3" />
                 {phone}
@@ -163,7 +163,7 @@ export function SafetyFacilityCard({
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1 text-[10px] font-medium text-brand hover:underline"
+            className="mt-3 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.08em] text-foreground hover:text-accent"
           >
             <ExternalLink aria-hidden className="size-3" />
             Ver referência do abrigo
@@ -175,12 +175,12 @@ export function SafetyFacilityCard({
         </p>
       </div>
 
-      <div className="shrink-0 border-t border-line/70 px-4 py-2.5">
+      <div className="shrink-0 border-t border-line px-4 py-2.5">
         <a
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-brand text-[11px] font-semibold text-white transition-colors hover:bg-brand-strong"
+          className="inline-flex h-9 w-full items-center justify-center gap-1.5 border border-foreground bg-foreground font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-background transition-colors hover:bg-accent"
         >
           <ExternalLink aria-hidden className="size-3.5" />
           Abrir no Google Maps

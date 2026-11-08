@@ -31,12 +31,6 @@ export function CatalogResults({ result }: { result: Paginated<Source> }) {
           >
             Limpar filtros
           </Link>
-          <Link
-            href="/bairros"
-            className="inline-flex h-10 items-center rounded-lg border border-line bg-card px-4 text-sm font-medium transition-colors hover:border-brand/30 hover:text-brand"
-          >
-            Ver bairros
-          </Link>
         </div>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
           <span className="text-[11px] text-muted">Sugestões:</span>

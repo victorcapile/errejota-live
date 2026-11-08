@@ -1,8 +1,23 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces, IBM_Plex_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
+
+const display = Fraunces({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
+
+const mono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
 
 const THEME_SCRIPT = `try{var t=localStorage.getItem("errejota-theme");if(t==null){t=localStorage.getItem("theme");}document.documentElement.dataset.theme=t==="dark"?"dark":"light";}catch(e){document.documentElement.dataset.theme="light";}`;
 
@@ -52,7 +67,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      data-scroll-behavior="smooth"
+      className={`${display.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <a
@@ -68,7 +88,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               {children}
             </main>
           </div>
-          <Analytics />
+          {process.env.NODE_ENV === "production" ? <Analytics /> : null}
         </ThemeProvider>
       </body>
     </html>

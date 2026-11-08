@@ -33,7 +33,7 @@ export function RainIcon({ mm }: { mm: number | null }) {
   }, []);
 
   if (mm !== null && mm > 0) {
-    return <CloudRain aria-hidden className="size-4 shrink-0 text-brand" />;
+    return <CloudRain aria-hidden className="size-4 shrink-0 text-accent" />;
   }
 
   if (hour === null) {
@@ -43,9 +43,9 @@ export function RainIcon({ mm }: { mm: number | null }) {
   const isDay = hour >= 6 && hour < 18;
 
   return isDay ? (
-    <Sun aria-hidden className="size-4 shrink-0 text-amber-500" />
+    <Sun aria-hidden className="size-4 shrink-0 text-accent" />
   ) : (
-    <Moon aria-hidden className="size-4 shrink-0 text-slate-500 dark:text-slate-300" />
+    <Moon aria-hidden className="size-4 shrink-0 text-muted" />
   );
 }
 
@@ -68,13 +68,13 @@ function RainValue({
     >
       <span
         aria-hidden
-        className="size-1.5 shrink-0 rounded-full"
+        className="size-1.5 shrink-0 rounded-[1px]"
         style={{ background: color }}
       />
-      <span className="font-semibold tabular-nums text-foreground">
+      <span className="font-mono text-[10px] font-medium tabular-nums text-foreground">
         {mm === null ? "—" : `${mm.toLocaleString("pt-BR")} mm`}
       </span>
-      <span className="font-medium text-muted">
+      <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-muted">
         ({rainWindowLabel(window)})
       </span>
     </span>
@@ -95,13 +95,13 @@ function CompactFloodRisk({
       className="flex shrink-0 flex-col items-end gap-0.5 text-right"
       title={floodRiskTitle(assessment)}
     >
-      <span className="text-[8px] font-medium uppercase tracking-[0.08em] text-muted">
+      <span className="font-mono text-[8px] font-medium uppercase tracking-[0.12em] text-muted">
         Risco de alagamento
       </span>
-      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-foreground">
+      <span className="inline-flex items-center gap-1 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-foreground">
         <span
           aria-hidden
-          className="size-1.5 rounded-full"
+          className="size-1.5 rounded-[1px]"
           style={{ background: FLOOD_RISK_LEVEL_COLORS[assessment.level] }}
         />
         {FLOOD_RISK_LEVEL_LABELS[assessment.level]}
@@ -152,12 +152,12 @@ export function RainConditionSummary({
       <RainIcon mm={condition.rain1hMm} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-[11px] font-semibold leading-snug text-foreground">
+          <p className="truncate font-mono text-[10px] font-semibold uppercase tracking-[0.1em] leading-snug text-foreground">
             {headline}
           </p>
           {showRisk ? <CompactFloodRisk assessment={assessment} /> : null}
         </div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-x-2 text-[9px] leading-tight text-muted">
+        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[8px] leading-tight text-muted">
           <RainValue
             window="1h"
             mm={condition.rain1hMm}
@@ -173,7 +173,7 @@ export function RainConditionSummary({
           />
           <span
             suppressHydrationWarning
-            className={`truncate ${
+            className={`min-w-0 break-words ${
               unavailable
                 ? "font-medium text-amber-600 dark:text-amber-400"
                 : ""
@@ -209,7 +209,7 @@ export function RainConditionCard({
   condition: NeighborhoodCondition;
 }) {
   return (
-    <div className="rain-card-enter rounded-xl border border-line bg-card/95 px-3 py-2 shadow-lg backdrop-blur">
+    <div className="rain-card-enter border-y border-line bg-card px-3 py-2">
       <RainConditionSummary condition={condition} />
     </div>
   );

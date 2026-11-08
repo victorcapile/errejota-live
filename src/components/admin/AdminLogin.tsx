@@ -40,25 +40,30 @@ export function AdminLogin({ localOnly }: { localOnly: boolean }) {
   };
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-6xl items-center justify-center px-4 py-12 sm:px-6">
+    <div className="mx-auto flex min-h-[calc(100dvh-5.5rem)] max-w-[1400px] items-center justify-center px-4 py-12 sm:px-6">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-brand text-white shadow-sm">
-            <LockKeyhole aria-hidden className="size-5" />
+          <span className="grid size-10 place-items-center border border-foreground bg-foreground text-background">
+            <LockKeyhole aria-hidden className="size-4" />
           </span>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted">
+            <p className="font-mono text-[9px] font-medium uppercase tracking-[0.18em] text-muted">
               Área restrita
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
+            <h1 className="font-editorial text-3xl font-semibold tracking-tight">
+              Admin
+            </h1>
           </div>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-line bg-card p-5 shadow-sm"
+          className="border border-line bg-card p-5"
         >
-          <label className="block text-[11px] font-medium text-muted" htmlFor="admin-user">
+          <label
+            className="block font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-muted"
+            htmlFor="admin-user"
+          >
             Usuário
           </label>
           <input
@@ -68,11 +73,11 @@ export function AdminLogin({ localOnly }: { localOnly: boolean }) {
             autoFocus
             value={user}
             onChange={(event) => setUser(event.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-line bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand/80"
+            className="mt-1.5 w-full rounded-[2px] border border-line bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
           />
 
           <label
-            className="mt-4 block text-[11px] font-medium text-muted"
+            className="mt-4 block font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-muted"
             htmlFor="admin-password"
           >
             Senha
@@ -84,11 +89,11 @@ export function AdminLogin({ localOnly }: { localOnly: boolean }) {
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-line bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-brand/80"
+            className="mt-1.5 w-full rounded-[2px] border border-line bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
           />
 
           {error ? (
-            <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+            <p className="mt-4 border border-amber-500/30 bg-amber-500/10 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">
               {error}
             </p>
           ) : null}
@@ -96,15 +101,17 @@ export function AdminLogin({ localOnly }: { localOnly: boolean }) {
           <button
             type="submit"
             disabled={loading || !user || !password}
-            className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 bg-foreground px-4 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-background transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? <Loader2 aria-hidden className="size-4 animate-spin" /> : null}
+            {loading ? (
+              <Loader2 aria-hidden className="size-4 animate-spin" />
+            ) : null}
             Entrar
           </button>
         </form>
 
         {localOnly ? (
-          <p className="mt-4 text-center text-[11px] leading-relaxed text-muted">
+          <p className="mt-4 text-center font-mono text-[9px] uppercase tracking-[0.08em] text-muted">
             Disponível apenas no navegador deste computador (localhost).
           </p>
         ) : null}

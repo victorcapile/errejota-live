@@ -19,7 +19,7 @@ O projeto não transmite nem grava vídeo. Ao selecionar uma câmera, a pessoa �
 ## Princípios
 
 - Apenas dados públicos, com fonte e atribuição visíveis.
-- Sem contas de visitante, sem métricas de uso e sem rastreamento de terceiros.
+- Sem contas de visitante e sem rastreamento de terceiros. Métricas agregadas e sem cookies via Vercel Analytics.
 - Nada de reconhecimento de pessoas ou veículos, gravação de vídeo ou extração de feeds privados.
 - Falha de fonte aparece como **dados indisponíveis**, nunca como “normal” ou “sem risco”.
 - Cada câmera e cada camada apontam para a origem oficial.

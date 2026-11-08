@@ -74,7 +74,7 @@ export function SiteNav() {
       aria-label="Navegação principal"
       className="flex min-w-0 justify-center"
     >
-      <ul className="flex items-center gap-1 rounded-2xl border border-line/70 bg-card/70 p-1 shadow-sm backdrop-blur">
+      <ul className="flex items-center gap-4 sm:gap-6">
         {items.map((item) => {
           const active = item.isActive(pathname);
           const Icon = item.icon;
@@ -86,14 +86,22 @@ export function SiteNav() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 title={item.label}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition-all sm:px-3.5 ${
+                style={
                   active
-                    ? "bg-brand text-white shadow-sm dark:text-[#08171b]"
-                    : "text-muted hover:bg-brand/10 hover:text-brand"
+                    ? {
+                        borderColor:
+                          "var(--stage-color, var(--theme-accent))",
+                      }
+                    : undefined
+                }
+                className={`inline-flex h-8 items-center gap-1.5 border-b-2 px-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] transition-colors ${
+                  active
+                    ? "text-foreground"
+                    : "border-transparent text-muted hover:border-line hover:text-foreground"
                 }`}
               >
-                <Icon aria-hidden className="size-3.5 shrink-0" />
-                <span className="hidden sm:inline">{item.label}</span>
+                <Icon aria-hidden className="size-3 shrink-0" />
+                <span>{item.label}</span>
               </Link>
             </li>
           );

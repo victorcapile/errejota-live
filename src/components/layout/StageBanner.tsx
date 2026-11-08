@@ -52,20 +52,31 @@ export function StageBanner() {
     };
   }, []);
 
+  useEffect(() => {
+    const color = data?.stage?.color;
+    if (color) {
+      document.documentElement.style.setProperty("--stage-color", color);
+    } else {
+      document.documentElement.style.removeProperty("--stage-color");
+    }
+  }, [data?.stage?.color]);
+
   const stage = data?.stage ?? null;
   if (!stage) {
     return (
       <div
         data-stage="unavailable"
+        data-tour="stage"
         className="text-[11px]"
         style={{ backgroundColor: "#57534e", color: "#ffffff" }}
       >
-        <div className="mx-auto flex h-8 max-w-7xl items-center gap-3 px-3 sm:px-6">
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold">
-            <span aria-hidden className="size-1.5 rounded-full bg-white/85" />
+        <div className="mx-auto flex h-8 max-w-[1600px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
+          <span className="inline-flex shrink-0 items-center gap-2 border-r border-white/30 pr-2.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]">
+            <span aria-hidden className="size-1.5 bg-white/85" />
             Estágio indisponível
           </span>
-          <span className="hidden min-w-0 flex-1 truncate text-[10px] opacity-80 sm:block">
+          <span className="min-w-0 flex-1 truncate text-[10px] opacity-80 sm:text-[11px]">
+            {" "}
             A fonte oficial está indisponível. Acompanhe os canais oficiais.
           </span>
         </div>
@@ -82,9 +93,6 @@ export function StageBanner() {
   const darkText = normalized === "2" || normalized === "3";
   const foreground = darkText ? "#1f2937" : "#ffffff";
   const color = stage.color;
-  const pillBackground = darkText
-    ? "rgba(0,0,0,0.12)"
-    : "rgba(255,255,255,0.18)";
   const effectiveAt = new Date(stage.effectiveAt);
   const effectiveText = Number.isNaN(effectiveAt.getTime())
     ? null
@@ -99,28 +107,30 @@ export function StageBanner() {
   return (
     <div
       data-stage={normalized ?? "unavailable"}
+      data-tour="stage"
       className="text-[11px]"
       style={{ backgroundColor: color, color: foreground }}
     >
-      <div className="mx-auto flex h-8 max-w-7xl items-center gap-3 px-3 sm:px-6">
+      <div className="mx-auto flex h-8 max-w-[1600px] items-center gap-2 px-3 sm:gap-3 sm:px-6">
         <span
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-          style={{ backgroundColor: pillBackground }}
+          className="inline-flex shrink-0 items-center gap-2 border-r pr-2.5 font-mono text-[9px] font-semibold uppercase tracking-[0.16em]"
+          style={{ borderColor: `${foreground}44` }}
         >
           <span
             aria-hidden
-            className="size-1.5 rounded-full"
-            style={{ backgroundColor: foreground, opacity: 0.85 }}
+            className="size-1.5"
+            style={{ backgroundColor: foreground, opacity: 0.9 }}
           />
           {stage.label} · {shortLabel}
         </span>
         <span
-          className="hidden min-w-0 flex-1 truncate opacity-90 sm:block"
+          className="min-w-0 flex-1 truncate text-[10px] opacity-90 sm:text-[11px]"
           title={description}
         >
+          {" "}
           {stage.message || description}
         </span>
-        <span className="hidden shrink-0 text-[10px] opacity-80 sm:inline">
+        <span className="hidden shrink-0 font-mono text-[9px] uppercase tracking-[0.12em] opacity-75 sm:inline">
           {isManual ? "fonte manual (admin)" : stage.sourceLabel}
           {effectiveText ? ` · vigente desde ${effectiveText}` : ""}
         </span>

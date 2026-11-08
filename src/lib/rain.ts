@@ -20,6 +20,14 @@ import type {
 /** Janela usada para considerar uma leitura como "atual". */
 const OBSERVATION_WINDOW_HOURS = 48;
 
+/**
+ * A associação sempre usa a estação ativa mais próxima com leitura recente.
+ * Na maior parte da cidade a distância fica abaixo de 6 km; o limite de 15 km
+ * só evita associações absurdas em áreas isoladas (Paquetá fica a ~11,2 km).
+ * A distância real é exibida no card do bairro.
+ */
+const RAIN_STATION_MAX_RADIUS_KM = 15;
+
 type LatestRow = {
   stationId: string;
   metric: RainMetric;
@@ -290,7 +298,7 @@ export async function listNeighborhoodConditions(params: {
               { latitude: hood.latitude, longitude: hood.longitude },
               { latitude: station.latitude, longitude: station.longitude },
             ) / 1000;
-          if (distanceKm > 5) continue;
+          if (distanceKm > RAIN_STATION_MAX_RADIUS_KM) continue;
           if (!selected || distanceKm < selected.distanceKm) {
             selected = { station, metrics, distanceKm, count: 1 };
           }

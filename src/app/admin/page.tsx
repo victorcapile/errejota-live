@@ -40,7 +40,9 @@ async function AdminContent() {
 function AdminLoading() {
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-6xl items-center justify-center px-4">
-      <p className="text-sm text-muted">Carregando…</p>
+      <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
+        Carregando…
+      </p>
     </div>
   );
 }

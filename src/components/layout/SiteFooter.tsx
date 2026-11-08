@@ -9,22 +9,27 @@ const NAV_LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 hidden border-t border-line bg-card/60 lg:block">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.6fr_1fr_1fr]">
+    <footer className="mt-16 hidden border-t border-line bg-background lg:block">
+      <div className="mx-auto grid max-w-[1600px] gap-8 px-6 py-10 md:grid-cols-[1.6fr_1fr_1fr]">
         <div>
-          <p className="text-sm font-semibold tracking-tight">errejota.live</p>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+          <p className="font-editorial text-xl font-semibold tracking-tight">
+            errejota<span className="text-accent">.</span>live
+          </p>
+          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
+            Rio de Janeiro · atlas urbano
+          </p>
+          <p className="mt-4 max-w-md text-xs leading-relaxed text-muted">
             Catálogo geográfico de fontes públicas de câmeras e contexto urbano
             do Rio de Janeiro. Organizamos links oficiais, status declarado e
             proveniência.
           </p>
-          <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-line bg-background px-3 py-1.5 text-[11px] text-muted">
+          <p className="mt-4 inline-flex items-center gap-2 border border-line px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
             Revisão editorial · {formatDate(CATALOG_LAST_CHECKED_AT)}
           </p>
         </div>
 
         <nav aria-label="Navegação do rodapé">
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
             Navegar
           </p>
           <ul className="mt-3 space-y-2">
@@ -32,7 +37,7 @@ export function SiteFooter() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="text-sm text-foreground/80 transition-colors hover:text-brand"
+                  className="text-xs text-foreground/80 transition-colors hover:text-accent"
                 >
                   {link.label}
                 </Link>
@@ -42,14 +47,14 @@ export function SiteFooter() {
         </nav>
 
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
             Transparência
           </p>
-          <ul className="mt-3 space-y-2 text-sm">
+          <ul className="mt-3 space-y-2 text-xs">
             <li>
               <Link
                 href="/sobre"
-                className="text-foreground/80 transition-colors hover:text-brand"
+                className="text-foreground/80 transition-colors hover:text-accent"
               >
                 Metodologia
               </Link>
@@ -57,7 +62,7 @@ export function SiteFooter() {
             <li>
               <a
                 href="/api/meta"
-                className="text-foreground/80 transition-colors hover:text-brand"
+                className="text-foreground/80 transition-colors hover:text-accent"
               >
                 Metadados da API
               </a>
@@ -67,7 +72,7 @@ export function SiteFooter() {
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/api/sources"
-                className="text-foreground/80 transition-colors hover:text-brand"
+                className="text-foreground/80 transition-colors hover:text-accent"
               >
                 Fontes em JSON
               </a>
@@ -77,12 +82,14 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-[11px] leading-relaxed text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-2 px-6 py-5 text-[10px] leading-relaxed text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>
             Projeto pessoal de estudo, sem vínculo com os provedores citados.
             Nenhum player, gravação ou rastreamento é executado.
           </p>
-          <p className="shrink-0">Rio de Janeiro · RJ</p>
+          <p className="shrink-0 font-mono uppercase tracking-[0.08em]">
+            Rio de Janeiro · RJ
+          </p>
         </div>
       </div>
     </footer>
