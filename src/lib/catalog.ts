@@ -486,6 +486,61 @@ export async function listCameras(options?: {
   );
 }
 
+/**
+ * Versão enxuta usada pelo mapa. Evita trazer as linhas completas de
+ * `sources`/`neighborhoods`/`regions` para cada uma das ~7,5 mil câmeras,
+ * que era o maior consumidor de egress e latência da API pública.
+ */
+export async function listMapCameras(options?: {
+  region?: string;
+  neighborhood?: string;
+}): Promise<Camera[]> {
+  await ensureCameraSchema();
+  const filters: SQL[] = [];
+  if (options?.region) {
+    filters.push(eq(cameras.regionSlug, options.region));
+  }
+  if (options?.neighborhood) {
+    filters.push(eq(cameras.neighborhoodSlug, options.neighborhood));
+  }
+
+  const rows = await db
+    .select({
+      id: cameras.id,
+      externalId: cameras.externalId,
+      name: cameras.name,
+      latitude: cameras.latitude,
+      longitude: cameras.longitude,
+      pageUrl: cameras.pageUrl,
+      providerName: cameras.providerName,
+      neighborhoodSlug: cameras.neighborhoodSlug,
+      regionSlug: cameras.regionSlug,
+      isOnline: cameras.isOnline,
+      neighborhoodName: neighborhoods.name,
+      regionName: regions.name,
+    })
+    .from(cameras)
+    .leftJoin(neighborhoods, eq(cameras.neighborhoodId, neighborhoods.id))
+    .leftJoin(regions, eq(neighborhoods.regionId, regions.id))
+    .where(filters.length > 0 ? and(...filters) : undefined)
+    .orderBy(asc(cameras.externalId), asc(cameras.name));
+
+  return rows.map((row) => ({
+    id: row.id,
+    externalId: row.externalId,
+    name: row.name,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    pageUrl: row.pageUrl,
+    providerName: row.providerName,
+    neighborhoodSlug: row.neighborhoodSlug ?? null,
+    neighborhoodName: row.neighborhoodName ?? null,
+    regionSlug: row.regionSlug ?? null,
+    regionName: row.regionName ?? null,
+    isOnline: row.isOnline ?? null,
+  }));
+}
+
 export async function countCameras(): Promise<number> {
   const rows = await db.select({ value: count() }).from(cameras);
   return Number(rows[0]?.value ?? 0);
@@ -597,30 +652,30 @@ export async function getCatalogStats(): Promise<CatalogStats> {
 }
 
 export async function getCatalogMeta(): Promise<CatalogMeta> {
-  const [stats, categoryRows, regionRows, tagRows, neighborhoodRows] =
-    await Promise.all([
-      getCatalogStats(),
-      db
-        .select({ value: sources.category, count: count() })
-        .from(sources)
-        .groupBy(sources.category),
-      db
-        .select({ region: regions, sourceCount: count(sources.id) })
-        .from(regions)
-        .leftJoin(sources, eq(sources.regionId, regions.id))
-        .groupBy(regions.id)
-        .orderBy(asc(regions.sortOrder)),
-      db
-        .select({
-          tag: tags,
-          sourceCount: count(sourceTags.sourceId),
-        })
-        .from(tags)
-        .leftJoin(sourceTags, eq(sourceTags.tagId, tags.id))
-        .groupBy(tags.id)
-        .orderBy(asc(tags.label)),
-      listNeighborhoods(),
-    ]);
+  // Consultas sequenciais: o cliente remoto usa max: 1 e o pooler do
+  // Supabase não lida bem com várias queries simultâneas na mesma conexão.
+  // Com Promise.all esta rota podia ficar presa até o limite de 60s.
+  const stats = await getCatalogStats();
+  const categoryRows = await db
+    .select({ value: sources.category, count: count() })
+    .from(sources)
+    .groupBy(sources.category);
+  const regionRows = await db
+    .select({ region: regions, sourceCount: count(sources.id) })
+    .from(regions)
+    .leftJoin(sources, eq(sources.regionId, regions.id))
+    .groupBy(regions.id)
+    .orderBy(asc(regions.sortOrder));
+  const tagRows = await db
+    .select({
+      tag: tags,
+      sourceCount: count(sourceTags.sourceId),
+    })
+    .from(tags)
+    .leftJoin(sourceTags, eq(sourceTags.tagId, tags.id))
+    .groupBy(tags.id)
+    .orderBy(asc(tags.label));
+  const neighborhoodRows = await listNeighborhoods();
 
   const categoryCounts = new Map(
     categoryRows.map((row) => [row.value as Category, Number(row.count)]),

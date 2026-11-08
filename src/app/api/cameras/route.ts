@@ -1,8 +1,10 @@
-import { listCameras } from "@/lib/catalog";
+import { listMapCameras } from "@/lib/catalog";
 import { isRegionSlug } from "@/lib/constants";
 
+// O catálogo de câmeras muda pouco; o status é atualizado pelo admin, não em
+// tempo real. Um cache maior reduz egress e consultas pesadas no pico.
 const CACHE = {
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
 };
 
 export async function GET(request: Request) {
@@ -18,22 +20,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const items = (await listCameras({ region, neighborhood })).map(
-      (camera) => ({
-        id: camera.id,
-        externalId: camera.externalId,
-        name: camera.name,
-        latitude: camera.latitude,
-        longitude: camera.longitude,
-        pageUrl: camera.pageUrl,
-        providerName: camera.providerName,
-        neighborhoodSlug: camera.neighborhoodSlug,
-        neighborhoodName: camera.neighborhoodName,
-        regionSlug: camera.regionSlug,
-        regionName: camera.regionName,
-        isOnline: camera.isOnline,
-      }),
-    );
+    const items = await listMapCameras({ region, neighborhood });
     return Response.json({ items, total: items.length }, { headers: CACHE });
   } catch (error) {
     console.error("Falha ao listar câmeras:", error);

@@ -17,10 +17,9 @@ export async function CatalogBrowser({
   const params = await searchParams;
   const query = catalogQueryFromRecord(params);
 
-  const [result, meta] = await Promise.all([
-    listSources(query),
-    getCatalogMeta(),
-  ]);
+  // Sequencial: as duas funções fazem consultas no mesmo cliente com max: 1.
+  const result = await listSources(query);
+  const meta = await getCatalogMeta();
 
   const isFiltered = hasActiveCatalogFilters(query);
   const sortLabel =

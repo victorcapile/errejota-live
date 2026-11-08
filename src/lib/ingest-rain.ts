@@ -13,6 +13,9 @@ const FRESH_WINDOW_MS = 4.5 * 60 * 1000;
 const CHECK_THROTTLE_MS = 30 * 1000;
 const RETENTION_DAYS = 90;
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
+// A fonte externa é chamada por APIs públicas. Sem timeout, uma resposta
+// lenta ou travada do Alerta Rio prende a requisição até o limite da Vercel.
+const FETCH_TIMEOUT_MS = 10 * 1000;
 let lastPruneAt = 0;
 
 // Janelas usadas pelo card do bairro e pelo cálculo de risco. As demais
@@ -142,6 +145,7 @@ async function ingestRain(): Promise<IngestResult> {
     const response = await fetch(MC_URL, {
       cache: "no-store",
       headers: FETCH_HEADERS,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ao baixar ${MC_URL}`);
