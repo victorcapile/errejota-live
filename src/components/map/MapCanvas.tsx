@@ -142,7 +142,10 @@ function applyRiskState(
   const previous = previousSlugRef.current;
   if (previous && previous !== overlay?.slug) {
     try {
-      map.removeFeatureState({ source: "bairros", id: previous }, "risk");
+      map.removeFeatureState(
+        { source: "bairros", id: previous },
+        "riskSelected",
+      );
     } catch {
       // Fonte recarregando.
     }
@@ -156,7 +159,7 @@ function applyRiskState(
   try {
     map.setFeatureState(
       { source: "bairros", id: overlay.slug },
-      { risk: overlay.level },
+      { riskSelected: overlay.level },
     );
     previousSlugRef.current = overlay.slug;
   } catch {
@@ -1333,7 +1336,7 @@ export function MapCanvas({
                 paint: {
                   "fill-color": [
                     "match",
-                    ["feature-state", "risk"],
+                    ["feature-state", "riskSelected"],
                     "baixo",
                     FLOOD_RISK_LEVEL_COLORS.baixo,
                     "moderado",
@@ -1344,7 +1347,7 @@ export function MapCanvas({
                   ],
                   "fill-opacity": [
                     "case",
-                    ["boolean", ["feature-state", "risk"], false],
+                    ["boolean", ["feature-state", "riskSelected"], false],
                     0.4,
                     0,
                   ],
