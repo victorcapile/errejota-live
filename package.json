@@ -46,6 +46,8 @@
     }
   },
   "devDependencies": {
+    "@emnapi/core": "^1.11.3",
+    "@emnapi/wasi-threads": "^1.2.3",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
