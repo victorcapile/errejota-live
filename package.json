@@ -29,14 +29,21 @@
     "@next/env": "^16.4.3",
     "@vercel/analytics": "^2.0.1",
     "drizzle-orm": "^0.45.4",
-    "fast-xml-parser": "^5.11.2",
+    "fast-xml-parser": "^5.12.1",
     "lucide-react": "^1.66.0",
     "maplibre-gl": "^6.16.0",
-    "next": "16.4.3",
+    "next": "16.4.6",
     "postgres": "^4.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "^4.6.7"
+  },
+  "overrides": {
+    "@esbuild-kit/esm-loader": {
+      "@esbuild-kit/core-utils": {
+        "esbuild": "^0.25.0"
+      }
+    }
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
@@ -45,7 +52,7 @@
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"

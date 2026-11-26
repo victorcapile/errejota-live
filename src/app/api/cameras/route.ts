@@ -1,6 +1,8 @@
 import { listMapCameras } from "@/lib/catalog";
 import { isRegionSlug } from "@/lib/constants";
 
+export const maxDuration = 30;
+
 // O catálogo de câmeras muda pouco; o status é atualizado pelo admin, não em
 // tempo real. Um cache maior reduz egress e consultas pesadas no pico.
 const CACHE = {

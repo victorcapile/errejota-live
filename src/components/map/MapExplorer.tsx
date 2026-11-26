@@ -36,6 +36,7 @@ import {
 import type { CriticalModeView } from "@/lib/critical-mode";
 import { fetchCriticalMode } from "@/lib/critical-mode-client";
 import { assessFloodRisk, type AssessedFloodRiskLevel } from "@/lib/flood-risk";
+import { fetchJsonWithRetry } from "@/lib/fetch-client";
 import { normalizeText } from "@/lib/text";
 import type { SafetyFacility } from "@/lib/safety";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -161,6 +162,7 @@ export function MapExplorer({
   const [safetyStatus, setSafetyStatus] = useState<
     "idle" | "loading" | "ready" | "error"
   >("idle");
+  const [safetyReload, setSafetyReload] = useState(0);
   const [safetyKind, setSafetyKind] = useState<SafetyFacilityKind | "all">(
     "all",
   );
@@ -204,6 +206,8 @@ export function MapExplorer({
   const [locateRequest, setLocateRequest] = useState(0);
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [camerasLoading, setCamerasLoading] = useState(true);
+  const [camerasError, setCamerasError] = useState(false);
+  const [camerasReload, setCamerasReload] = useState(0);
   const [dismissedDossierNeighborhood, setDismissedDossierNeighborhood] =
     useState<string | null>(null);
   const [searchBounds, setSearchBounds] = useState<{
@@ -239,21 +243,25 @@ export function MapExplorer({
   useEffect(() => {
     const controller = new AbortController();
 
-    fetch("/api/cameras", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return (await response.json()) as { items?: Camera[] };
-      })
+    fetchJsonWithRetry<{ items?: Camera[] }>("/api/cameras", {
+      signal: controller.signal,
+      retries: 3,
+      timeoutMs: 15_000,
+      init: { cache: "no-store" },
+    })
       .then((payload) => {
+        if (controller.signal.aborted) {
+          return;
+        }
         setCameras(payload.items ?? []);
+        setCamerasError(false);
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
           return;
         }
         console.error("Falha ao carregar câmeras:", error);
+        setCamerasError(true);
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -262,7 +270,31 @@ export function MapExplorer({
       });
 
     return () => controller.abort();
-  }, []);
+  }, [camerasReload]);
+
+  useEffect(() => {
+    if (!camerasError) {
+      return;
+    }
+
+    const retryWhenVisible = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      setCamerasError(false);
+      setCamerasLoading(true);
+      setCamerasReload((value) => value + 1);
+    };
+
+    window.addEventListener("focus", retryWhenVisible);
+    window.addEventListener("online", retryWhenVisible);
+    document.addEventListener("visibilitychange", retryWhenVisible);
+    return () => {
+      window.removeEventListener("focus", retryWhenVisible);
+      window.removeEventListener("online", retryWhenVisible);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
+    };
+  }, [camerasError]);
 
   useEffect(() => {
     let controller = new AbortController();
@@ -273,18 +305,15 @@ export function MapExplorer({
       controller = new AbortController();
       const current = controller;
 
-      fetch("/api/conditions?limit=500", {
-        signal: current.signal,
-        cache: "no-store",
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-          return (await response.json()) as {
-            items?: NeighborhoodCondition[];
-          };
-        })
+      fetchJsonWithRetry<{ items?: NeighborhoodCondition[] }>(
+        "/api/conditions?limit=500",
+        {
+          signal: current.signal,
+          retries: 2,
+          timeoutMs: 12_000,
+          init: { cache: "no-store" },
+        },
+      )
         .then((payload) => {
           if (current.signal.aborted) {
             return;
@@ -328,16 +357,15 @@ export function MapExplorer({
       controller = new AbortController();
       const current = controller;
 
-      fetch("/api/rain?limit=200", {
-        signal: current.signal,
-        cache: "no-store",
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            return { items: [] as RainStationLatest[] };
-          }
-          return (await response.json()) as { items?: RainStationLatest[] };
-        })
+      fetchJsonWithRetry<{ items?: RainStationLatest[] }>(
+        "/api/rain?limit=200",
+        {
+          signal: current.signal,
+          retries: 2,
+          timeoutMs: 12_000,
+          init: { cache: "no-store" },
+        },
+      )
         .then((payload) => {
           if (!current.signal.aborted) {
             setRainStations(payload.items ?? []);
@@ -421,14 +449,18 @@ export function MapExplorer({
     }
     const controller = new AbortController();
 
-    fetch("/api/safety?limit=2000", {
-      signal: controller.signal,
-      cache: "no-store",
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload: { items?: SafetyFacility[] } | null) => {
+    fetchJsonWithRetry<{ items?: SafetyFacility[] }>(
+      "/api/safety?limit=2000",
+      {
+        signal: controller.signal,
+        retries: 3,
+        timeoutMs: 15_000,
+        init: { cache: "no-store" },
+      },
+    )
+      .then((payload) => {
         if (controller.signal.aborted) return;
-        setSafetyFacilities(payload?.items ?? []);
+        setSafetyFacilities(payload.items ?? []);
         setSafetyStatus("ready");
       })
       .catch(() => {
@@ -438,7 +470,30 @@ export function MapExplorer({
       });
 
     return () => controller.abort();
-  }, [showSafety]);
+  }, [showSafety, safetyReload]);
+
+  useEffect(() => {
+    if (!showSafety || safetyStatus !== "error") {
+      return;
+    }
+
+    const retryWhenVisible = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+      setSafetyStatus("loading");
+      setSafetyReload((value) => value + 1);
+    };
+
+    window.addEventListener("focus", retryWhenVisible);
+    window.addEventListener("online", retryWhenVisible);
+    document.addEventListener("visibilitychange", retryWhenVisible);
+    return () => {
+      window.removeEventListener("focus", retryWhenVisible);
+      window.removeEventListener("online", retryWhenVisible);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
+    };
+  }, [showSafety, safetyStatus]);
 
   const visibleSafetyFacilities = useMemo(
     () =>
@@ -472,6 +527,9 @@ export function MapExplorer({
       support_point: 0,
       shelter: 0,
       hospital: 0,
+      upa: 0,
+      ubs: 0,
+      mental_health: 0,
     };
     for (const facility of safetyFacilitiesForNeighborhood) {
       counts[facility.kind] += 1;
@@ -507,6 +565,17 @@ export function MapExplorer({
       )?.name ?? null
     );
   }, [selectedSafetyFacility, meta.neighborhoods]);
+
+  function reloadCameras() {
+    setCamerasError(false);
+    setCamerasLoading(true);
+    setCamerasReload((value) => value + 1);
+  }
+
+  function retrySafety() {
+    setSafetyStatus("loading");
+    setSafetyReload((value) => value + 1);
+  }
 
   function handleSafetyToggle() {
     const next = !showSafety;
@@ -1123,6 +1192,15 @@ export function MapExplorer({
               <div className="pointer-events-auto flex h-7 max-w-full items-center gap-3 border border-line bg-card px-2.5 font-mono text-[9px] uppercase tracking-[0.1em]">
                 {camerasLoading ? (
                   <span className="text-muted">Carregando…</span>
+                ) : camerasError ? (
+                  <button
+                    type="button"
+                    onClick={reloadCameras}
+                    title="As câmeras não carregaram. Tentar novamente."
+                    className="whitespace-nowrap text-amber-700 transition-colors hover:text-accent dark:text-amber-400"
+                  >
+                    Recarregar câmeras
+                  </button>
                 ) : (
                   <>
                     <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-foreground">
@@ -1183,6 +1261,7 @@ export function MapExplorer({
                 status={safetyStatus}
                 selectedId={selectedSafetyId}
                 onSelect={handleSelectSafetyFacilityFromList}
+                onRetry={retrySafety}
                 onClose={handleSafetyToggle}
                 neighborhoodNameBySlug={neighborhoodNameBySlug}
               />

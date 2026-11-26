@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import Link from "next/link";
 import {
+  Ambulance,
   ArrowRight,
+  Brain,
   Building2,
   Camera,
   CheckCircle2,
@@ -19,6 +21,7 @@ import {
   Search,
   ShieldAlert,
   ShieldCheck,
+  Stethoscope,
 } from "lucide-react";
 import { CATALOG_LAST_CHECKED_AT } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
@@ -38,8 +41,11 @@ const DATA = {
   riskNeighborhoods: 158,
   helpPoints: 189,
   shelters: 12,
-  hospitals: 76,
-  publicEquipment: 277,
+  hospitals: 74,
+  upas: 14,
+  ubs: 243,
+  mentalHealth: 31,
+  publicEquipment: 563,
 } as const;
 
 const VERSION = "1.4.2";
@@ -78,7 +84,7 @@ const FEATURES = [
     value: DATA.publicEquipment.toLocaleString("pt-BR"),
     label: "equipamentos",
     title: "Equipamentos públicos",
-    text: "Pontos de ajuda, abrigos e hospitais públicos, com filtro por tipo e bairro.",
+    text: "Pontos de ajuda, abrigos, hospitais, UPAs, UBS e CAPS, com filtro por tipo e bairro.",
   },
 ] as const;
 
@@ -123,7 +129,8 @@ const ROADMAP = [
     title: "Equipamentos e relatos",
     text: "A camada de ajuda, os relatos de câmera e a moderação no admin.",
     items: [
-      "189 pontos de ajuda, 12 abrigos e 76 hospitais públicos",
+      "189 pontos de ajuda, 12 abrigos e 74 hospitais públicos",
+      "14 UPAs, 243 UBS e 31 CAPS municipais",
       "Relatos com moderação, rate limit e auditoria",
       "Modo avançado automático em estágio 3+",
     ],
@@ -134,6 +141,9 @@ const EQUIPMENT = [
   { label: "Pontos de ajuda", icon: HeartHandshake },
   { label: "Abrigos", icon: House },
   { label: "Hospitais públicos", icon: Hospital },
+  { label: "UBS", icon: Stethoscope },
+  { label: "UPAs", icon: Ambulance },
+  { label: "CAPS / saúde mental", icon: Brain },
 ] as const;
 
 function SectionHeading({
@@ -282,7 +292,9 @@ export default function AboutPage() {
                   <span className="absolute left-[79%] top-[70%] size-1.5 rounded-full bg-emerald-500" />
                   <span className="absolute left-[30%] top-[74%] size-1.5 rounded-full bg-brand/70" />
                   <span className="absolute bottom-2 left-3 text-[9px] text-muted">
-                    7.571 câmeras · 277 equipamentos · 162 bairros
+                    {DATA.cameras.toLocaleString("pt-BR")} câmeras ·{" "}
+                    {DATA.publicEquipment} equipamentos · {DATA.neighborhoods}{" "}
+                    bairros
                   </span>
                 </div>
 
@@ -654,16 +666,20 @@ export default function AboutPage() {
                   Ajuda no mapa, com fonte e tipo.
                 </h3>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-                  Pontos de ajuda, abrigos e hospitais públicos da Defesa Civil
-                  e do CNES. Filtro por tipo, dossiê por bairro, endereço,
-                  fonte, atribuição e link para o Google Maps. Somente
-                  equipamentos públicos; hospitais particulares ficam de fora.
+                  Pontos de ajuda e abrigos da Defesa Civil; hospitais públicos
+                  do CNES; UBS, UPAs e CAPS municipais do Data.Rio. Filtro por
+                  tipo, dossiê por bairro, endereço, fonte, atribuição e link
+                  para o Google Maps. Somente equipamentos públicos;
+                  particulares ficam de fora.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-1.5">
                   {[
                     `${DATA.helpPoints} pontos de ajuda`,
                     `${DATA.shelters} abrigos`,
                     `${DATA.hospitals} hospitais públicos`,
+                    `${DATA.upas} UPAs`,
+                    `${DATA.ubs} UBS`,
+                    `${DATA.mentalHealth} CAPS`,
                   ].map((label) => (
                     <span
                       key={label}
@@ -712,7 +728,7 @@ export default function AboutPage() {
               {
                 icon: ShieldCheck,
                 title: "Privacidade por padrão",
-                text: "Sem contas e sem rastreamento de terceiros. Métricas agregadas e sem cookies via Vercel Analytics. Relatos usam hash de IP com sal rotativo só para limite de abuso.",
+                text: "Sem contas e sem rastreamento de terceiros. Métricas agregadas e sem cookies via Vercel Analytics.",
               },
               {
                 icon: ShieldAlert,
@@ -741,7 +757,7 @@ export default function AboutPage() {
               <p className="font-editorial text-xl font-semibold">Fontes e atribuições</p>
               <p className="mt-1 text-[10px] leading-relaxed text-muted sm:text-xs">
                 Chuva: Alerta Rio · Estágio: COR-Rio · Risco: COPPE/UFRJ ·
-                Ajuda: Defesa Civil e CNES/DATASUS · Coordenadas: Data.Rio e
+                Ajuda: Defesa Civil, CNES/DATASUS e Data.Rio · Coordenadas: Data.Rio e
                 OpenStreetMap/Nominatim · Mapa e 3D: OpenFreeMap/OpenStreetMap.
               </p>
               <p className="mt-1 text-[10px] text-muted">

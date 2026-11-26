@@ -87,6 +87,7 @@ function createLocalDatabase(): Database {
   }
 
   const client = new PGlite(localDatabasePath);
+  localClient = client;
 
   // Fecha o PGlite de forma limpa ao parar o processo; isso permite que o
   // PostgreSQL em WASM grave o WAL antes de encerrar. Um encerramento abrupto

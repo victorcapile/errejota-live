@@ -3,6 +3,8 @@
  * - Pontos de apoio e abrigos da Defesa Civil Municipal (ArcGIS público).
  * - Hospitais do CNES/DATASUS (tipos 5 e 7, ativos, com coordenadas),
  *   apenas da rede pública (natureza jurídica 1xxx ou empresa pública).
+ * - UBS, UPAs e CAPS municipais do Data.Rio (ArcGIS público), com
+ *   coordenadas, endereço e telefone.
  *
  * Uso:
  *   npm run db:safety
@@ -26,7 +28,7 @@ const DEFESA_BASE =
 const CNES_URL =
   "https://apidadosabertos.saude.gov.br/cnes/estabelecimentos";
 const CNES_PAGE_SIZE = 20;
-const CNES_MAX_OFFSET = 2_000;
+const CNES_MAX_PAGES = 200;
 const DATA_RIO_UNIDADES_URL =
   "https://services1.arcgis.com/OlP4dGNtIcnD3RYf/arcgis/rest/services/OSA2/FeatureServer/0/query";
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
@@ -79,10 +81,18 @@ type CnesPayload = {
 
 type DataRioUnit = {
   attributes?: {
+    OBJECTID?: number | null;
     CNES?: string | number | null;
     CNES_?: string | number | null;
     NOME?: string | null;
     BAIRRO?: string | null;
+    ENDERECO?: string | null;
+    TELEFONE?: string | null;
+    HORARIO_SEMANA?: string | null;
+    HORARIO_SABADO?: string | null;
+    TIPO_UNIDADE?: string | null;
+    TIPO_ABC?: string | null;
+    Flg_Ativo?: number | null;
   };
   geometry?: { x?: number; y?: number };
 };
@@ -198,6 +208,36 @@ async function fetchDataRioUnits(): Promise<
     console.warn("Data.Rio indisponível; mantendo coordenadas do CNES:", error);
   }
   return units;
+}
+
+/**
+ * Unidades municipais de saúde do Data.Rio (ArcGIS). Inclui UBS/Clínicas da
+ * Família, UPAs e CAPS com coordenadas, endereço e telefone.
+ */
+async function fetchDataRioFacilities(): Promise<DataRioUnit[]> {
+  const params = new URLSearchParams({
+    where: "1=1",
+    outFields: "*",
+    returnGeometry: "true",
+    outSR: "4326",
+    f: "json",
+    resultRecordCount: "3000",
+  });
+  const payload = await fetchJson<DataRioPayload>(
+    `${DATA_RIO_UNIDADES_URL}?${params.toString()}`,
+    {
+      timeoutMs: 60_000,
+      retries: 3,
+      headers: { Referer: "https://www.data.rio/" },
+      validate: (data) => {
+        const parsed = data as DataRioPayload;
+        if (!parsed || !Array.isArray(parsed.features)) {
+          throw new Error("Payload do Data.Rio inválido.");
+        }
+      },
+    },
+  );
+  return payload.features ?? [];
 }
 
 /** Geocodificação direta via Nominatim/OSM, limitada à cidade do Rio. */
@@ -379,16 +419,106 @@ function shelterRows(
   return rows;
 }
 
+const DATA_RIO_SOURCE = "Data.Rio — Unidades de Saúde";
+const DATA_RIO_ATTRIBUTION =
+  "Data.Rio / Prefeitura da Cidade do Rio de Janeiro.";
+
+function dataRioKind(
+  type: string | null,
+): "ubs" | "upa" | "mental_health" | null {
+  if (!type) {
+    return null;
+  }
+  if (type === "UPA") {
+    return "upa";
+  }
+  if (type === "CAPS") {
+    return "mental_health";
+  }
+  if (type === "CLINICA DA FAMILIA" || type === "CMS" || type === "CF") {
+    return "ubs";
+  }
+  return null;
+}
+
+function dataRioFacilityRows(
+  features: DataRioUnit[],
+  bairros: BairroFeature[],
+  syncedAt: string,
+): FacilityRow[] {
+  const rows: FacilityRow[] = [];
+
+  for (const feature of features) {
+    const attributes = feature.attributes ?? {};
+    if (attributes.Flg_Ativo === 0) {
+      continue;
+    }
+
+    const kind = dataRioKind(text(attributes.TIPO_UNIDADE));
+    const latitude = number(feature.geometry?.y);
+    const longitude = number(feature.geometry?.x);
+    if (!kind || latitude === null || longitude === null) {
+      continue;
+    }
+
+    const externalId = `data-rio-${String(
+      attributes.OBJECTID ??
+        attributes.CNES ??
+        attributes.CNES_ ??
+        `${kind}-${rows.length}`,
+    )}`;
+    const fallbackName =
+      kind === "upa" ? "UPA" : kind === "ubs" ? "UBS" : "CAPS";
+
+    rows.push(
+      withBairro(
+        {
+          id: `safety_${kind}_${externalId}`,
+          kind,
+          externalId,
+          name: text(attributes.NOME) ?? fallbackName,
+          address: text(attributes.ENDERECO),
+          neighborhoodSlug: null,
+          regionSlug: null,
+          latitude,
+          longitude,
+          sourceLabel: DATA_RIO_SOURCE,
+          sourceUrl: "https://www.data.rio/",
+          attribution: DATA_RIO_ATTRIBUTION,
+          sourceUpdatedAt: null,
+          syncedAt,
+          metadata: JSON.stringify({
+            tipoUnidade: text(attributes.TIPO_UNIDADE),
+            tipoABC: text(attributes.TIPO_ABC),
+            cnes: normalizeCnes(attributes.CNES ?? attributes.CNES_),
+            phone: text(attributes.TELEFONE),
+            horarioSemana: text(attributes.HORARIO_SEMANA),
+            horarioSabado: text(attributes.HORARIO_SABADO),
+            coordinateSource: "data-rio",
+          }),
+          isActive: true,
+        },
+        bairros,
+      ),
+    );
+  }
+
+  return rows;
+}
+
 async function fetchCnesPage(
   type: number,
-  offset: number,
+  page: number,
 ): Promise<CnesEstablishment[]> {
   const params = new URLSearchParams({
     codigo_municipio: "330455",
     codigo_tipo_unidade: String(type),
     status: "1",
     limit: String(CNES_PAGE_SIZE),
-    offset: String(offset),
+    // Na API do CNES, `offset` é o índice da página (0-based), não o
+    // deslocamento em registros. O script antigo avançava de 20 em 20 e
+    // acabava lendo só a primeira página.
+    offset: String(page),
   });
   const payload = await fetchJson<CnesPayload>(
     `${CNES_URL}?${params.toString()}`,
@@ -415,12 +545,8 @@ async function hospitalRows(
   const dataRioUnits = await fetchDataRioUnits();
 
   for (const type of [5, 7]) {
-    for (
-      let offset = 0;
-      offset < CNES_MAX_OFFSET;
-      offset += CNES_PAGE_SIZE
-    ) {
-      const page = await fetchCnesPage(type, offset);
+    for (let pageIndex = 0; pageIndex < CNES_MAX_PAGES; pageIndex += 1) {
+      const page = await fetchCnesPage(type, pageIndex);
       if (page.length === 0) break;
 
       for (const item of page) {
@@ -599,6 +725,9 @@ async function deactivateMissing(rows: FacilityRow[]): Promise<number> {
           "support_point",
           "shelter",
           "hospital",
+          "upa",
+          "ubs",
+          "mental_health",
         ]),
         notInArray(safetyFacilities.externalId, ids),
       ),
@@ -617,30 +746,44 @@ async function main() {
 
     const supportFeatures = await fetchArcGis(1);
     const shelterFeatures = await fetchArcGis(3);
+    const dataRioFacilities = await fetchDataRioFacilities();
     const supports = supportRows(supportFeatures, bairros, syncedAt);
     const shelters = shelterRows(shelterFeatures, bairros, syncedAt);
+    const municipalHealth = dataRioFacilityRows(
+      dataRioFacilities,
+      bairros,
+      syncedAt,
+    );
     const hospitals = await hospitalRows(bairros, syncedAt);
 
     processed += await upsert(supports);
     processed += await upsert(shelters);
+    processed += await upsert(municipalHealth);
     processed += await upsert(hospitals);
 
     const deactivated = await deactivateMissing([
       ...supports,
       ...shelters,
+      ...municipalHealth,
       ...hospitals,
     ]);
+
+    const upas = municipalHealth.filter((row) => row.kind === "upa").length;
+    const ubs = municipalHealth.filter((row) => row.kind === "ubs").length;
+    const mentalHealth = municipalHealth.filter(
+      (row) => row.kind === "mental_health",
+    ).length;
 
     await finishIngestRun(
       runId,
       "success",
       processed,
       null,
-      `${supports.length} pontos de apoio; ${shelters.length} abrigos; ${hospitals.length} hospitais; ${deactivated} desativados.`,
+      `${supports.length} pontos de apoio; ${shelters.length} abrigos; ${hospitals.length} hospitais; ${upas} UPAs; ${ubs} UBS; ${mentalHealth} CAPS; ${deactivated} desativados.`,
     );
 
     console.log(
-      `Segurança: ${supports.length} pontos de apoio, ${shelters.length} abrigos, ${hospitals.length} hospitais (${deactivated} desativados).`,
+      `Segurança: ${supports.length} pontos de apoio, ${shelters.length} abrigos, ${hospitals.length} hospitais, ${upas} UPAs, ${ubs} UBS, ${mentalHealth} CAPS (${deactivated} desativados).`,
     );
   } catch (error) {
     await finishIngestRun(runId, "failed", processed, String(error));

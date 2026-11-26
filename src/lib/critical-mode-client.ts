@@ -1,4 +1,5 @@
 import type { CriticalModeView } from "./critical-mode";
+import { fetchJsonWithRetry } from "./fetch-client";
 
 const CACHE_TTL_MS = 20_000;
 
@@ -20,12 +21,13 @@ export async function fetchCriticalMode(
     return inflight;
   }
 
-  inflight = fetch("/api/critical-mode", { cache: "no-store" })
-    .then((response) => (response.ok ? response.json() : null))
-    .then((data: CriticalModeView | null) => {
-      if (data) {
-        cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
-      }
+  inflight = fetchJsonWithRetry<CriticalModeView>("/api/critical-mode", {
+    retries: 2,
+    timeoutMs: 12_000,
+    init: { cache: "no-store" },
+  })
+    .then((data) => {
+      cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
       return data;
     })
     .catch(() => null)

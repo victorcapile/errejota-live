@@ -762,6 +762,9 @@ export const SAFETY_FACILITY_KIND_VALUES = [
   "support_point",
   "shelter",
   "hospital",
+  "upa",
+  "ubs",
+  "mental_health",
 ] as const;
 
 export type SafetyFacilityKind =
@@ -774,6 +777,9 @@ export const SAFETY_FACILITY_KIND_LABELS: Record<
   support_point: "Pontos de ajuda",
   shelter: "Abrigos",
   hospital: "Hospitais",
+  upa: "UPAs",
+  ubs: "UBS",
+  mental_health: "Saúde mental",
 };
 
 export const SAFETY_FACILITY_KIND_SINGULAR: Record<
@@ -783,6 +789,9 @@ export const SAFETY_FACILITY_KIND_SINGULAR: Record<
   support_point: "Ponto de ajuda",
   shelter: "Abrigo",
   hospital: "Hospital",
+  upa: "UPA",
+  ubs: "UBS",
+  mental_health: "Saúde mental",
 };
 
 export const SAFETY_FACILITY_KIND_COLORS: Record<
@@ -793,6 +802,9 @@ export const SAFETY_FACILITY_KIND_COLORS: Record<
   support_point: "#06b6d4",
   shelter: "#84cc16",
   hospital: "#d946ef",
+  upa: "#f97316",
+  ubs: "#0ea5e9",
+  mental_health: "#a855f7",
 };
 
 /** Estágio a partir do qual o mapa entra no modo avançado. */

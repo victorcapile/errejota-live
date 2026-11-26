@@ -1,6 +1,6 @@
 # Fase 3 — progresso
 
-Atualizado em: 07/11/2026, 02:40 (America/Sao_Paulo)
+Atualizado em: 26/11/2026 (America/Sao_Paulo)
 
 ## Concluído
 
@@ -9,14 +9,15 @@ Atualizado em: 07/11/2026, 02:40 (America/Sao_Paulo)
   - [x] Opções: Câmera offline / Câmera online / Outro problema
   - [x] Campo de observação mantido
   - [x] Aviso de privacidade removido
-- [x] Tabela `safety_facilities` (pontos de apoio, abrigos e hospitais)
+- [x] Tabela `safety_facilities` (pontos de apoio, abrigos, hospitais, UPAs, UBS e CAPS)
 - [x] Tabela `system_state` (estado do modo crítico)
 - [x] Migration `db:migrate-safety` + workflow manual
 - [x] Script `db:safety` (Defesa Civil + CNES)
   - [x] 189 pontos de apoio
   - [x] 12 abrigos
-  - [x] 76 hospitais **somente da rede pública** (natureza jurídica 1xxx e empresa pública; particulares desativados)
-  - [x] Paginação do CNES corrigida (offset de 20 em 20)
+  - [x] 74 hospitais **somente da rede pública** (natureza jurídica 1xxx e empresa pública; particulares desativados)
+  - [x] 14 UPAs, 243 UBS e 31 CAPS municipais (Data.Rio)
+  - [x] Paginação do CNES corrigida (`offset` é o índice da página, 20 registros por página)
   - [x] Registros que saem da fonte são desativados automaticamente
   - [x] Coordenadas corrigidas: Data.Rio para unidades municipais e
         Nominatim/OSM para as demais quando o CNES diverge
@@ -71,8 +72,9 @@ A validação local usa PGlite. Antes de publicar, repetir no banco de produçã
 
 - [ ] Rodar as migrations manuais: `db:migrate-safety` e `db:migrate-reports`.
 - [ ] Rodar o sync `db:safety` (Defesa Civil + CNES) e conferir:
-  - [ ] 189 pontos de ajuda, 12 abrigos e 76 hospitais públicos;
+  - [ ] 189 pontos de ajuda, 12 abrigos, 74 hospitais públicos, 14 UPAs, 243 UBS e 31 CAPS;
   - [ ] nenhum hospital particular ativo;
+  - [ ] nenhuma UBS/UPA/CAPS particular ativa;
   - [ ] nenhum equipamento fora dos bairros do município.
 - [ ] Validar o override de estágio no banco real:
   - [ ] salvar estágio 3 → banner e modo avançado ativos;

@@ -11,7 +11,7 @@ O projeto não transmite nem grava vídeo. Ao selecionar uma câmera, a pessoa �
 - Mapa responsivo com câmeras públicas e limites dos bairros.
 - Dossiê do bairro com câmeras, chuva e risco de alagamento.
 - Camada de chuva observada, com estação mais próxima e horário da leitura.
-- Equipamentos públicos: pontos de ajuda, abrigos e hospitais públicos.
+- Equipamentos públicos: pontos de ajuda, abrigos, hospitais públicos, UPAs, UBS e CAPS.
 - Relatos de problemas em câmeras, enviados para moderação.
 - Leitura 3D opcional dos prédios.
 - Tema claro e escuro, em português.

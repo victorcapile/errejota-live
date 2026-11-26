@@ -14,7 +14,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Sincronizar pontos de apoio, abrigos e hospitais
+      - name: Sincronizar pontos de apoio, abrigos, hospitais, UBS, UPAs e CAPS
         run: npm run db:safety
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

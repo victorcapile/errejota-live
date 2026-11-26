@@ -21,6 +21,7 @@ type SafetyFacilityListPanelProps = {
   status: "idle" | "loading" | "ready" | "error";
   selectedId: string | null;
   onSelect: (facility: SafetyFacility) => void;
+  onRetry: () => void;
   onClose: () => void;
   neighborhoodNameBySlug: Map<string, string>;
 };
@@ -63,6 +64,7 @@ export function SafetyFacilityListPanel({
   status,
   selectedId,
   onSelect,
+  onRetry,
   onClose,
   neighborhoodNameBySlug,
 }: SafetyFacilityListPanelProps) {
@@ -144,9 +146,18 @@ export function SafetyFacilityListPanel({
           </p>
         ) : null}
         {status === "error" ? (
-          <p className="px-2 py-3 font-mono text-[9px] uppercase tracking-[0.1em] text-red-600 dark:text-red-300">
-            Não foi possível carregar os equipamentos.
-          </p>
+          <div className="px-2 py-3">
+            <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-red-600 dark:text-red-300">
+              Não foi possível carregar os equipamentos.
+            </p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-2 border border-line px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-foreground transition-colors hover:border-foreground/40 hover:text-accent"
+            >
+              Tentar novamente
+            </button>
+          </div>
         ) : null}
         {status === "ready" && facilities.length === 0 ? (
           <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 px-4 text-center">

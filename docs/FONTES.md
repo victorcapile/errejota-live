@@ -93,6 +93,25 @@ Fontes verificadas e decisões registradas:
 7. **Estágio operacional da cidade**
    - Não há endpoint público estável; o painel do COR exige login. O Errejota não exibe estágio automático; haverá atualização manual por portal admin.
 
+## Equipamentos de saúde — notas de ingestão (26/11/2026)
+
+1. **Hospitais públicos — CNES/DATASUS**
+   - API: <https://apidadosabertos.saude.gov.br/cnes/estabelecimentos>
+   - Tipos 5 (Hospital Geral) e 7 (Hospital Especializado), ativos, no município 330455.
+   - Somente rede pública (natureza jurídica 1xxx, empresa pública ou economia mista).
+   - A paginação da API usa `offset` como **índice da página** (0-based), com 20 registros por página.
+2. **UBS, UPAs e CAPS municipais — Data.Rio**
+   - ArcGIS: `https://services1.arcgis.com/OlP4dGNtIcnD3RYf/arcgis/rest/services/OSA2/FeatureServer/0`
+   - `TIPO_UNIDADE`: `CLINICA DA FAMILIA`, `CMS` e `CF` entram como UBS; `UPA` como UPA; `CAPS` como saúde mental.
+   - Campos usados: nome, endereço, telefone, horários, tipo, coordenadas e `Flg_Ativo`.
+   - Registros com `Flg_Ativo = 0` ficam de fora.
+3. **Pontos de apoio e abrigos — Defesa Civil Municipal**
+   - ArcGIS público; já documentado na camada de segurança.
+4. **Regras de exibição**
+   - Apenas equipamentos públicos; particulares ficam de fora.
+   - Coordenadas fora dos bairros do município não são plotadas.
+   - A camada é de apoio e contexto; não substitui o atendimento oficial.
+
 ## Próximas fontes a pesquisar (não cadastradas)
 
 - Página oficial de câmeras do Porto do Rio, se existir e permitir link.

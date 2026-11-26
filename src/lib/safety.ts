@@ -130,6 +130,9 @@ export async function getSafetySummary(): Promise<
     support_point: 0,
     shelter: 0,
     hospital: 0,
+    upa: 0,
+    ubs: 0,
+    mental_health: 0,
     total: 0,
   };
 

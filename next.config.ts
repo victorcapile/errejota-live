@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  experimental: {
+    agentUpgrade: "security",
+  },
   devIndicators: false,
   cacheComponents: process.env.NODE_ENV === "production",
   partialPrefetching: process.env.NODE_ENV === "production",
